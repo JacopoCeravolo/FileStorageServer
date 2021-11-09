@@ -3,35 +3,10 @@
 #include <stdlib.h>
 #include <errno.h>
 
+#include "utilities.h"
 #include "list.h"
 
-bool
-cmp_int(void* x, void* y)
-{
-    int a = (int)x;
-    int b = (int)y;
-    return (a == b) ? true : false;
-}
 
-void
-free_int(void* ptr)
-{
-    return;
-}
-
-void
-print_int(void* x, FILE* f)
-{
-    int p = (int)x;
-    fprintf(f, "%d ", p);
-}
-
-void
-increment(void* x)
-{
-    int a = (int)x;
-    a++;
-}
 
 int test_int()
 {
@@ -43,7 +18,7 @@ int test_int()
     f = fopen("intlist_log.txt", "w+");
 
     printf("creating list\n");
-    l =  list_create(cmp_int, free_int, print_int);
+    l =  list_create(int_compare, free_int, print_int);
 
     printf("insert tail 4\n");
     x = 4;
@@ -149,55 +124,14 @@ int test_int()
 }
 
 
-typedef struct _obj {
-    int id;
-    char *s;
-} obj;
-
-bool
-cmp_struct(void* x, void* y)
-{
-    obj *o1 = malloc(sizeof(obj));
-    obj *o2 = malloc(sizeof(obj));
-    o1 = *(obj**)x;
-    o2 = *(obj**)y;
-    if (o1->id == o2->id && strcmp(o1->s, o2->s) == 0) return true;
-    else return false;
-
-}
-
-void
-free_struct(void* x)
-{
-    obj *o = (obj*)x;
-    if(o->s) free(o->s);
-    //free(o);
-}
-
-void
-print_struct(void* x, FILE* f)
-{
-    //obj *o = malloc(sizeof(obj));
-    obj *o = (obj*)x;
-    fprintf(f, "%d -> %s\n", (int)o->id, (char*)o->s);
-    //free(o);
-}
-
-void
-increment_struct(void* x)
-{
-    obj *o = (obj*)x;
-    o->id++;
-}
-
 int test_struct()
 {
     printf("***** TEST OBJECT *****\n");
     FILE* f;
     list_t *l1;
-    int index;
     
-    l1 = list_create(cmp_struct, free_struct, print_struct);
+    
+    l1 = list_create(obj_compare, free_struct, print_struct);
     f = fopen("objlist_log.txt", "w+");
 
     obj object0;

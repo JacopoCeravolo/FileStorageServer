@@ -2,20 +2,9 @@
 #include <string.h>
 #include <errno.h>
 
+#include "utilities.h"
 #include "hash_map.h"
 
-bool string_compare(void* a, void* b) 
-{
-    return (strcmp( (char*)a, (char*)b ) == 0);
-}
-
-void
-print_string_int(void* k, void* v, FILE* stream)
-{
-    char *key = (char*)k;
-    int value = (int)v;
-    fprintf(stream, "%s -> %d\n", key, value);
-}
 
 
 int main() {

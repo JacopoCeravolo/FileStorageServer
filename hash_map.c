@@ -61,7 +61,7 @@ hash_pjw(void* key)
 
 hash_map_t*
 hash_map_create(int n_buckets, size_t (*hash_function)(void*), bool (*key_cmp)(void*, void*), 
-                void (*free_fun)(void*), void (*print)(void*, FILE*))
+                void (*free_fun)(void*), void (*print)(void*, void*, FILE*))
 {
     hash_map_t *hmap = malloc(sizeof(hash_map_t));
     if (hmap == NULL) {
@@ -104,6 +104,7 @@ hash_map_destroy(hash_map_t *hmap)
     }
     if (hmap->buckets) free(hmap->buckets);
     if (hmap) free(hmap);
+    return 0;
 }
 
 int

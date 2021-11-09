@@ -31,7 +31,7 @@ typedef struct _hash_map_t {
 
 hash_map_t*
 hash_map_create(int n_buckets, size_t (*hash_function)(void*), bool (*key_cmp)(void*, void*), 
-                void (*free_fun)(void*), void (*print)(void*, FILE*));
+                void (*free_fun)(void*), void (*print)(void*, void*, FILE*));
 
 int
 hash_map_destroy(hash_map_t *hmap);
