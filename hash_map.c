@@ -21,7 +21,7 @@ default_cmp(void* e1, void* e2)
 void
 default_free(void* ptr)
 {
-    if (ptr) free(ptr);
+    return;
 }
 
 void
@@ -99,6 +99,7 @@ hash_map_destroy(hash_map_t *hmap)
         while (entry != NULL) {
             tmp = entry;
             entry = entry->next;
+            hmap->free_fun(tmp->value);
             free(tmp);
         }
     }

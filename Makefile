@@ -1,7 +1,7 @@
 CC := gcc
 CFLAGS += -Wall -g
 
-TARGETS = test_list test_map
+TARGETS = test_list test_map test_storage
 
 .PHONY = all clean cleanall exec_test
 
@@ -27,6 +27,9 @@ test_list: test_list.c list.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 test_map: test_map.c hash_map.o 
+	$(CC) $(CFLAGS) -o $@ $^
+
+test_storage: test_storage.c hash_map.o storage.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 clean: 

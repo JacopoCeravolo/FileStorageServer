@@ -4,6 +4,11 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
+
+#define MAX_PATH    1024
+#define MAX_NAME    64
+#define MAX_BUFFER  2048
 
 typedef struct _obj {
     int id;

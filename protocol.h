@@ -5,10 +5,7 @@
 #define SOCKET_PATH "/tmp/socket.sk"
 #endif
 
-#ifndef MAX_PATH
-#define MAX_PATH 64
-#endif
-
+#include "utilities.h"
 
 /************** Data Structures **************/
 
