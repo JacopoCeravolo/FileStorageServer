@@ -53,6 +53,34 @@ int main(int argc, char const *argv[])
     }
     printf("file3 added\n");
 
+    fprintf(f, "\nBEFORE\n");
+    storage_dump(storage, f);
+
+    printf("attempting to read file1\n");
+    file_t *tmp = storage_get_file(storage, "file1");
+    if (tmp == NULL) {
+        printf("storage_get_file failed: %s\n", strerror(errno));
+    } else {
+        print_file(NULL, (void*)tmp, stdout);
+    }
+
+    printf("attempting to read file5, expecting error\n");
+    tmp = storage_get_file(storage, "file5");
+    if (tmp == NULL) {
+        printf("storage_get_file failed: %s\n", strerror(errno));
+    } else {
+        print_file(NULL, (void*)tmp, stdout);
+    }
+
+    printf("modifying file1\n");
+    memcpy(f1->contents, buffer, strlen(buffer) + 1);
+    if (storage_add_file(storage, f1) != 0) {
+        printf("storage_add_file failed: %s\n", strerror(errno));
+    }
+    printf("modified file1\n");
+
+    fprintf(f, "\nAFTER\n");
+
     storage_dump(storage, f);
     storage_destroy(storage);
     fclose(f);

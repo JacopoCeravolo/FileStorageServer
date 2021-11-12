@@ -1,9 +1,6 @@
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
-#ifndef SOCKET_PATH
-#define SOCKET_PATH "/tmp/socket.sk"
-#endif
 
 #include "utilities.h"
 

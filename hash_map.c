@@ -3,6 +3,7 @@
 #include <limits.h>
 
 #include "hash_map.h"
+#include "utilities.h"
 
 #define BITS_IN_int     ( sizeof(int) * CHAR_BIT )
 #define THREE_QUARTERS  ((int) ((BITS_IN_int * 3) / 4))
@@ -11,24 +12,6 @@
 
 /************** Generic compare, free and print **************/
 
-
-bool
-default_cmp(void* e1, void* e2)
-{
-    return (e1 == e2) ? true : false;
-}
-
-void
-default_free(void* ptr)
-{
-    return;
-}
-
-void
-default_print(void* k, void* v, FILE* stream)
-{
-    fprintf(stream, "Key: %p -> Value: %p\n", k, v);
-}
 
 
 void
@@ -81,7 +64,7 @@ hash_map_create(int n_buckets, size_t (*hash_function)(void*), bool (*key_cmp)(v
     hmap->hash_function = (hash_function) ? hash_function : hash_pjw;
     hmap->key_cmp = (key_cmp) ? key_cmp : default_cmp;
     hmap->free_fun = (free_fun) ? free_fun : default_free;
-    hmap->print = (print) ? print : default_print;
+    hmap->print = (print) ? print : default_print_entry;
 
     for (size_t i = 0; i < n_buckets; i++) {
         hmap->buckets[i] = NULL;

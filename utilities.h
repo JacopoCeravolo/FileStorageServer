@@ -10,10 +10,43 @@
 #define MAX_NAME    64
 #define MAX_BUFFER  2048
 
+#define DEFAULT_SOCKET_PATH "/tmp/filestorage.sk"
+
+// Run a syscall, store the result and returns ret on fail
+#define SYSCALL_RETURN(result, call, msg, ret) \
+        if ((result = call) == -1) { \
+            int e = errno; char err_buf[1024]; strerror_r(e, &err_buf[0], 1024); \
+            fprintf(stderr, "%s: %s\n", msg, err_buf); return ret; }
+
 typedef struct _obj {
     int id;
     char *s;
 } obj;
+
+
+static inline bool
+default_cmp(void* e1, void* e2)
+{
+    return (e1 == e2) ? true : false;
+}
+
+static inline void
+default_free(void* ptr)
+{
+    return;
+}
+
+static inline void
+default_print(void* e, FILE* stream)
+{
+    fprintf(stream, "Entry: %p\n", e);
+}
+
+static inline void
+default_print_entry(void* k, void* v, FILE* stream)
+{
+    fprintf(stream, "Key: %p -> Value: %p\n", k, v);
+}
 
 static inline bool 
 string_compare(void* a, void* b) {

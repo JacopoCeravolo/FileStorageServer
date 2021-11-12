@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include "protocol.h"
 #include "utilities.h"
