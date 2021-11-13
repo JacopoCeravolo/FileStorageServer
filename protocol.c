@@ -42,22 +42,22 @@ new_request(request_code type, char *resource_path, size_t body_size, void* body
 }
 
 int
-send_request(int conn_fd, request_t *request)
+send_request(int conn_fd, request_code type, char *resource_path, size_t body_size, void* body)
 {
-    if (request == NULL || conn_fd < 0) {
+    if (conn_fd < 0) {
         errno = EINVAL;
         return -1;
     }
 
     int result;
-    SYSCALL_RETURN(result, write(conn_fd, (void*)&request->type, sizeof(request_code)), 
+    SYSCALL_RETURN(result, write(conn_fd, (void*)&type, sizeof(request_code)), 
                 "write()", result);
-    SYSCALL_RETURN(result, write(conn_fd, (void*)request->resource_path, sizeof(char) * MAX_PATH), 
+    SYSCALL_RETURN(result, write(conn_fd, (void*)resource_path, sizeof(char) * MAX_PATH), 
                 "write()", result);
-    SYSCALL_RETURN(result, write(conn_fd, (void*)&request->body_size, sizeof(size_t)), 
+    SYSCALL_RETURN(result, write(conn_fd, (void*)&body_size, sizeof(size_t)), 
                 "write()", result);
-    if (request->body_size != 0) {
-        SYSCALL_RETURN(result, write(conn_fd, request->body, request->body_size), 
+    if (body_size != 0) {
+        SYSCALL_RETURN(result, write(conn_fd, body, body_size), 
                 "write()", result);
     }
     return result;
@@ -144,22 +144,22 @@ new_response(response_code status, char *status_phrase, size_t body_size, void* 
 }
 
 int
-send_response(int conn_fd, response_t *response)
+send_response(int conn_fd, response_code status, char *status_phrase, size_t body_size, void* body)
 {
-    if (response == NULL || conn_fd < 0) {
+    if (conn_fd < 0) {
         errno = EINVAL;
         return -1;
     }
 
     int result;
-    SYSCALL_RETURN(result, write(conn_fd, (void*)&response->status, sizeof(response_code)), 
+    SYSCALL_RETURN(result, write(conn_fd, (void*)&status, sizeof(response_code)), 
                 "write()", result);
-    SYSCALL_RETURN(result, write(conn_fd, (void*)response->status_phrase, sizeof(char) * MAX_PATH), 
+    SYSCALL_RETURN(result, write(conn_fd, (void*)status_phrase, sizeof(char) * MAX_PATH), 
                 "write()", result);
-    SYSCALL_RETURN(result, write(conn_fd, (void*)&response->body_size, sizeof(size_t)), 
+    SYSCALL_RETURN(result, write(conn_fd, (void*)&body_size, sizeof(size_t)), 
                 "write()", result);
-    if (response->body_size != 0) {
-        SYSCALL_RETURN(result, write(conn_fd, response->body, response->body_size), 
+    if (body_size != 0) {
+        SYSCALL_RETURN(result, write(conn_fd, body, body_size), 
                 "write()", result);
     }
     return result;

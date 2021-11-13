@@ -12,18 +12,18 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <pthread.h>
 
 #include "concurrent_queue.h"
 #include "protocol.h"
 #include "storage.h"
+#include "server_config.h"
 #include "utilities.h"
+#include "worker.h"
 
 
-typedef struct _worker_arg_t {
-   concurrent_queue_t *requests;
-   int pipe_fd;
-   int worker_id;
-} worker_arg_t;
+storage_t *storage;
+FILE *logfile;
 
 void
 cleanup()
@@ -34,41 +34,10 @@ cleanup()
 void 
 int_handler(int dummy) {
    printf("\nIn Signal Handler\n");
+   storage_dump(storage, logfile);
+   fclose(logfile);
    printf("Exiting...\n");
    exit(EXIT_SUCCESS);
-}
-
-void 
-worker_thread(void* args)
-{
-   assert(args);
-
-   int pipe_fd = ((worker_arg_t*)args)->pipe_fd;
-   int worker_id = ((worker_arg_t*)args)->worker_id;
-   concurrent_queue_t *requests = ((worker_arg_t*)args)->requests;
-   
-   free(args);
-
-   while (1) {
-
-      int client_fd;
-
-      client_fd = (int)concurrent_queue_get(requests);
-
-      printf("I'm worker %d serving client %d\n", worker_id, client_fd);
-
-      request_t *request;
-      request = recv_request(client_fd);
-      if (request == NULL) {
-         printf("request could not be received, exiting\n");
-         exit(EXIT_FAILURE);
-      }
-
-      printf("Worker %d received: %s\n", worker_id, request->resource_path);
-
-      write(pipe_fd, &client_fd, sizeof(int));
-
-   }
 }
 
 int
@@ -82,12 +51,10 @@ main(int argc, char const *argv[])
 
    /* Opens logfile */
 
-   FILE *logfile;
    logfile = fopen("server_log.txt", "w+");
 
    /* Initialize storage with size 16384 and 10 files */
 
-   storage_t *storage;
    storage = storage_create(16384, 10);
    if (storage == NULL) {
       printf("FATAL ERROR, storage could not be initialized\n");
@@ -232,10 +199,9 @@ main(int argc, char const *argv[])
       }
    }
 
-   storage_dump(storage, logfile);
+   
    storage_destroy(storage);
    concurrent_queue_destroy(requests_queue);
    close(socket_fd);
-   fclose(logfile);
    return 0;
 }

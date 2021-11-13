@@ -33,11 +33,13 @@ typedef enum {
  */
 typedef enum {
     
-    SUCCESSFULL         = 0,
-    INTERNAL_ERROR      = 1,
-    BAD_REQUEST         = 2,
-    NOT_FOUND           = 3,
-    UNAUTHORIZED        = 4,
+    ACCEPTED            = 0,
+    SUCCESS             = 1,
+    INTERNAL_ERROR      = 2,
+    BAD_REQUEST         = 3,
+    NOT_FOUND           = 4,
+    UNAUTHORIZED        = 5,
+    MISSING_BODY        = 6,
     
 } response_code;
 
@@ -78,12 +80,15 @@ typedef struct _response_t {
  * Messages corresponding to a
  * certain response status
  */
-static char status_message[5][128] = {
+static char status_message[7][128] = {
+    "Connection accepted",
     "Operation successfull",
     "Internal server error",
     "Bad request",
     "Entity not found",
-    "Unauthorized access"
+    "Unauthorized access",
+    "Missing message body"
+
 };
 
 
@@ -102,7 +107,7 @@ new_request(request_code type, char *resource_path, size_t body_size, void* body
  * -1 on failure, errno is set.
  */
 int
-send_request(int conn_fd, request_t *request);
+send_request(int conn_fd, request_code type, char *resource_path, size_t body_size, void* body);
 
 /**
  * Receives a request on socket associated with conn_fd, return the request
@@ -133,7 +138,7 @@ new_response(response_code status, char *status_phrase, size_t body_size, void* 
  * -1 on failure, errno is set.
  */
 int
-send_response(int conn_fd, response_t *response);
+send_response(int conn_fd, response_code status, char *status_phrase, size_t body_size, void* body);
 
 /**
  * Receives a response on socket associated with conn_fd, return the response

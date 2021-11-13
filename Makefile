@@ -35,7 +35,7 @@ test_storage: test_storage.c hash_map.o storage.o
 client: client.c protocol.o
 	$(CC) $(CFLAGS) -o $@ $^
 
-server: utilities.h server.c storage.o hash_map.o protocol.o concurrent_queue.o linked_list.o 
+server: utilities.h server.c storage.o hash_map.o protocol.o concurrent_queue.o linked_list.o worker.o
 	$(CC) $(CFLAGS) -o $@ $^ -lpthread
 
 

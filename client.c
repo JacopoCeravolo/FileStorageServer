@@ -39,9 +39,23 @@ int main(int argc, char const *argv[])
     if (result < 0) return -1;
 
     int i = 0;
+
+
+
     do
     {
-        int type = WRITE_FILE;
+        int type;
+
+        /* Open connection */
+        /* type = OPEN_CONNECTION;
+        send_request(socket_fd, OPEN_CONNECTION, NULL, 0, NULL); */
+
+
+
+
+        /* Writes file */
+
+        type = WRITE_FILE;
 
         char resource[MAX_PATH] = "file1";
 
@@ -81,19 +95,14 @@ int main(int argc, char const *argv[])
         fclose(file_ptr);
 
 
-        request_t *request;
-        request = new_request(type, resource, file_size, file_data);
-        if (send_request(socket_fd, request) == -1) {
+        if (send_request(socket_fd, type, resource, file_size, file_data) == -1) {
             fprintf(stderr, "ERROR: %s", strerror(errno));
-            free_request(request);
             return -1;
         }
 
-        free_request(request);
-
         printf("> sent request\n");
 
-        /* response_t *response;
+        response_t *response;
         response = recv_response(socket_fd);
         if (response == NULL) {
             fprintf(stderr, "ERROR: %s\n", strerror(errno));
@@ -102,7 +111,7 @@ int main(int argc, char const *argv[])
         }
 
         printf("> received: %d : %s : %lu : %s\n", response->status, response->status_phrase, response->body_size, (char*)response->body);
-        free_response(response); */
+        free_response(response);
 
     } while (0);
     
