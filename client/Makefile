@@ -2,7 +2,7 @@ CC := gcc
 
 ORIGIN = $(realpath ../)
 
-CFLAGS += -Wall -g -Wno-pointer-to-int-cast
+CFLAGS += -Wall -g -Wno-pointer-to-int-cast -Wno-unused-variable
 INCLUDES = -I $(ORIGIN)
 
 TARGETS = client
@@ -12,7 +12,7 @@ TARGETS = client
 all: $(TARGETS)
 
 client: client.c
-	$(CC) $(INCLUDES) $(CFLAGS) $< -o $@ -L $(ORIGIN)/libs -lprotocol
+	$(CC) $(INCLUDES) $(CFLAGS) $< -o $@ -Wl,-rpath,$(ORIGIN)/libs -L $(ORIGIN)/libs -lprotocol
 
 clean:
 	rm -rf client

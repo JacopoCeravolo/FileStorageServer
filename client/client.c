@@ -39,7 +39,7 @@ read_file(int socket_fd, char *file)
     send_request(socket_fd, READ_FILE, file, 0, NULL);
     response_t *r = recv_response(socket_fd);
     printf("> received: %d : %s : %lu\n", r->status, r->status_phrase, r->body_size);
-    if (r->body_size != 0) printf("%s\n", r->body);
+    if (r->body_size != 0) printf("%s\n", (char*)r->body);
     //free_response(r);
 }
 
