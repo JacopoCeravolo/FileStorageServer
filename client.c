@@ -22,6 +22,86 @@ cleanup()
     close(socket_fd);
 }
 
+void
+open_connection(int socket_fd)
+{
+    printf("> client opens connection\n");
+    send_request(socket_fd, OPEN_CONNECTION, "", 0, NULL);
+    response_t *r = recv_response(socket_fd);
+    printf("> received: %d : %s\n", r->status, r->status_phrase);
+    //free_response(r);
+}
+
+void
+read_file(int socket_fd, char *file)
+{
+    printf("> client reading file %s\n", file);
+    send_request(socket_fd, READ_FILE, file, 0, NULL);
+    response_t *r = recv_response(socket_fd);
+    printf("> received: %d : %s : %lu\n", r->status, r->status_phrase, r->body_size);
+    if (r->body_size != 0) printf("%s\n", r->body);
+    //free_response(r);
+}
+
+void 
+write_file(int socket_fd, char *file)
+{
+    printf("> client writing file %s\n", file);
+    FILE *file_ptr;
+        file_ptr = fopen(file, "rb");
+        if (file_ptr == NULL) {
+            errno = EIO;
+            return -1;
+        }
+
+       
+        fseek(file_ptr, 0, SEEK_END);
+        long file_size = ftell(file_ptr);
+        fseek(file_ptr, 0, SEEK_SET);
+        if (file_size == -1) {
+            fclose(file_ptr);
+            return -1;
+        }
+
+        void* file_data;
+        file_data = malloc(file_size);
+        if (file_data == NULL) {
+            errno = ENOMEM;
+            fclose(file_ptr);
+        }
+
+        if (fread(file_data, 1, file_size, file_ptr) < file_size) {
+            if (ferror(file_ptr)) {
+                fclose(file_ptr);
+                if (file_data != NULL) free(file_data);
+            }
+        }
+
+        fclose(file_ptr);
+    
+    send_request(socket_fd, WRITE_FILE, file, file_size, file_data);
+    response_t *r = recv_response(socket_fd);
+    printf("> received: %d : %s\n", r->status, r->status_phrase);
+    //free_response(r);
+}
+
+void
+open_file(int socket_fd, char * file)
+{
+    printf("> client opening file %s\n", file);
+    send_request(socket_fd, OPEN_FILE, file, 0, NULL);
+    response_t *r = recv_response(socket_fd);
+    printf("> received: %d : %s\n", r->status, r->status_phrase);
+    //free_response(r);
+}
+
+void
+close_connection(int socket_fd)
+{
+    printf("> client closing connection\n");
+    send_request(socket_fd, CLOSE_CONNECTION, "", 0, NULL);
+}
+
 int main(int argc, char const *argv[])
 {
     atexit(cleanup);
@@ -38,26 +118,23 @@ int main(int argc, char const *argv[])
     result = connect(socket_fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)); // Use SUN_LEN
     if (result < 0) return -1;
 
-    int i = 0;
 
+    open_connection(socket_fd);
+    open_file(socket_fd, "file1");
+    write_file(socket_fd, "file1");
+    read_file(socket_fd, "file1");
+    close_connection(socket_fd);
 
-
-    do
+    /* do
     {
         int type;
 
-        /* Open connection */
-        /* type = OPEN_CONNECTION;
-        send_request(socket_fd, OPEN_CONNECTION, NULL, 0, NULL); */
 
+       // WRITE
 
+        type = READ_FILE;
 
-
-        /* Writes file */
-
-        type = WRITE_FILE;
-
-        char resource[MAX_PATH] = "file1";
+        char resource[MAX_PATH] = "protocol.h";
 
         
         char *body;
@@ -69,7 +146,7 @@ int main(int argc, char const *argv[])
             return -1;
         }
 
-        /* Get file size */
+       
         fseek(file_ptr, 0, SEEK_END);
         long file_size = ftell(file_ptr);
         fseek(file_ptr, 0, SEEK_SET);
@@ -100,6 +177,7 @@ int main(int argc, char const *argv[])
             return -1;
         }
 
+        free(file_data);
         printf("> sent request\n");
 
         response_t *response;
@@ -110,10 +188,17 @@ int main(int argc, char const *argv[])
             return -1;
         }
 
-        printf("> received: %d : %s : %lu : %s\n", response->status, response->status_phrase, response->body_size, (char*)response->body);
-        free_response(response);
+        printf("> received: %d : %s : %lu \n", response->status, response->status_phrase, response->body_size);
+        // free_response(response);
 
-    } while (0);
+        // CLOSE 
+
+        send_request(socket_fd, CLOSE_CONNECTION, "", 0, NULL); 
+
+    } while (0); */
     
+
+    
+
     return 0;
 }

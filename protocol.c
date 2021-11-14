@@ -207,7 +207,11 @@ recv_response(int conn_fd)
 void
 free_response(response_t *response)
 {
-    if (response->body) free(response->body);
-    if (response) free(response);
+    if (response->body) {
+        
+        free(response->body); }
+    if (response) {
+        free(response);
+         }
 }
 

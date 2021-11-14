@@ -5,46 +5,20 @@
 #include "hash_map.h"
 #include "utilities.h"
 
-#define BITS_IN_int     ( sizeof(int) * CHAR_BIT )
-#define THREE_QUARTERS  ((int) ((BITS_IN_int * 3) / 4))
-#define ONE_EIGHTH      ((int) (BITS_IN_int / 8))
-#define HIGH_BITS       ( ~((unsigned int)(~0) >> ONE_EIGHTH ))
-
-/************** Generic compare, free and print **************/
-
-
-
-void
-print_entry(hash_map_entry_t *e, FILE* stream)
-{
-    fprintf(stream, "%s -> %d\n", (char*)e->key, (int)e->value);
-}
-
-/************** Default Hash Function **************/
-
-
-size_t
-hash_pjw(void* key)
-{
-    char *datum = (char *)key;
-    size_t hash_value, i;
-
-    if(!datum) return 0;
-
-    for (hash_value = 0; *datum; ++datum) {
-        hash_value = (hash_value << ONE_EIGHTH) + *datum;
-        if ((i = hash_value & HIGH_BITS) != 0)
-            hash_value = (hash_value ^ (i >> THREE_QUARTERS)) & ~HIGH_BITS;
-    }
-    return (hash_value);
-}
-
-/************** Hash Map Functions **************/
-
-
+/**
+ * \brief Creates a new hashmap. 
+ * 
+ * \param n_bucket: hashmap size
+ * \param hash_function: function used to hash keys
+ * \param key_cmp: function used to compare keys
+ * \param free_key: function used to free keys
+ * \param free_value: function used to free values
+ * 
+ * \return the hashmap on success, NULL on failure. Errno is set.
+ */
 hash_map_t*
 hash_map_create(int n_buckets, size_t (*hash_function)(void*), bool (*key_cmp)(void*, void*), 
-                void (*free_fun)(void*), void (*print)(void*, void*, FILE*))
+                void (*free_key)(void*), void (*free_value)(void*))
 {
     hash_map_t *hmap = malloc(sizeof(hash_map_t));
     if (hmap == NULL) {
@@ -61,10 +35,10 @@ hash_map_create(int n_buckets, size_t (*hash_function)(void*), bool (*key_cmp)(v
 
     hmap->n_buckets = n_buckets;
     hmap->n_entries = 0;
-    hmap->hash_function = (hash_function) ? hash_function : hash_pjw;
+    hmap->hash_function = (hash_function) ? hash_function : string_hash;
     hmap->key_cmp = (key_cmp) ? key_cmp : default_cmp;
-    hmap->free_fun = (free_fun) ? free_fun : default_free;
-    hmap->print = (print) ? print : default_print_entry;
+    hmap->free_key = (free_key) ? free_key : default_free;
+    hmap->free_value = (free_value) ? free_value : default_free;
 
     for (size_t i = 0; i < n_buckets; i++) {
         hmap->buckets[i] = NULL;
@@ -73,6 +47,14 @@ hash_map_create(int n_buckets, size_t (*hash_function)(void*), bool (*key_cmp)(v
     return hmap;
 }
 
+
+/**
+ * \brief Destroyes an hashmap, clearing all entries
+ * 
+ * \param hmap: hashmap to be destroyed
+ * 
+ * \return: 0 on success, -1 on failures. Errno is set.
+ */
 int
 hash_map_destroy(hash_map_t *hmap)
 {
@@ -82,7 +64,8 @@ hash_map_destroy(hash_map_t *hmap)
         while (entry != NULL) {
             tmp = entry;
             entry = entry->next;
-            hmap->free_fun(tmp->value);
+            hmap->free_key(tmp->key);
+            hmap->free_value(tmp->value);
             free(tmp);
         }
     }
@@ -91,6 +74,17 @@ hash_map_destroy(hash_map_t *hmap)
     return 0;
 }
 
+
+/**
+ * \brief Insert a new entry in the hashmap, if there's already an
+ *        entry with that key, its value is replaced.
+ * 
+ * \param hmap: hashmap where to insert
+ * \param key: key of the new entry
+ * \param value: value of the new entry
+ * 
+ * \return: 0 on success, -1 on failures. Errno is set.
+ */
 int
 hash_map_insert(hash_map_t *hmap, void* key, void* value)
 {
@@ -127,6 +121,15 @@ hash_map_insert(hash_map_t *hmap, void* key, void* value)
     return 0;
 }
 
+
+/**
+ * \brief Remove an entry from the hashmap
+ * 
+ * \param hmap: hashmap where the entry is
+ * \param key: key of the entry
+ * 
+ * \return: 0 on success, -1 on failures. Errno is set.
+ */
 int 
 hash_map_remove(hash_map_t *hmap, void *key)
 {
@@ -157,6 +160,15 @@ hash_map_remove(hash_map_t *hmap, void *key)
     return 0;
 }
 
+
+/**
+ * \brief Gets the value of an entry from the hashmap
+ * 
+ * \param hmap: hashmap where the entry is
+ * \param key: key of the entry
+ * 
+ * \return: Entry value on success, NULL on failures. Errno is set.
+ */
 void*
 hash_map_get(hash_map_t *hmap, void* key)
 {
@@ -171,15 +183,23 @@ hash_map_get(hash_map_t *hmap, void* key)
     return NULL;
 }
 
+
+/**
+ * \brief Prints hashmap entries to file pointer by stream
+ * 
+ * \param hmap: hashmap to print
+ * \param stream: file pointer where to print
+ * \param print_key: function for printing keys
+ * \param print_value: function for printing values
+ */
 void
-hash_map_dump(hash_map_t *hmap, FILE *stream)
+hash_map_dump(hash_map_t *hmap, FILE *stream, void (*print_key)(void*, FILE*), void (*print_value)(void*, FILE*))
 {
-    for (size_t i = 0; i < hmap->n_buckets; i++)
-    {
-        
+    for (size_t i = 0; i < hmap->n_buckets; i++) {    
         hash_map_entry_t *entry = hmap->buckets[i];
         while (entry != NULL) {
-            hmap->print(entry->key, entry->value, stream);
+            print_key(entry->key, stream);
+            print_value(entry->value, stream);
             entry = entry->next;
         }
     }

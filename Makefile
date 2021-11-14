@@ -1,5 +1,5 @@
 CC := gcc
-CFLAGS += -Wall -g
+CFLAGS += -Wall -g -Wno-pointer-to-int-cast
 
 TARGETS = test_list test_map test_storage client server
 

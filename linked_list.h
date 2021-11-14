@@ -2,6 +2,7 @@
 #define LINKED_LIST_H
 
 #include <stdbool.h>
+#include <stdio.h>
 
 
 /************** Data Structures **************/
@@ -49,7 +50,7 @@ list_create(bool cmp(void*, void*), void free_fun(void*), void print(void*, FILE
  * Destroys a list and all of its nodes.
  * Returns 0 on success, -1 onf failure.
  */
-int
+void
 list_destroy(list_t *list);
 
 /**

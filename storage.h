@@ -2,6 +2,7 @@
 #define STORAGE_H
 
 #include "hash_map.h"
+#include "linked_list.h"
 #include "utilities.h"
 
 
@@ -28,16 +29,27 @@ typedef struct _storage_t {
     size_t  max_files;
     /* Current number of files */
     size_t  no_of_files;
-    /* Tables of files */
+    /* Table of files */
     hash_map_t *files;
+    /* Table of files currently opened */
+    hash_map_t *opened_files;
+    /* Very basic FIFO policy */
+    list_t *basic_fifo;
 
 } storage_t;
+
+
+/********************** Main Storage Functions  **********************/
+
 
 storage_t*
 storage_create(size_t max_size, size_t max_files);
 
 int
 storage_destroy(storage_t *storage);
+
+int 
+storage_open_file(storage_t *storage, int client_id, char *file_name);
 
 int
 storage_add_file(storage_t *storage, file_t *file);
@@ -51,10 +63,14 @@ storage_get_file(storage_t *storage, char *file_name);
 void
 storage_dump(storage_t *storage, FILE *stream);
 
+
+/********************** Utilities for printing and deallocating a file  **********************/
+
+
 void
 free_file(void *e);
 
 void
-print_file(void *not_used, void *e, FILE *stream);
+print_file(file_t *f, FILE *stream);
 
 #endif

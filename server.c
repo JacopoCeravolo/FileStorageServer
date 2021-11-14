@@ -36,6 +36,7 @@ int_handler(int dummy) {
    printf("\nIn Signal Handler\n");
    storage_dump(storage, logfile);
    fclose(logfile);
+   storage_destroy(storage);
    printf("Exiting...\n");
    exit(EXIT_SUCCESS);
 }
@@ -48,6 +49,7 @@ main(int argc, char const *argv[])
    atexit(cleanup);
    signal(SIGPIPE, SIG_IGN);
    signal(SIGINT, int_handler);
+   signal(SIGSEGV, int_handler);
 
    /* Opens logfile */
 
@@ -55,7 +57,7 @@ main(int argc, char const *argv[])
 
    /* Initialize storage with size 16384 and 10 files */
 
-   storage = storage_create(16384, 10);
+   storage = storage_create(65000, 10);
    if (storage == NULL) {
       printf("FATAL ERROR, storage could not be initialized\n");
       exit(EXIT_FAILURE);
@@ -119,7 +121,7 @@ main(int argc, char const *argv[])
    /* Initializing dispatcher->worker queue */
 
    concurrent_queue_t *requests_queue;
-   requests_queue = concurrent_queue_create(NULL, NULL, NULL);
+   requests_queue = concurrent_queue_create(int_compare, NULL, print_int);
    if (requests_queue == NULL) {
       printf("FATAL ERROR, dispatcher queue could not be initialized\n");
       exit(EXIT_FAILURE);
@@ -189,10 +191,9 @@ main(int argc, char const *argv[])
 			   	perror("read_pipe");
 			   	return -1;
 			   } else{
-               printf("red client fd: %d\n", new_fd);
 			   	if( new_fd != -1 ){ // reinserisco il fd tra quelli da ascoltare
-			   		// FD_SET(new_fd, &set);
-			         // if( new_fd > fd_max ) fd_max = new_fd;
+			   		FD_SET(new_fd, &set);
+			         if( new_fd > fd_max ) fd_max = new_fd;
 			   	}
 			   }
 		   }
@@ -200,7 +201,6 @@ main(int argc, char const *argv[])
    }
 
    
-   storage_destroy(storage);
    concurrent_queue_destroy(requests_queue);
    close(socket_fd);
    return 0;

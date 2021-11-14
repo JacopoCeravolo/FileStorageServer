@@ -1,0 +1,809 @@
+//#define _POSIX_C_SOURCE 2001112L
+
+/* SYSTEM INCLUDES */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <getopt.h>
+#include <errno.h>
+#include <time.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/un.h>
+#include <sys/uio.h>
+#include <fcntl.h>
+
+
+/* USER INCLUDES */
+
+#include "fileserver.h"
+#include "queue.h"
+
+/* CONSTANT MACROS */
+
+#define CMD_LINE_ARGUMENTS      ":f:w:W:D:r:R:d:t:l:u:c:ph" // could start string with '+' for automatic non-option handling
+#define MAX_ARGUMENT_LENGTH     1024
+#define MAX_READING_LENGTH      4096
+#define SAFE_SOCKET_NAME        "./socket"
+
+
+/* FUNCTION MACROS */
+
+
+/* TYPES DEFINITION */
+
+typedef struct _option_t
+{
+    int     opt;
+    char    args[MAX_ARGUMENT_LENGTH]; // maybe should be pointer
+} option_t;
+
+/* UTILITY FUNCTIONS */
+
+/** 
+ * \brief Controlla se la stringa passata come primo argomento e' un numero.
+ * \return  0 ok  1 non e' un numbero   2 overflow/underflow
+ */
+static inline int isNumber(const char* s, long* n) {
+  if (s==NULL) return 1;
+  if (strlen(s)==0) return 1;
+  char* e = NULL;
+  errno=0;
+  long val = strtol(s, &e, 10);
+  if (errno == ERANGE) return 2;    // overflow/underflow
+  if (e != NULL && *e == (char)0) {
+    *n = val;
+    return 0;   // successo 
+  }
+  return 1;   // non e' un numero
+}
+
+// Inizializza le variabili globali a safe values
+void
+init_globals();
+// Prints help message
+void
+printUsage();
+
+// Imposta il nome del socket AF_UNIX
+void
+setSocketName(char *sockname);
+
+// Imposta la directory per il salvataggio dei file rimossi dal server
+void
+setDumpDirectory(char *dirname);
+
+// Imposta la directory per i file letti dal server
+void
+setReadingDirectory(char *dirname);
+
+// Gestore degli argomenti dell'opzione -w
+void
+w_argument_handler(char *line, char *dirname, int *n_write);
+
+// Gestore dell'argomento dell'opzione -R
+void
+R_argument_handler(char *line, int *n_read);
+
+// Tokenizza la stringa di argomenti separati da virgola ','
+queue_t*
+argumentTokenizer(char *line);
+
+// Inizializza un nodo della coda di opzioni da command line
+option_t
+init_option(int option, char *arguments);
+
+// Cleanup di variabili dinamicamente allocate
+void
+cleanup();
+
+/* GLOBAL VARIABLES */
+
+static  char    *socket_name; // name of AF_UNIX socket
+static  char    *dump_dirname; // directory for expelled files
+static  char    *read_dirname; // directory for file read
+static  char    *write_dirname; // directory for file to write
+static  int    n_write; // number of files to be written
+static  int    n_read; // number of files to be read
+
+/* MAIN FUNCTION */
+
+int
+main(int argc, char *argv[])
+{
+
+    /* If no option is specified prints help message */
+
+    if(argc < 2) {
+        printUsage();
+        exit(EXIT_SUCCESS);
+    }
+    
+    // For now only naive cleanup, add goto labels
+    atexit(cleanup);
+
+    // Initialization of globals
+    init_globals();
+
+    int     opt,
+            read_flag = 0,
+            write_flag = 0,
+            do_print = 0;
+    long    time_awating = 0;
+    
+    queue_t *optionQueue;
+    struct timespec abs_time; 
+
+    optionQueue = createQueue(sizeof(option_t));
+
+
+    option_t current;
+
+    while ((opt = getopt(argc, argv, CMD_LINE_ARGUMENTS)) != -1) {
+        switch (opt) {
+        case '?':
+            printf("%s: option -- %c is invalid\n", argv[0], optopt);
+            break;
+        case ':':
+            printf("%s: option -- %c requires an argument\n", argv[0], optopt);
+            break;
+        case 'h':
+            printUsage();
+            exit(EXIT_SUCCESS);
+            break;
+        case 'f':
+            // TODO: controllo optarg
+            setSocketName(optarg);
+            break;
+        case 'w':
+            write_flag = 1;            
+            current = init_option(opt, optarg);
+            enqueue(optionQueue, &current);
+            break;
+        case 'W':
+            write_flag = 1;            
+            current = init_option(opt, optarg);
+            enqueue(optionQueue, &current);
+            break;
+        case 'D':
+            if(write_flag) {
+                // TODO: controllo optarg
+                setDumpDirectory(optarg);
+            } else {
+                printf("option -- %c should be paired with writing query, ignoring request\n", optopt);
+            }
+            break;
+        case 'r': 
+            read_flag = 1;           
+            current = init_option(opt, optarg);
+            enqueue(optionQueue, &current);
+            break;
+        case 'R': 
+            read_flag = 1;           
+            current = init_option(opt, optarg);
+            enqueue(optionQueue, &current);
+            break;
+        case 'd':
+            if(read_flag) {
+                // TODO: controllo optarg
+                setReadingDirectory(optarg);
+            } else {
+                printf("option -- %c should be paired with reading query, ignoring request\n", optopt);
+            }
+            break;
+        case 't':
+            // TODO: aggiungere controllo con utility isNumber
+            time_awating = strtol(optarg, NULL, 10);
+            break;
+        case 'l':           
+            current = init_option(opt, optarg);
+            enqueue(optionQueue, &current);
+            break;
+        case 'u': 
+            current = init_option(opt, optarg);
+            enqueue(optionQueue, &current);
+            break;
+        case 'c': 
+            current = init_option(opt, optarg);
+            enqueue(optionQueue, &current);
+            break;
+        case 'p':
+            do_print = 1;
+            break;
+        }
+    }
+    
+    /* Printing of values to assert correct initialization */
+
+    printf("\nINITIALIZED PARAMETERS\n\n");
+
+    if(socket_name) printf("socket: %s\n", socket_name);
+    if(dump_dirname) printf("dump directory: %s\n", dump_dirname);
+    if(read_dirname) printf("read directory: %s\n", read_dirname);
+    if(time_awating != 0) printf("time waiting: %lu\n", time_awating);
+    if(do_print) printf("printing is enabled\n");
+
+    option_t copy;
+
+    // Printing of queue for checking correctness
+
+    /* while (!isEmpty(optionQueue))
+    {
+        dequeue(optionQueue, &copy);
+        printf("-%c: %s\n", copy.opt, copy.args);
+    } */
+    
+
+
+    /* Actual processing of queue */
+
+    printf("\nPROCESSING REQUESTS\n\n");
+
+    char    *filename = malloc(MAX_ARGUMENT_LENGTH);
+
+    while (!isEmpty(optionQueue))
+    {
+        dequeue(optionQueue, &copy);
+        // printf("-%c: %s\n", copy.opt, copy.args);
+        switch (copy.opt)
+        {
+        case 'w':
+            // printf("> executing w handler...");
+            
+            write_dirname = malloc(MAX_ARGUMENT_LENGTH);
+
+            w_argument_handler(copy.args, write_dirname, &n_write);
+            
+            // printf("done\n");
+
+            if(n_write != 0) {
+                printf("Requesting write of %d files from directory [%s]\n", n_write, write_dirname);
+            } else {
+                printf("Requesting write of all files from directory [%s]\n", write_dirname);
+            }
+
+            printf("\n\n");
+            break;
+        case 'W': {
+            // queue_t *W_arguments;
+
+            //printf("> executing W handler...");
+            char *token;
+            token = strtok(copy.args, ",");
+            while (token)
+            {
+                if (openConnection(socket_name, time_awating, abs_time) == -1) {
+                    printf("ERROR, connection could not be enstablished, exiting...\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                //dequeue(W_arguments, filename);
+                
+                printf("Requesting write of file [%s]\n", token);
+
+                if (writeFile(token, dump_dirname) == -1) {
+                    printf("ERROR, file could not be written to server, exiting...\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                printf("File [%s] successfully written to server\n", token);
+
+                if (closeConnection(socket_name) == -1) {
+                    printf("ERROR, connection could not be closed, exiting...\n");
+                    exit(EXIT_FAILURE);
+                }
+                token = strtok(NULL, ",");
+                sleep(time_awating); // 
+                printf("\n\n");
+            }
+            
+
+            /* W_arguments = argumentTokenizer(copy.args);
+
+            //printf("done\n");
+            
+            
+            while (!isEmpty(W_arguments)) {
+                
+                if (openConnection(socket_name, time_awating, abs_time) == -1) {
+                    printf("ERROR, connection could not be enstablished, exiting...\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                dequeue(W_arguments, filename);
+                
+                printf("Requesting write of file [%s]\n", filename);
+
+                if (writeFile(filename, dump_dirname) == -1) {
+                    printf("ERROR, file could not be written to server, exiting...\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                printf("File [%s] successfully written to server\n", filename);
+
+                if (closeConnection(socket_name) == -1) {
+                    printf("ERROR, connection could not be closed, exiting...\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                sleep(time_awating); // sleep between two requests
+
+            }
+             */
+            //printf("\n\n");
+            // destroyQueue(W_arguments);
+
+            break; }
+        case 'r': {
+            
+            queue_t *r_arguments;
+            char    *reading_buffer;
+            size_t  buffer_size;
+
+            //printf("> executing r handler...");
+
+            // printf("%s\n", copy.args);
+            // r_arguments = argumentTokenizer(copy.args);
+            reading_buffer = malloc(MAX_READING_LENGTH);
+
+            //printf("done\n");
+
+            char *token;
+            token = strtok(copy.args, ",");
+            while (token)
+            {
+                if (openConnection(socket_name, time_awating, abs_time) == -1) {
+                    printf("ERROR, connection could not be enstablished, exiting...\n");
+                    exit(EXIT_FAILURE);
+                }
+                // dequeue(r_arguments, filename);
+                
+                printf("Requesting read of file [%s]\n", token);
+
+                if (readFile(token, &reading_buffer, &buffer_size) == -1) {
+                    printf("ERROR, file could not be read from server, exiting...\n");
+                    exit(EXIT_FAILURE);
+                }
+
+
+                /* Copies file to directory */
+
+                if (read_dirname != NULL) 
+                {
+                    printf("Reading file [%s] into directory [%s]\n", token, read_dirname);
+
+                    struct stat st = {0};
+
+                    if (stat(read_dirname, &st) == -1) {
+                        mkdir(read_dirname, 0700);
+                    }
+                    char *new_filename = malloc(MAX_ARGUMENT_LENGTH);
+                    read_dirname = strcat(read_dirname, "/");
+                    new_filename = strcat(read_dirname, token);
+
+                    //FILE *ofp;
+                    mode_t oldmask = umask(033);
+
+                    int read_fd;
+                    if ((read_fd = open(new_filename, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP)) == NULL) {
+                        printf("ERROR, could not open file [%s]\n", new_filename);
+                    }
+                    umask(oldmask);
+                //fwrite(reading_buffer, sizeof(char), buffer_size, ofp);
+                    write(read_fd, reading_buffer, buffer_size);
+
+                    printf("File [%s] succesfully read\n", new_filename);
+
+                    close(read_fd);
+                } else {
+
+                    printf("No directory specified, printing out file contents:\n");
+                    printf("\n%s\n", token);
+                    printf("\n%s\n", reading_buffer);
+                }
+
+                // printf("> file contents:\n%s\n", reading_buffer);
+                
+                if (closeConnection(socket_name) == -1) {
+                    printf("ERROR, connection could not be closed, exiting...\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                token = strtok(NULL, ",");
+                sleep(time_awating); // sleep between two requests
+                printf("\n\n");
+            }
+
+/*             while (!isEmpty(r_arguments)) {
+
+                if (openConnection(socket_name, time_awating, abs_time) == -1) {
+                    printf("ERROR, connection could not be enstablished, exiting...\n");
+                    exit(EXIT_FAILURE);
+                }
+                dequeue(r_arguments, filename);
+                
+                printf("Requesting read of file [%s]\n", filename);
+
+                if (readFile(filename, &reading_buffer, &buffer_size) == -1) {
+                    printf("ERROR, file could not be read from server, exiting...\n");
+                    exit(EXIT_FAILURE);
+                }
+
+
+                // Copies file to directory 
+
+                if (read_dirname != NULL) 
+                {
+                    printf("Reading file [%s] into directory [%s]\n", filename, read_dirname);
+
+                    struct stat st = {0};
+
+                    if (stat(read_dirname, &st) == -1) {
+                        mkdir(read_dirname, 0700);
+                    }
+
+                    read_dirname = strcat(read_dirname, "/");
+                    filename = strcat(read_dirname, filename);
+
+                    //FILE *ofp;
+                    mode_t oldmask = umask(033);
+
+                    int read_fd;
+                    if ((read_fd = open(filename, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP)) == NULL) {
+                        printf("ERROR, could not open file [%s]\n", filename);
+                    }
+                    umask(oldmask);
+                //fwrite(reading_buffer, sizeof(char), buffer_size, ofp);
+                    write(read_fd, reading_buffer, buffer_size);
+
+                    printf("File [%s] succesfully read\n", filename);
+
+                    close(read_fd);
+                } else {
+
+                    printf("No directory specified, printing out file contents:\n");
+                    printf("\n%s\n", filename);
+                    printf("\n%s\n", reading_buffer);
+                }
+
+                // printf("> file contents:\n%s\n", reading_buffer);
+                
+                if (closeConnection(socket_name) == -1) {
+                    printf("ERROR, connection could not be closed, exiting...\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                sleep(time_awating); // sleep between two requests
+
+            }
+ */
+            //printf("\n\n");
+            // destroyQueue(r_arguments);
+
+            break; }
+        case 'R':
+            //printf("> executing R handler...");
+
+            R_argument_handler(copy.args, &n_read);
+
+            //printf("done\n");
+            
+            if (openConnection(socket_name, time_awating, abs_time) == -1) {
+                printf("ERROR, connection could not be enstablished, exiting...\n");
+                exit(EXIT_FAILURE);
+            }
+
+            if(n_read != 0) {
+                printf("Reading %d files from server\n", n_read);
+            } else {
+                printf("Reading all files from server\n");
+            }
+
+            if (readNFiles(n_read, read_dirname) == -1) {
+                printf("ERROR, could not read files from server, exiting...\n");
+                exit(EXIT_FAILURE);
+            }
+
+            if(n_read != 0) {
+                printf("Successfully read %d files from server\n", n_read);
+            } else {
+                printf("Successfully read all files from server\n");
+            }
+
+            if (closeConnection(socket_name) == -1) {
+                printf("ERROR, connection could not be closed, exiting...\n");
+                exit(EXIT_FAILURE);
+            }
+
+            sleep(time_awating); // sleep between two requests
+
+            printf("\n\n");
+            break;
+        case 'l': ;
+            queue_t *l_arguments;
+
+            printf("> executing l handler...");
+
+            l_arguments = argumentTokenizer(copy.args);
+
+            printf("done\n");
+            
+
+            while (!isEmpty(l_arguments)) {
+
+                if (openConnection(socket_name, time_awating, abs_time) == -1) {
+                    printf("ERROR, connection could not be enstablished, exiting...\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                dequeue(l_arguments, filename);
+
+                printf("> locking file (%s)\n", filename);
+
+                if (lockFile(filename) == -1) {
+                    printf("ERROR, could not lock file (%s), exiting...\n", filename);
+                    exit(EXIT_FAILURE);
+                }
+
+                printf("> successfully locked file (%s)\n", filename);
+
+                if (closeConnection(socket_name) == -1) {
+                    printf("ERROR, connection could not be closed, exiting...\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                sleep(time_awating); // sleep between two requests
+            }
+
+            printf("\n\n");
+            destroyQueue(l_arguments);
+            break;
+        case 'u': ;
+            queue_t *u_arguments;
+            printf("> executing u handler...");
+             
+            u_arguments = argumentTokenizer(copy.args);
+
+            printf("done\n");
+           
+            
+            while (!isEmpty(u_arguments)) {
+                
+                if (openConnection(socket_name, time_awating, abs_time) == -1) {
+                    printf("ERROR, connection could not be enstablished, exiting...\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                dequeue(u_arguments, filename);
+
+                printf("> unlocking file (%s)\n", filename);
+
+                if (unlockFile(filename) == -1) {
+                    printf("ERROR, could not unlock file (%s), exiting...\n", filename);
+                    exit(EXIT_FAILURE);
+                }
+
+                printf("> successfully unlocked file (%s)\n", filename);
+
+                if (closeConnection(socket_name) == -1) {
+                    printf("ERROR, connection could not be closed, exiting...\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                sleep(time_awating); // sleep between two requests
+            }
+            
+            printf("\n\n");
+            destroyQueue(u_arguments);
+            
+            break;
+        case 'c': ;
+            queue_t *c_arguments;
+            printf("> executing c handler...");
+
+            c_arguments = argumentTokenizer(copy.args);
+
+            printf("done\n");
+
+
+            while (!isEmpty(c_arguments)) {
+                
+                if (openConnection(socket_name, time_awating, abs_time) == -1) {
+                    printf("ERROR, connection could not be enstablished, exiting...\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                dequeue(c_arguments, filename);
+
+                printf("> deleting file (%s)\n", filename);
+
+                if (removeFile(filename) == -1) {
+                    printf("ERROR, could not delete file (%s), exiting...\n", filename);
+                    exit(EXIT_FAILURE);
+                }
+
+                printf("> successfully deleted file (%s)\n", filename);
+
+                if (closeConnection(socket_name) == -1) {
+                    printf("ERROR, connection could not be closed, exiting...\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                sleep(time_awating); // sleep between two requests
+            }
+
+            printf("\n\n");
+            destroyQueue(c_arguments);
+            
+            break;
+        default:
+            printf("ERROR, request queue contains an unrecognized option\nEXITING ...\n");
+            exit(EXIT_FAILURE);
+            break;
+        }
+    }
+    
+    free(filename);
+    destroyQueue(optionQueue);
+
+    return 0;
+}
+
+
+
+
+
+// Inizializza le variabili globali a safe values
+void
+init_globals()
+{
+    int name_length;
+
+    name_length = MAX_ARGUMENT_LENGTH;
+    socket_name = malloc(MAX_ARGUMENT_LENGTH);
+    strncpy(socket_name, SAFE_SOCKET_NAME, 10); // 10 is length of ./socket
+    n_write = 0;
+    n_read = 0;
+}
+
+// Prints help message
+void
+printUsage()
+{
+    printf("\nThe client program allows to interact with the File Storage Server to send, receive, edit and delete files.\n" \
+                                        "It behaves differently according to the options passed through the command line.\n" \
+                                        "\nCurrently included options are:\n\n" \
+                                        "    -h                        Prints this message\n" \
+                                        "    -p                        Enables printing of infomation for each operation in the format:\n" \
+                                        "                              OPT_TYPE      FILE      RESULT      N_BYTES\n" \
+                                        "    -f sockname               Specifes the name of AF_UNIX socket to connect to\n" \
+                                        "    -w dirname[,n=n_files]    Sends the contents of directory dirname to File Storage Server.\n" \
+                                        "                              All subdirectories are visited recursively sending up to n_files.\n" \
+                                        "                              If n=0 or n is unspecifed, all contents are sent to File Storage Server\n" \
+                                        "    -W file1[,file2...]       Sends files specifed as arguments separated by commas to File Storage Server\n" \
+                                        "    -D dirname                Specifies the directory dirname where to write files expelled by File Storage Server\n" \
+                                        "                              in case of capacity misses. Option -D should be coupled with -w or -W, otherwise an error\n" \
+                                        "                              message is print and all expelled files are trashed. If not specified all expelled files are trashed\n" \
+                                        "    -r file1[,file2...]       Reads files specifed as arguments separated by commas from File Storage Server\n" \
+                                        "    -R [n=n_files]            Reads n_files files from File Storage Server. If n=0 or unspecified reads all files in File Storage Server\n" \
+                                        "    -d dirname                Specifies the directory dirname where to write files read from File Strage Server.\n" \
+                                        "                              Option -d should be coupled with -r or -R, otherwise an error message is print and read files are not saved\n" \
+                                        "    -t time                   Times in milleseconds to wait in between requests to File Storage Server\n" \
+                                        "    -l file1[,file2...]       List of files to acquire mutual exclusion on\n" \
+                                        "    -u file1[,file2...]       List of files to release mutual exclusion on\n" \
+                                        "    -c file1[,file2...]       List of files to delete from File Storage Server\n");
+}
+
+// Imposta il nome del socket AF_UNIX
+void
+setSocketName(char *sockname)
+{
+    memset(socket_name, '\0', MAX_ARGUMENT_LENGTH);
+    strncpy(socket_name, sockname, strlen(sockname));
+}
+
+// Imposta la directory per il salvataggio dei file rimossi dal server
+void
+setDumpDirectory(char *dirname)
+{
+    int name_length;
+
+    name_length = strlen(dirname) + 1;
+    dump_dirname = malloc(name_length);
+    strncpy(dump_dirname, dirname, name_length);
+}
+
+// Imposta la directory per i file letti dal server
+void
+setReadingDirectory(char *dirname)
+{
+    int name_length;
+
+    name_length = strlen(dirname) + 1;
+    read_dirname = malloc(name_length);
+    strncpy(read_dirname, dirname, name_length);
+}
+
+// Gestore degli argomenti dell'opzione -w
+void
+w_argument_handler(char *line, char *dirname, int *n_write)
+{
+    char    *token;
+
+    token = strtok(line, ",");   // change to strtok_r?
+    strncpy(dirname, token, strlen(token) + 1);
+
+    token = strtok(NULL, "\0");
+    if(token){
+        if(!(token = strchr(token, 'n'))) {
+            printf("\nsecond argument of option -w should be in format 'n=value'\n");
+            exit(EXIT_FAILURE);
+        }
+        if(!(token = strchr(token, '='))) {
+            printf("\nsecond argument of option -w should be in format 'n=value'\n");
+            exit(EXIT_FAILURE);
+        }
+        if(isNumber(++token, (long*)n_write) == 1) {
+            printf("\nsecond argument of option -w should be in format 'n=value'\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+}
+
+// Gestore dell'argomento dell'opzione -R
+void
+R_argument_handler(char *line, int *n_read)
+{
+    if(!(line = strchr(line, 'n'))) {
+        printf("\nsecond argument of option -w should be in format 'n=value'\n");
+        exit(EXIT_FAILURE);
+    }
+    if(!(line = strchr(line, '='))) {
+        printf("\nsecond argument of option -w should be in format 'n=value'\n");
+        exit(EXIT_FAILURE);
+    }
+    if(isNumber(++line, (long*)n_read) == 1) {
+        printf("\nsecond argument of option -w should be in format 'n=value'\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+// Tokenizza la stringa di argomenti separati da virgola ','
+queue_t*
+argumentTokenizer(char *line)
+{
+    char    *save,
+            *token;
+    queue_t *arguments;
+
+    arguments = createQueue(MAX_ARGUMENT_LENGTH);
+    token = strtok_r(line, ",", &save);
+    while (token) {
+      enqueue(arguments, token);
+      token = strtok_r(NULL, ",", &save);
+    }
+    return arguments;
+}
+
+// Inizializza un nodo della coda di opzioni da command line
+option_t
+init_option(int option, char *arguments)
+{
+    option_t tmp;
+    tmp.opt = option;
+    // if args changed to pointer, insert malloc and free (not working now for unformatted text)
+    strncpy(tmp.args, arguments, strlen(arguments) + 1);
+    return tmp;
+}
+
+// Cleanup di variabili globali dinamicamente allocate
+void
+cleanup()
+{
+    if(socket_name) free(socket_name);
+    if(dump_dirname) free(dump_dirname);
+    if(read_dirname) free(read_dirname);
+    if(write_dirname) free(write_dirname);
+}
