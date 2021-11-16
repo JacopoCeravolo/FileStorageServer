@@ -1,6 +1,8 @@
 #ifndef STORAGE_H
 #define STORAGE_H
 
+#include <errno.h>
+
 #include "utils/hash_map.h"
 #include "utils/linked_list.h"
 #include "utils/utilities.h"
@@ -49,16 +51,28 @@ int
 storage_destroy(storage_t *storage);
 
 int 
+storage_add_client(storage_t *storage, int client_id);
+
+int 
+storage_remove_client(storage_t *storage, int client_id);
+
+int 
 storage_open_file(storage_t *storage, int client_id, char *file_name);
 
 int
-storage_add_file(storage_t *storage, file_t *file);
+storage_close_file(storage_t *storage, int client_id, char *file_name);
 
 int
+storage_add_file(storage_t *storage, int client_id, file_t *file);
+
+file_t*
 storage_remove_file(storage_t *storage, char *file_name);
 
 file_t*
-storage_get_file(storage_t *storage, char *file_name);
+storage_get_file(storage_t *storage, int client_id, char *file_name);
+
+int
+storage_FIFO_replace(storage_t *storage, size_t required_size, list_t *replaced_files);
 
 void
 storage_dump(storage_t *storage, FILE *stream);

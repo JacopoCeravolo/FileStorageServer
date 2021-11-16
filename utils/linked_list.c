@@ -71,31 +71,6 @@ list_insert_tail(list_t *list, void* to_insert)
 
     list->length++;
     return 0;
-    /* if (list->head == NULL) {
-        list->head = calloc(1, sizeof(node_t));
-        if (list->head == NULL) {
-            errno = ENOMEM;
-            return -1;
-        }
-        list->head->data = to_insert;
-        list->head->next = NULL;
-        list->length++;
-        return 0;
-    } else {
-        node_t *curr = list->head;
-        while(curr->next != NULL) {
-            curr = curr->next;
-        }
-        curr->next = calloc(1, sizeof(node_t));
-        if (curr->next == NULL) {
-            errno = ENOMEM;
-            return -1;
-        }
-        curr->next->data = to_insert;
-        curr->next->next = NULL;
-        list->length++;
-        return 0;
-    } */
 }
 
 int 
@@ -165,8 +140,8 @@ list_insert_at_index(list_t *list, void* to_insert, int index)
     return 0;
 }
 
-int 
-list_remove_head(list_t *list, void** to_return)
+void* 
+list_remove_head(list_t *list)
 {
     if (list == NULL || list_is_empty(list)) {
         errno = EINVAL;
@@ -174,20 +149,50 @@ list_remove_head(list_t *list, void** to_return)
     }
 
     node_t *tmp = list->head;
+   /*  *to_return = (tmp->data); */
 
     if (list->length == 1) { // There's only one element
-        *to_return = (tmp->data);
-        list->free_fun(tmp->data);
-        free(tmp);
         list->head = list->tail = NULL;
-        list->length--;
-        return 0;
+    } else {
+        list->head = list->head->next;
     }
 
-    list->head = list->head->next;
-    list->free_fun(tmp->data);
-    free(tmp);
+    /* list->free_fun(tmp->data);
+    free(tmp); */
     list->length--;
+    return tmp->data;
+}
+
+int 
+list_remove_element(list_t *list, void* elem)
+{
+    node_t *prev = NULL, *curr = list->head;
+    while (curr != NULL) {
+        if (list->cmp(curr->data, elem)) break;
+        prev = curr;
+        curr = curr->next;
+    }
+
+    if (curr == NULL) {
+        errno = ENOENT;
+        return -1;
+    }
+
+    node_t *tmp = curr;
+
+    if (prev == NULL) {
+        list->free_fun(tmp->data);
+        free(tmp);
+        list->head = list->head->next;
+    } else {
+        prev->next = curr->next;
+        if (prev->next == NULL) list->tail = prev;
+        list->free_fun(tmp->data);
+        free(tmp);
+    }
+
+    list->length--;
+
     return 0;
 }
 
@@ -213,7 +218,7 @@ list_index_of(list_t *list, void* elem)
         index++;
     }
 
-    errno = EINVAL;
+    errno = ENOENT;
     return -1;
 }
 

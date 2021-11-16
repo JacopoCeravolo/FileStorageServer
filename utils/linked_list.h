@@ -82,8 +82,11 @@ list_insert_at_index(list_t *list, void* to_insert, int index);
  * Return 0 on success, -1 on failure.
  * errno is set.
  */
+void*
+list_remove_head(list_t *list);
+
 int
-list_remove_head(list_t *list, void** to_return);
+list_remove_element(list_t *list, void* elem);
 
 /**
  * Checks whether a list contains any elements.

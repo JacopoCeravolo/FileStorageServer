@@ -25,7 +25,7 @@ cleanup()
 void
 open_connection(int socket_fd)
 {
-    printf("> client opens connection\n");
+    printf("\n> client opens connection\n");
     send_request(socket_fd, OPEN_CONNECTION, "", 0, NULL);
     response_t *r = recv_response(socket_fd);
     printf("> received: %d : %s\n", r->status, r->status_phrase);
@@ -35,8 +35,19 @@ open_connection(int socket_fd)
 void
 read_file(int socket_fd, char *file)
 {
-    printf("> client reading file %s\n", file);
+    printf("\n> client reading file %s\n", file);
     send_request(socket_fd, READ_FILE, file, 0, NULL);
+    response_t *r = recv_response(socket_fd);
+    printf("> received: %d : %s : %lu\n", r->status, r->status_phrase, r->body_size);
+    if (r->body_size != 0) printf("%s\n", (char*)r->body);
+    //free_response(r);
+}
+
+void
+remove_file(int socket_fd, char *file)
+{
+    printf("\n> client removing file %s\n", file);
+    send_request(socket_fd, DELETE_FILE, file, 0, NULL);
     response_t *r = recv_response(socket_fd);
     printf("> received: %d : %s : %lu\n", r->status, r->status_phrase, r->body_size);
     if (r->body_size != 0) printf("%s\n", (char*)r->body);
@@ -46,7 +57,7 @@ read_file(int socket_fd, char *file)
 void 
 write_file(int socket_fd, char *file)
 {
-    printf("> client writing file %s\n", file);
+    printf("\n> client writing file %s\n", file);
     FILE *file_ptr;
         file_ptr = fopen(file, "rb");
         if (file_ptr == NULL) {
@@ -56,7 +67,7 @@ write_file(int socket_fd, char *file)
 
        
         fseek(file_ptr, 0, SEEK_END);
-        long file_size = ftell(file_ptr);
+        size_t file_size = ftell(file_ptr);
         fseek(file_ptr, 0, SEEK_SET);
         if (file_size == -1) {
             fclose(file_ptr);
@@ -88,8 +99,18 @@ write_file(int socket_fd, char *file)
 void
 open_file(int socket_fd, char * file)
 {
-    printf("> client opening file %s\n", file);
+    printf("\n> client opening file %s\n", file);
     send_request(socket_fd, OPEN_FILE, file, 0, NULL);
+    response_t *r = recv_response(socket_fd);
+    printf("> received: %d : %s\n", r->status, r->status_phrase);
+    //free_response(r);
+}
+
+void
+close_file(int socket_fd, char * file)
+{
+    printf("\n> client closing file %s\n", file);
+    send_request(socket_fd, CLOSE_FILE, file, 0, NULL);
     response_t *r = recv_response(socket_fd);
     printf("> received: %d : %s\n", r->status, r->status_phrase);
     //free_response(r);
@@ -98,7 +119,7 @@ open_file(int socket_fd, char * file)
 void
 close_connection(int socket_fd)
 {
-    printf("> client closing connection\n");
+    printf("\n> client closing connection\n");
     send_request(socket_fd, CLOSE_CONNECTION, "", 0, NULL);
 }
 
@@ -120,9 +141,31 @@ int main(int argc, char const *argv[])
 
 
     open_connection(socket_fd);
+
     open_file(socket_fd, "file1");
+    open_file(socket_fd, "file2");
+    open_file(socket_fd, "file3");
+    open_file(socket_fd, "file4");
+    open_file(socket_fd, "file5");
+    open_file(socket_fd, "longfile");
+    //sleep(20);
+
     write_file(socket_fd, "file1");
+    write_file(socket_fd, "file2");
+    write_file(socket_fd, "file3");
+    write_file(socket_fd, "file4");
+    write_file(socket_fd, "file5");
+    write_file(socket_fd, "longfile");
+
+    //remove_file(socket_fd, "file2");
+    //remove_file(socket_fd, "file3");
+    //remove_file(socket_fd, "file5");
+
     read_file(socket_fd, "file1");
+
+    close_file(socket_fd, "file1");
+    close_file(socket_fd, "file4");
+
     close_connection(socket_fd);
 
     /* do

@@ -33,13 +33,14 @@ typedef enum {
  */
 typedef enum {
     
-    ACCEPTED            = 0,
-    SUCCESS             = 1,
+    SUCCESS             = 0,
+    ACCEPTED            = 1,
     INTERNAL_ERROR      = 2,
     BAD_REQUEST         = 3,
     NOT_FOUND           = 4,
     UNAUTHORIZED        = 5,
     MISSING_BODY        = 6,
+    FILE_TOO_BIG        = 7,
     
 } response_code;
 
@@ -80,15 +81,15 @@ typedef struct _response_t {
  * Messages corresponding to a
  * certain response status
  */
-static char status_message[7][128] = {
-    "Connection accepted",
+static char status_message[8][128] = {
     "Operation successfull",
+    "Connection accepted",
     "Internal server error",
     "Bad request",
     "Entity not found",
     "Unauthorized access",
-    "Missing message body"
-
+    "Missing message body",
+    "File exceeds maximum space"
 };
 
 

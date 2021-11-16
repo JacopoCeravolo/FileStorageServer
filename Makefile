@@ -22,13 +22,13 @@ all:
 	@echo "${GREEN}Server built ${RESET}"
 
 utils:
-	$(MAKE) -C utils
+	@cd utils && make all
 
 client: 
-	$(MAKE) -C client
+	@cd client && make all
 
 server: 
-	$(MAKE) -C server
+	@cd server && make all
 
 cleanall:
 	@cd utils && make cleanall

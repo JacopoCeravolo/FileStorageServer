@@ -128,7 +128,7 @@ hash_map_insert(hash_map_t *hmap, void* key, void* value)
  * \param hmap: hashmap where the entry is
  * \param key: key of the entry
  * 
- * \return: 0 on success, -1 on failures. Errno is set.
+ * \returns: 0 on success, -1 on failures. Errno is set.
  */
 int 
 hash_map_remove(hash_map_t *hmap, void *key)
@@ -145,7 +145,7 @@ hash_map_remove(hash_map_t *hmap, void *key)
     }
 
     if (entry == NULL) {
-        // errno?
+        errno = ENOENT;
         return -1;
     }
 

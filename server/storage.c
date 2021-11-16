@@ -70,6 +70,22 @@ storage_destroy(storage_t *storage)
 }
 
 
+int 
+storage_add_client(storage_t *storage, int client_id)
+{
+    list_t *opened;
+    opened = list_create(string_compare, NULL, string_print);
+    if (opened == NULL) return -1;
+
+    return hash_map_insert(storage->opened_files, client_id, opened);
+}
+
+int 
+storage_remove_client(storage_t *storage, int client_id)
+{
+    return hash_map_remove(storage->opened_files, client_id);
+}
+
 /**
  * \brief Add the file associated by \param file_name to the list of files 
  *        opened by \param client_id
@@ -86,6 +102,7 @@ storage_open_file(storage_t *storage, int client_id, char *file_name)
     list_t *opened;
     opened = (list_t*)hash_map_get(storage->opened_files, client_id);
 
+    // This should never happen
     if (opened == NULL) {
         opened = list_create(string_compare, NULL, string_print);
         if (opened == NULL) return -1;
@@ -95,6 +112,16 @@ storage_open_file(storage_t *storage, int client_id, char *file_name)
     hash_map_insert(storage->opened_files, client_id, opened);
     return 0;
 }   
+
+int
+storage_close_file(storage_t *storage, int client_id, char *file_name)
+{
+    list_t *opened;
+    opened = (list_t*)hash_map_get(storage->opened_files, client_id);
+
+    if (list_remove_element(opened, file_name) != 0) return -1;
+    return hash_map_insert(storage->opened_files, client_id, opened);
+}
 
 
 /**
@@ -106,15 +133,33 @@ storage_open_file(storage_t *storage, int client_id, char *file_name)
  * \return 0 on success, -1 on failure. Errno is set.
  */
 int
-storage_add_file(storage_t *storage, file_t *file)
+storage_add_file(storage_t *storage, int client_id, file_t *file)
 {
     if (storage == NULL || file == NULL) {
         errno = EINVAL;
         return -1;
     }
 
+    list_t *files_opened_by = (list_t*)hash_map_get(storage->opened_files, client_id);
 
-    
+    if (list_index_of(files_opened_by, file->path) == -1) {
+        errno = EACCES;
+        return -1;
+    }
+
+    if (file->size > storage->max_size) {
+        errno = EFBIG;
+        return -1;
+    }
+
+    list_t *replaced_files = list_create(NULL, free_file, print_file);
+    if (replaced_files == NULL) return -1;
+
+    int files_removed = storage_FIFO_replace(storage, file->size, replaced_files);
+
+    /* printf("REPLACED FILES:\n");
+    list_dump(replaced_files, stdout);
+    printf("\n"); */
 
     storage->current_size += file->size;
     storage->no_of_files++;
@@ -131,10 +176,20 @@ storage_add_file(storage_t *storage, file_t *file)
  * 
  * \return 0 on success, -1 on failure. Errno is set.
  */
-int
+file_t*
 storage_remove_file(storage_t *storage, char *file_name)
 {
-    return 0;
+    file_t *to_remove = (file_t*)hash_map_get(storage->files, file_name);
+    if (to_remove == NULL) {
+        errno = ENOENT;
+        return NULL;
+    }
+
+    storage->no_of_files--;
+    storage->current_size = storage->current_size - to_remove->size;
+    list_remove_element(storage->basic_fifo, file_name);
+    if (hash_map_remove(storage->files, file_name) != 0) return NULL;
+    return to_remove;
 }
 
 
@@ -147,7 +202,7 @@ storage_remove_file(storage_t *storage, char *file_name)
  * \return file associated with \param file_name on success, NULL on failure. Errno is set.
  */
 file_t*
-storage_get_file(storage_t *storage, char *file_name)
+storage_get_file(storage_t *storage, int client_id, char *file_name)
 {
     if (storage == NULL || file_name == NULL) {
         errno = EINVAL;
@@ -155,6 +210,35 @@ storage_get_file(storage_t *storage, char *file_name)
     }
 
     return (file_t*)hash_map_get(storage->files, (void*)file_name);
+}
+
+int
+storage_FIFO_replace(storage_t *storage, size_t required_size, list_t *replaced_files)
+{
+    /* This all should be in a separate function */
+
+    char   *removed_file_path;
+    file_t *removed_file;
+
+    int files_removed = 0;
+    if (storage->no_of_files + 1 > storage->max_files) {
+        removed_file_path = list_remove_head(storage->basic_fifo);
+        removed_file = storage_remove_file(storage, removed_file_path);
+        list_insert_tail(replaced_files, removed_file);
+        files_removed++;
+    }
+    
+    while (files_removed <= storage->no_of_files) {
+        if (storage->current_size + required_size < storage->max_size) break;
+
+        removed_file_path = list_remove_head(storage->basic_fifo);
+        removed_file = storage_remove_file(storage, removed_file_path);
+        list_insert_tail(replaced_files, removed_file);
+        files_removed++;
+    }
+
+    return files_removed;
+    /* ************************** */
 }
 
 
