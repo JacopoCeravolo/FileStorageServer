@@ -93,6 +93,18 @@ write_file(int socket_fd, char *file)
     send_request(socket_fd, WRITE_FILE, file, file_size, file_data);
     response_t *r = recv_response(socket_fd);
     printf("> received: %d : %s\n", r->status, r->status_phrase);
+
+    if (r->status == FILES_EXPELLED) {
+        int n_files = *(int*)r->body;
+        printf("> %d files were expelled\n", n_files);
+
+        while (n_files > 0) {
+            response_t *r1 = recv_response(socket_fd);
+            printf("> received: %d : %s : %lu\n", r1->status, r1->status_phrase, r1->body_size);
+            printf("\n%s\n\n%s\n\n", r1->file_path, (char*)r1->body);
+            n_files--;
+        }
+    }
     //free_response(r);
 }
 
@@ -142,29 +154,33 @@ int main(int argc, char const *argv[])
 
     open_connection(socket_fd);
 
-    open_file(socket_fd, "file1");
-    open_file(socket_fd, "file2");
-    open_file(socket_fd, "file3");
+    open_file(socket_fd, "file500");
+    open_file(socket_fd, "file500_copy");
+    // open_file(socket_fd, "file3");
+    open_file(socket_fd, "full");
+    /* open_file(socket_fd, "file3");
     open_file(socket_fd, "file4");
     open_file(socket_fd, "file5");
-    open_file(socket_fd, "longfile");
+    open_file(socket_fd, "longfile"); */
     //sleep(20);
 
-    write_file(socket_fd, "file1");
-    write_file(socket_fd, "file2");
-    write_file(socket_fd, "file3");
-    write_file(socket_fd, "file4");
+
+    write_file(socket_fd, "full");
+    write_file(socket_fd, "file500");
+    write_file(socket_fd, "file500_copy");
+    // write_file(socket_fd, "file3");
+    /* write_file(socket_fd, "file4");
     write_file(socket_fd, "file5");
-    write_file(socket_fd, "longfile");
+    write_file(socket_fd, "longfile"); */
 
     //remove_file(socket_fd, "file2");
     //remove_file(socket_fd, "file3");
     //remove_file(socket_fd, "file5");
 
-    read_file(socket_fd, "file1");
+    //read_file(socket_fd, "file1");
 
-    close_file(socket_fd, "file1");
-    close_file(socket_fd, "file4");
+    /* close_file(socket_fd, "file1");
+    close_file(socket_fd, "file4"); */
 
     close_connection(socket_fd);
 

@@ -7,6 +7,12 @@
 #include "utils/linked_list.h"
 #include "utils/utilities.h"
 
+#define E_NOTFOUND      (-11)
+#define E_NOPERM        (-12)
+#define E_TOOBIG        (-13)
+#define E_EXISTS        (-14)
+#define E_EXPELLED      (-15)
+
 
 typedef struct _file_t {
 
@@ -63,7 +69,7 @@ int
 storage_close_file(storage_t *storage, int client_id, char *file_name);
 
 int
-storage_add_file(storage_t *storage, int client_id, file_t *file);
+storage_add_file(storage_t *storage, int client_id, file_t *file, list_t *expelled_files);
 
 file_t*
 storage_remove_file(storage_t *storage, char *file_name);

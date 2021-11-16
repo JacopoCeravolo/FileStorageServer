@@ -1,0 +1,61 @@
+
+**********************
+CURRENT SIZE: 1000
+**********************
+
+**********************
+NO OF FILES: 2
+**********************
+
+**********************
+OPENED FILES MAP
+
+**********************
+
+**********************
+FIFO QUEUE
+file500 file500_copy 
+**********************
+
+**** TABLE OF FILES ******
+
+file500_copy 
+------------------------------------------------------
+500 (bytes)
+
+72 EBADRPC RPC struct is bad.  Exchange of RPC information was unsuccess-
+             ful.
+
+     73 ERPCMISMATCH RPC version wrong.  The version of RPC on the remote peer
+             is not compatible with the local version.
+
+     74 EPROGUNAVAIL RPC prog. not avail.  The requested program is not regis-
+             tered on the remote host.
+
+     75 EPROGMISMATCH Program version wrong.  The requested version of the
+             program is not available on the remote host (RPC).
+     76 EPRA
+
+
+------------------------------------------------------
+
+file500 
+------------------------------------------------------
+500 (bytes)
+
+72 EBADRPC RPC struct is bad.  Exchange of RPC information was unsuccess-
+             ful.
+
+     73 ERPCMISMATCH RPC version wrong.  The version of RPC on the remote peer
+             is not compatible with the local version.
+
+     74 EPROGUNAVAIL RPC prog. not avail.  The requested program is not regis-
+             tered on the remote host.
+
+     75 EPROGMISMATCH Program version wrong.  The requested version of the
+             program is not available on the remote host (RPC).
+     76 EPRA
+
+
+------------------------------------------------------
+

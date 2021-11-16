@@ -41,6 +41,7 @@ typedef enum {
     UNAUTHORIZED        = 5,
     MISSING_BODY        = 6,
     FILE_TOO_BIG        = 7,
+    FILES_EXPELLED      = 8,
     
 } response_code;
 
@@ -69,6 +70,8 @@ typedef struct _response_t {
     response_code   status;
     /* Response status phrase */
     char            status_phrase[MAX_PATH]; // change size to MAX_STRING (?)
+    /* File on which the operation was performed */
+    char            file_path[MAX_PATH];
     /* Size of the response body */
     size_t          body_size;
     /* Body of the response (Nullable field) */
@@ -81,7 +84,7 @@ typedef struct _response_t {
  * Messages corresponding to a
  * certain response status
  */
-static char status_message[8][128] = {
+static char status_message[9][128] = {
     "Operation successfull",
     "Connection accepted",
     "Internal server error",
@@ -89,7 +92,8 @@ static char status_message[8][128] = {
     "Entity not found",
     "Unauthorized access",
     "Missing message body",
-    "File exceeds maximum space"
+    "File exceeds maximum space",
+    "Some files were expelled"
 };
 
 
@@ -139,7 +143,7 @@ new_response(response_code status, char *status_phrase, size_t body_size, void* 
  * -1 on failure, errno is set.
  */
 int
-send_response(int conn_fd, response_code status, char *status_phrase, size_t body_size, void* body);
+send_response(int conn_fd, response_code status, char *status_phrase, char *file_path, size_t body_size, void* body);
 
 /**
  * Receives a response on socket associated with conn_fd, return the response

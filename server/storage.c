@@ -133,7 +133,7 @@ storage_close_file(storage_t *storage, int client_id, char *file_name)
  * \return 0 on success, -1 on failure. Errno is set.
  */
 int
-storage_add_file(storage_t *storage, int client_id, file_t *file)
+storage_add_file(storage_t *storage, int client_id, file_t *file, list_t *expelled_files)
 {
     if (storage == NULL || file == NULL) {
         errno = EINVAL;
@@ -142,20 +142,11 @@ storage_add_file(storage_t *storage, int client_id, file_t *file)
 
     list_t *files_opened_by = (list_t*)hash_map_get(storage->opened_files, client_id);
 
-    if (list_index_of(files_opened_by, file->path) == -1) {
-        errno = EACCES;
-        return -1;
-    }
+    if (list_index_of(files_opened_by, file->path) == -1) return E_NOPERM;
 
-    if (file->size > storage->max_size) {
-        errno = EFBIG;
-        return -1;
-    }
+    if (file->size > storage->max_size) return E_TOOBIG;
 
-    list_t *replaced_files = list_create(NULL, free_file, print_file);
-    if (replaced_files == NULL) return -1;
-
-    int files_removed = storage_FIFO_replace(storage, file->size, replaced_files);
+    int files_removed = storage_FIFO_replace(storage, file->size, expelled_files);
 
     /* printf("REPLACED FILES:\n");
     list_dump(replaced_files, stdout);
@@ -164,7 +155,9 @@ storage_add_file(storage_t *storage, int client_id, file_t *file)
     storage->current_size += file->size;
     storage->no_of_files++;
     list_insert_tail(storage->basic_fifo, file->path);
-    return hash_map_insert(storage->files, file->path, (void*)file);
+    hash_map_insert(storage->files, file->path, (void*)file);
+
+    return files_removed;
 }
 
 
@@ -229,7 +222,7 @@ storage_FIFO_replace(storage_t *storage, size_t required_size, list_t *replaced_
     }
     
     while (files_removed <= storage->no_of_files) {
-        if (storage->current_size + required_size < storage->max_size) break;
+        if (storage->current_size + required_size <= storage->max_size) break;
 
         removed_file_path = list_remove_head(storage->basic_fifo);
         removed_file = storage_remove_file(storage, removed_file_path);

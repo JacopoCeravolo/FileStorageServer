@@ -44,7 +44,7 @@ worker_thread(void* args)
                 int status = 0;
                 if (storage_add_client(storage, client_fd) != 0) status = INTERNAL_ERROR;
 
-                if (send_response(client_fd, status, status_message[status], 0, NULL) != 0) {
+                if (send_response(client_fd, status, status_message[status], "", 0, NULL) != 0) {
                     printf("Error when sending response, %s\n", strerror(errno));
                 }
                 break;
@@ -71,7 +71,7 @@ worker_thread(void* args)
                     printf("Could not open file, %s\n", strerror(errno));
                 }
     
-                send_response(client_fd, SUCCESS, status_message[SUCCESS], 0, NULL);
+                send_response(client_fd, SUCCESS, status_message[SUCCESS], request->resource_path, 0, NULL);
     
                 break;
             }
@@ -88,7 +88,7 @@ worker_thread(void* args)
                     }
                 }
 
-                send_response(client_fd, status, status_message[status], 0, NULL);
+                send_response(client_fd, status, status_message[status], request->resource_path, 0, NULL);
 
                 break;
             }
@@ -98,13 +98,13 @@ worker_thread(void* args)
     
                 printf("WRITE FILE [%s]\n", request->resource_path);
     
+                /* Checks if the request contains any content */
+
                 if (request->body_size == 0 || request->body == NULL) {
-                    if (send_response(client_fd, MISSING_BODY, status_message[MISSING_BODY], 0, NULL) != 0) {
-                        printf("Error when sending response, %s\n", strerror(errno));
-                    }
+                    send_response(client_fd, MISSING_BODY, status_message[MISSING_BODY], "", 0, NULL);
                 }
 
-                printf("Creating new file %s\n", request->resource_path);
+                /* Creates the file */
 
                 file_t *new_file = malloc(sizeof(file_t));
                 strcpy(new_file->path, request->resource_path);
@@ -112,19 +112,38 @@ worker_thread(void* args)
                 new_file->contents = malloc(new_file->size);
                 memcpy(new_file->contents, request->body, new_file->size);
 
+                /** Writes the file to storage unit, an uninitialized list
+                 *  is passed to hold any expelled file
+                 */
+
+                int result;
+                list_t *expelled_files = list_create(NULL, free_file, print_file);
+                if (expelled_files == NULL) return -1;
+
                 int status = 0;
-                if (storage_add_file(storage, client_fd, new_file) != 0) {
-                    printf("error when adding file\n");
-                    // check for errors
-                    switch (errno) {
-                        case EINVAL: status = INTERNAL_ERROR; break; // Better invalid argument status?
-                        case EACCES: status = UNAUTHORIZED; break;
-                        case EFBIG: status = FILE_TOO_BIG; break;
+                if ((result = storage_add_file(storage, client_fd, new_file, expelled_files)) > 0) {
+                    if (list_is_empty(expelled_files)) {
+                        send_response(client_fd, INTERNAL_ERROR, status_message[INTERNAL_ERROR], "", 0, NULL);
+                    } else {
+                        send_response(client_fd, FILES_EXPELLED, status_message[FILES_EXPELLED], "", sizeof(int), &result);
+
+                        while (result > 0) {
+                            file_t *expelled = (file_t*)list_remove_head(expelled_files);
+                            send_response(client_fd, FILES_EXPELLED, status_message[FILES_EXPELLED], expelled->path, 
+                                            expelled->size, expelled->contents);
+                            result--;
+                        }
                     }
+                } else {
+                    // error checking
+                    switch (result) {
+                        // case EINVAL: status = INTERNAL_ERROR; break; // Better invalid argument status?
+                        case E_NOPERM: status = UNAUTHORIZED; break;
+                        case E_TOOBIG: status = FILE_TOO_BIG; break;
+                    }
+
+                    send_response(client_fd, status, status_message[status], request->resource_path, 0, NULL);
                 }
-
-                send_response(client_fd, status, status_message[status], 0, NULL);
-
                 break;
             }
             case WRITE_DIRECTORY: {
@@ -138,11 +157,11 @@ worker_thread(void* args)
     
                 file = storage_get_file(storage, client_fd, request->resource_path);
                 if (file == NULL) {
-                    send_response(client_fd, NOT_FOUND, status_message[NOT_FOUND], 0, NULL);
+                    send_response(client_fd, NOT_FOUND, status_message[NOT_FOUND], request->resource_path, 0, NULL);
                 } else {
                     /* reading_buffer = malloc(file->size);
                     memcpy(reading_buffer, file->contents, file->size); */
-                    send_response(client_fd, SUCCESS, status_message[SUCCESS], file->size, file->contents);
+                    send_response(client_fd, SUCCESS, status_message[SUCCESS], file->path, file->size, file->contents);
                 }
     
                 break;
@@ -156,14 +175,14 @@ worker_thread(void* args)
 
                 printf("DELETE FILE [%s]\n", request->resource_path);
                 int status = 0;
-                if (storage_remove_file(storage, request->resource_path) != 0) {
+                if (storage_remove_file(storage, request->resource_path) == NULL) {
                     switch (errno) {
                         // Will be more
                         case ENOENT: status = NOT_FOUND; break;
                     }
                 }
 
-                send_response(client_fd, status, status_message[status], 0, NULL);
+                send_response(client_fd, status, status_message[status], request->resource_path, 0, NULL);
                 break;
             }
             case LOCK_FILE: {

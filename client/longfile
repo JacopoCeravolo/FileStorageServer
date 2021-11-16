@@ -1,809 +1,582 @@
-//#define _POSIX_C_SOURCE 2001112L
-
-/* SYSTEM INCLUDES */
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <getopt.h>
-#include <errno.h>
-#include <time.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/un.h>
-#include <sys/uio.h>
-#include <fcntl.h>
-
-
-/* USER INCLUDES */
-
-#include "fileserver.h"
-#include "queue.h"
-
-/* CONSTANT MACROS */
-
-#define CMD_LINE_ARGUMENTS      ":f:w:W:D:r:R:d:t:l:u:c:ph" // could start string with '+' for automatic non-option handling
-#define MAX_ARGUMENT_LENGTH     1024
-#define MAX_READING_LENGTH      4096
-#define SAFE_SOCKET_NAME        "./socket"
-
-
-/* FUNCTION MACROS */
-
-
-/* TYPES DEFINITION */
-
-typedef struct _option_t
-{
-    int     opt;
-    char    args[MAX_ARGUMENT_LENGTH]; // maybe should be pointer
-} option_t;
-
-/* UTILITY FUNCTIONS */
-
-/** 
- * \brief Controlla se la stringa passata come primo argomento e' un numero.
- * \return  0 ok  1 non e' un numbero   2 overflow/underflow
- */
-static inline int isNumber(const char* s, long* n) {
-  if (s==NULL) return 1;
-  if (strlen(s)==0) return 1;
-  char* e = NULL;
-  errno=0;
-  long val = strtol(s, &e, 10);
-  if (errno == ERANGE) return 2;    // overflow/underflow
-  if (e != NULL && *e == (char)0) {
-    *n = val;
-    return 0;   // successo 
-  }
-  return 1;   // non e' un numero
-}
-
-// Inizializza le variabili globali a safe values
-void
-init_globals();
-// Prints help message
-void
-printUsage();
-
-// Imposta il nome del socket AF_UNIX
-void
-setSocketName(char *sockname);
-
-// Imposta la directory per il salvataggio dei file rimossi dal server
-void
-setDumpDirectory(char *dirname);
-
-// Imposta la directory per i file letti dal server
-void
-setReadingDirectory(char *dirname);
-
-// Gestore degli argomenti dell'opzione -w
-void
-w_argument_handler(char *line, char *dirname, int *n_write);
-
-// Gestore dell'argomento dell'opzione -R
-void
-R_argument_handler(char *line, int *n_read);
-
-// Tokenizza la stringa di argomenti separati da virgola ','
-queue_t*
-argumentTokenizer(char *line);
-
-// Inizializza un nodo della coda di opzioni da command line
-option_t
-init_option(int option, char *arguments);
-
-// Cleanup di variabili dinamicamente allocate
-void
-cleanup();
-
-/* GLOBAL VARIABLES */
-
-static  char    *socket_name; // name of AF_UNIX socket
-static  char    *dump_dirname; // directory for expelled files
-static  char    *read_dirname; // directory for file read
-static  char    *write_dirname; // directory for file to write
-static  int    n_write; // number of files to be written
-static  int    n_read; // number of files to be read
-
-/* MAIN FUNCTION */
-
-int
-main(int argc, char *argv[])
-{
-
-    /* If no option is specified prints help message */
-
-    if(argc < 2) {
-        printUsage();
-        exit(EXIT_SUCCESS);
-    }
-    
-    // For now only naive cleanup, add goto labels
-    atexit(cleanup);
-
-    // Initialization of globals
-    init_globals();
-
-    int     opt,
-            read_flag = 0,
-            write_flag = 0,
-            do_print = 0;
-    long    time_awating = 0;
-    
-    queue_t *optionQueue;
-    struct timespec abs_time; 
-
-    optionQueue = createQueue(sizeof(option_t));
-
-
-    option_t current;
-
-    while ((opt = getopt(argc, argv, CMD_LINE_ARGUMENTS)) != -1) {
-        switch (opt) {
-        case '?':
-            printf("%s: option -- %c is invalid\n", argv[0], optopt);
-            break;
-        case ':':
-            printf("%s: option -- %c requires an argument\n", argv[0], optopt);
-            break;
-        case 'h':
-            printUsage();
-            exit(EXIT_SUCCESS);
-            break;
-        case 'f':
-            // TODO: controllo optarg
-            setSocketName(optarg);
-            break;
-        case 'w':
-            write_flag = 1;            
-            current = init_option(opt, optarg);
-            enqueue(optionQueue, &current);
-            break;
-        case 'W':
-            write_flag = 1;            
-            current = init_option(opt, optarg);
-            enqueue(optionQueue, &current);
-            break;
-        case 'D':
-            if(write_flag) {
-                // TODO: controllo optarg
-                setDumpDirectory(optarg);
-            } else {
-                printf("option -- %c should be paired with writing query, ignoring request\n", optopt);
-            }
-            break;
-        case 'r': 
-            read_flag = 1;           
-            current = init_option(opt, optarg);
-            enqueue(optionQueue, &current);
-            break;
-        case 'R': 
-            read_flag = 1;           
-            current = init_option(opt, optarg);
-            enqueue(optionQueue, &current);
-            break;
-        case 'd':
-            if(read_flag) {
-                // TODO: controllo optarg
-                setReadingDirectory(optarg);
-            } else {
-                printf("option -- %c should be paired with reading query, ignoring request\n", optopt);
-            }
-            break;
-        case 't':
-            // TODO: aggiungere controllo con utility isNumber
-            time_awating = strtol(optarg, NULL, 10);
-            break;
-        case 'l':           
-            current = init_option(opt, optarg);
-            enqueue(optionQueue, &current);
-            break;
-        case 'u': 
-            current = init_option(opt, optarg);
-            enqueue(optionQueue, &current);
-            break;
-        case 'c': 
-            current = init_option(opt, optarg);
-            enqueue(optionQueue, &current);
-            break;
-        case 'p':
-            do_print = 1;
-            break;
-        }
-    }
-    
-    /* Printing of values to assert correct initialization */
-
-    printf("\nINITIALIZED PARAMETERS\n\n");
-
-    if(socket_name) printf("socket: %s\n", socket_name);
-    if(dump_dirname) printf("dump directory: %s\n", dump_dirname);
-    if(read_dirname) printf("read directory: %s\n", read_dirname);
-    if(time_awating != 0) printf("time waiting: %lu\n", time_awating);
-    if(do_print) printf("printing is enabled\n");
-
-    option_t copy;
-
-    // Printing of queue for checking correctness
-
-    /* while (!isEmpty(optionQueue))
-    {
-        dequeue(optionQueue, &copy);
-        printf("-%c: %s\n", copy.opt, copy.args);
-    } */
-    
-
-
-    /* Actual processing of queue */
-
-    printf("\nPROCESSING REQUESTS\n\n");
-
-    char    *filename = malloc(MAX_ARGUMENT_LENGTH);
-
-    while (!isEmpty(optionQueue))
-    {
-        dequeue(optionQueue, &copy);
-        // printf("-%c: %s\n", copy.opt, copy.args);
-        switch (copy.opt)
-        {
-        case 'w':
-            // printf("> executing w handler...");
-            
-            write_dirname = malloc(MAX_ARGUMENT_LENGTH);
-
-            w_argument_handler(copy.args, write_dirname, &n_write);
-            
-            // printf("done\n");
-
-            if(n_write != 0) {
-                printf("Requesting write of %d files from directory [%s]\n", n_write, write_dirname);
-            } else {
-                printf("Requesting write of all files from directory [%s]\n", write_dirname);
-            }
-
-            printf("\n\n");
-            break;
-        case 'W': {
-            // queue_t *W_arguments;
-
-            //printf("> executing W handler...");
-            char *token;
-            token = strtok(copy.args, ",");
-            while (token)
-            {
-                if (openConnection(socket_name, time_awating, abs_time) == -1) {
-                    printf("ERROR, connection could not be enstablished, exiting...\n");
-                    exit(EXIT_FAILURE);
-                }
-
-                //dequeue(W_arguments, filename);
-                
-                printf("Requesting write of file [%s]\n", token);
-
-                if (writeFile(token, dump_dirname) == -1) {
-                    printf("ERROR, file could not be written to server, exiting...\n");
-                    exit(EXIT_FAILURE);
-                }
-
-                printf("File [%s] successfully written to server\n", token);
-
-                if (closeConnection(socket_name) == -1) {
-                    printf("ERROR, connection could not be closed, exiting...\n");
-                    exit(EXIT_FAILURE);
-                }
-                token = strtok(NULL, ",");
-                sleep(time_awating); // 
-                printf("\n\n");
-            }
-            
-
-            /* W_arguments = argumentTokenizer(copy.args);
-
-            //printf("done\n");
-            
-            
-            while (!isEmpty(W_arguments)) {
-                
-                if (openConnection(socket_name, time_awating, abs_time) == -1) {
-                    printf("ERROR, connection could not be enstablished, exiting...\n");
-                    exit(EXIT_FAILURE);
-                }
-
-                dequeue(W_arguments, filename);
-                
-                printf("Requesting write of file [%s]\n", filename);
-
-                if (writeFile(filename, dump_dirname) == -1) {
-                    printf("ERROR, file could not be written to server, exiting...\n");
-                    exit(EXIT_FAILURE);
-                }
-
-                printf("File [%s] successfully written to server\n", filename);
-
-                if (closeConnection(socket_name) == -1) {
-                    printf("ERROR, connection could not be closed, exiting...\n");
-                    exit(EXIT_FAILURE);
-                }
-
-                sleep(time_awating); // sleep between two requests
-
-            }
-             */
-            //printf("\n\n");
-            // destroyQueue(W_arguments);
-
-            break; }
-        case 'r': {
-            
-            queue_t *r_arguments;
-            char    *reading_buffer;
-            size_t  buffer_size;
-
-            //printf("> executing r handler...");
-
-            // printf("%s\n", copy.args);
-            // r_arguments = argumentTokenizer(copy.args);
-            reading_buffer = malloc(MAX_READING_LENGTH);
-
-            //printf("done\n");
-
-            char *token;
-            token = strtok(copy.args, ",");
-            while (token)
-            {
-                if (openConnection(socket_name, time_awating, abs_time) == -1) {
-                    printf("ERROR, connection could not be enstablished, exiting...\n");
-                    exit(EXIT_FAILURE);
-                }
-                // dequeue(r_arguments, filename);
-                
-                printf("Requesting read of file [%s]\n", token);
-
-                if (readFile(token, &reading_buffer, &buffer_size) == -1) {
-                    printf("ERROR, file could not be read from server, exiting...\n");
-                    exit(EXIT_FAILURE);
-                }
-
-
-                /* Copies file to directory */
-
-                if (read_dirname != NULL) 
-                {
-                    printf("Reading file [%s] into directory [%s]\n", token, read_dirname);
-
-                    struct stat st = {0};
-
-                    if (stat(read_dirname, &st) == -1) {
-                        mkdir(read_dirname, 0700);
-                    }
-                    char *new_filename = malloc(MAX_ARGUMENT_LENGTH);
-                    read_dirname = strcat(read_dirname, "/");
-                    new_filename = strcat(read_dirname, token);
-
-                    //FILE *ofp;
-                    mode_t oldmask = umask(033);
-
-                    int read_fd;
-                    if ((read_fd = open(new_filename, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP)) == NULL) {
-                        printf("ERROR, could not open file [%s]\n", new_filename);
-                    }
-                    umask(oldmask);
-                //fwrite(reading_buffer, sizeof(char), buffer_size, ofp);
-                    write(read_fd, reading_buffer, buffer_size);
-
-                    printf("File [%s] succesfully read\n", new_filename);
-
-                    close(read_fd);
-                } else {
-
-                    printf("No directory specified, printing out file contents:\n");
-                    printf("\n%s\n", token);
-                    printf("\n%s\n", reading_buffer);
-                }
-
-                // printf("> file contents:\n%s\n", reading_buffer);
-                
-                if (closeConnection(socket_name) == -1) {
-                    printf("ERROR, connection could not be closed, exiting...\n");
-                    exit(EXIT_FAILURE);
-                }
-
-                token = strtok(NULL, ",");
-                sleep(time_awating); // sleep between two requests
-                printf("\n\n");
-            }
-
-/*             while (!isEmpty(r_arguments)) {
-
-                if (openConnection(socket_name, time_awating, abs_time) == -1) {
-                    printf("ERROR, connection could not be enstablished, exiting...\n");
-                    exit(EXIT_FAILURE);
-                }
-                dequeue(r_arguments, filename);
-                
-                printf("Requesting read of file [%s]\n", filename);
-
-                if (readFile(filename, &reading_buffer, &buffer_size) == -1) {
-                    printf("ERROR, file could not be read from server, exiting...\n");
-                    exit(EXIT_FAILURE);
-                }
-
-
-                // Copies file to directory 
-
-                if (read_dirname != NULL) 
-                {
-                    printf("Reading file [%s] into directory [%s]\n", filename, read_dirname);
-
-                    struct stat st = {0};
-
-                    if (stat(read_dirname, &st) == -1) {
-                        mkdir(read_dirname, 0700);
-                    }
-
-                    read_dirname = strcat(read_dirname, "/");
-                    filename = strcat(read_dirname, filename);
-
-                    //FILE *ofp;
-                    mode_t oldmask = umask(033);
-
-                    int read_fd;
-                    if ((read_fd = open(filename, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP)) == NULL) {
-                        printf("ERROR, could not open file [%s]\n", filename);
-                    }
-                    umask(oldmask);
-                //fwrite(reading_buffer, sizeof(char), buffer_size, ofp);
-                    write(read_fd, reading_buffer, buffer_size);
-
-                    printf("File [%s] succesfully read\n", filename);
-
-                    close(read_fd);
-                } else {
-
-                    printf("No directory specified, printing out file contents:\n");
-                    printf("\n%s\n", filename);
-                    printf("\n%s\n", reading_buffer);
-                }
-
-                // printf("> file contents:\n%s\n", reading_buffer);
-                
-                if (closeConnection(socket_name) == -1) {
-                    printf("ERROR, connection could not be closed, exiting...\n");
-                    exit(EXIT_FAILURE);
-                }
-
-                sleep(time_awating); // sleep between two requests
-
-            }
- */
-            //printf("\n\n");
-            // destroyQueue(r_arguments);
-
-            break; }
-        case 'R':
-            //printf("> executing R handler...");
-
-            R_argument_handler(copy.args, &n_read);
-
-            //printf("done\n");
-            
-            if (openConnection(socket_name, time_awating, abs_time) == -1) {
-                printf("ERROR, connection could not be enstablished, exiting...\n");
-                exit(EXIT_FAILURE);
-            }
-
-            if(n_read != 0) {
-                printf("Reading %d files from server\n", n_read);
-            } else {
-                printf("Reading all files from server\n");
-            }
-
-            if (readNFiles(n_read, read_dirname) == -1) {
-                printf("ERROR, could not read files from server, exiting...\n");
-                exit(EXIT_FAILURE);
-            }
-
-            if(n_read != 0) {
-                printf("Successfully read %d files from server\n", n_read);
-            } else {
-                printf("Successfully read all files from server\n");
-            }
-
-            if (closeConnection(socket_name) == -1) {
-                printf("ERROR, connection could not be closed, exiting...\n");
-                exit(EXIT_FAILURE);
-            }
-
-            sleep(time_awating); // sleep between two requests
-
-            printf("\n\n");
-            break;
-        case 'l': ;
-            queue_t *l_arguments;
-
-            printf("> executing l handler...");
-
-            l_arguments = argumentTokenizer(copy.args);
-
-            printf("done\n");
-            
-
-            while (!isEmpty(l_arguments)) {
-
-                if (openConnection(socket_name, time_awating, abs_time) == -1) {
-                    printf("ERROR, connection could not be enstablished, exiting...\n");
-                    exit(EXIT_FAILURE);
-                }
-
-                dequeue(l_arguments, filename);
-
-                printf("> locking file (%s)\n", filename);
-
-                if (lockFile(filename) == -1) {
-                    printf("ERROR, could not lock file (%s), exiting...\n", filename);
-                    exit(EXIT_FAILURE);
-                }
-
-                printf("> successfully locked file (%s)\n", filename);
-
-                if (closeConnection(socket_name) == -1) {
-                    printf("ERROR, connection could not be closed, exiting...\n");
-                    exit(EXIT_FAILURE);
-                }
-
-                sleep(time_awating); // sleep between two requests
-            }
-
-            printf("\n\n");
-            destroyQueue(l_arguments);
-            break;
-        case 'u': ;
-            queue_t *u_arguments;
-            printf("> executing u handler...");
-             
-            u_arguments = argumentTokenizer(copy.args);
-
-            printf("done\n");
-           
-            
-            while (!isEmpty(u_arguments)) {
-                
-                if (openConnection(socket_name, time_awating, abs_time) == -1) {
-                    printf("ERROR, connection could not be enstablished, exiting...\n");
-                    exit(EXIT_FAILURE);
-                }
-
-                dequeue(u_arguments, filename);
-
-                printf("> unlocking file (%s)\n", filename);
-
-                if (unlockFile(filename) == -1) {
-                    printf("ERROR, could not unlock file (%s), exiting...\n", filename);
-                    exit(EXIT_FAILURE);
-                }
-
-                printf("> successfully unlocked file (%s)\n", filename);
-
-                if (closeConnection(socket_name) == -1) {
-                    printf("ERROR, connection could not be closed, exiting...\n");
-                    exit(EXIT_FAILURE);
-                }
-
-                sleep(time_awating); // sleep between two requests
-            }
-            
-            printf("\n\n");
-            destroyQueue(u_arguments);
-            
-            break;
-        case 'c': ;
-            queue_t *c_arguments;
-            printf("> executing c handler...");
-
-            c_arguments = argumentTokenizer(copy.args);
-
-            printf("done\n");
-
-
-            while (!isEmpty(c_arguments)) {
-                
-                if (openConnection(socket_name, time_awating, abs_time) == -1) {
-                    printf("ERROR, connection could not be enstablished, exiting...\n");
-                    exit(EXIT_FAILURE);
-                }
-
-                dequeue(c_arguments, filename);
-
-                printf("> deleting file (%s)\n", filename);
-
-                if (removeFile(filename) == -1) {
-                    printf("ERROR, could not delete file (%s), exiting...\n", filename);
-                    exit(EXIT_FAILURE);
-                }
-
-                printf("> successfully deleted file (%s)\n", filename);
-
-                if (closeConnection(socket_name) == -1) {
-                    printf("ERROR, connection could not be closed, exiting...\n");
-                    exit(EXIT_FAILURE);
-                }
-
-                sleep(time_awating); // sleep between two requests
-            }
-
-            printf("\n\n");
-            destroyQueue(c_arguments);
-            
-            break;
-        default:
-            printf("ERROR, request queue contains an unrecognized option\nEXITING ...\n");
-            exit(EXIT_FAILURE);
-            break;
-        }
-    }
-    
-    free(filename);
-    destroyQueue(optionQueue);
-
-    return 0;
-}
-
-
-
-
-
-// Inizializza le variabili globali a safe values
-void
-init_globals()
-{
-    int name_length;
-
-    name_length = MAX_ARGUMENT_LENGTH;
-    socket_name = malloc(MAX_ARGUMENT_LENGTH);
-    strncpy(socket_name, SAFE_SOCKET_NAME, 10); // 10 is length of ./socket
-    n_write = 0;
-    n_read = 0;
-}
-
-// Prints help message
-void
-printUsage()
-{
-    printf("\nThe client program allows to interact with the File Storage Server to send, receive, edit and delete files.\n" \
-                                        "It behaves differently according to the options passed through the command line.\n" \
-                                        "\nCurrently included options are:\n\n" \
-                                        "    -h                        Prints this message\n" \
-                                        "    -p                        Enables printing of infomation for each operation in the format:\n" \
-                                        "                              OPT_TYPE      FILE      RESULT      N_BYTES\n" \
-                                        "    -f sockname               Specifes the name of AF_UNIX socket to connect to\n" \
-                                        "    -w dirname[,n=n_files]    Sends the contents of directory dirname to File Storage Server.\n" \
-                                        "                              All subdirectories are visited recursively sending up to n_files.\n" \
-                                        "                              If n=0 or n is unspecifed, all contents are sent to File Storage Server\n" \
-                                        "    -W file1[,file2...]       Sends files specifed as arguments separated by commas to File Storage Server\n" \
-                                        "    -D dirname                Specifies the directory dirname where to write files expelled by File Storage Server\n" \
-                                        "                              in case of capacity misses. Option -D should be coupled with -w or -W, otherwise an error\n" \
-                                        "                              message is print and all expelled files are trashed. If not specified all expelled files are trashed\n" \
-                                        "    -r file1[,file2...]       Reads files specifed as arguments separated by commas from File Storage Server\n" \
-                                        "    -R [n=n_files]            Reads n_files files from File Storage Server. If n=0 or unspecified reads all files in File Storage Server\n" \
-                                        "    -d dirname                Specifies the directory dirname where to write files read from File Strage Server.\n" \
-                                        "                              Option -d should be coupled with -r or -R, otherwise an error message is print and read files are not saved\n" \
-                                        "    -t time                   Times in milleseconds to wait in between requests to File Storage Server\n" \
-                                        "    -l file1[,file2...]       List of files to acquire mutual exclusion on\n" \
-                                        "    -u file1[,file2...]       List of files to release mutual exclusion on\n" \
-                                        "    -c file1[,file2...]       List of files to delete from File Storage Server\n");
-}
-
-// Imposta il nome del socket AF_UNIX
-void
-setSocketName(char *sockname)
-{
-    memset(socket_name, '\0', MAX_ARGUMENT_LENGTH);
-    strncpy(socket_name, sockname, strlen(sockname));
-}
-
-// Imposta la directory per il salvataggio dei file rimossi dal server
-void
-setDumpDirectory(char *dirname)
-{
-    int name_length;
-
-    name_length = strlen(dirname) + 1;
-    dump_dirname = malloc(name_length);
-    strncpy(dump_dirname, dirname, name_length);
-}
-
-// Imposta la directory per i file letti dal server
-void
-setReadingDirectory(char *dirname)
-{
-    int name_length;
-
-    name_length = strlen(dirname) + 1;
-    read_dirname = malloc(name_length);
-    strncpy(read_dirname, dirname, name_length);
-}
-
-// Gestore degli argomenti dell'opzione -w
-void
-w_argument_handler(char *line, char *dirname, int *n_write)
-{
-    char    *token;
-
-    token = strtok(line, ",");   // change to strtok_r?
-    strncpy(dirname, token, strlen(token) + 1);
-
-    token = strtok(NULL, "\0");
-    if(token){
-        if(!(token = strchr(token, 'n'))) {
-            printf("\nsecond argument of option -w should be in format 'n=value'\n");
-            exit(EXIT_FAILURE);
-        }
-        if(!(token = strchr(token, '='))) {
-            printf("\nsecond argument of option -w should be in format 'n=value'\n");
-            exit(EXIT_FAILURE);
-        }
-        if(isNumber(++token, (long*)n_write) == 1) {
-            printf("\nsecond argument of option -w should be in format 'n=value'\n");
-            exit(EXIT_FAILURE);
-        }
-    }
-}
-
-// Gestore dell'argomento dell'opzione -R
-void
-R_argument_handler(char *line, int *n_read)
-{
-    if(!(line = strchr(line, 'n'))) {
-        printf("\nsecond argument of option -w should be in format 'n=value'\n");
-        exit(EXIT_FAILURE);
-    }
-    if(!(line = strchr(line, '='))) {
-        printf("\nsecond argument of option -w should be in format 'n=value'\n");
-        exit(EXIT_FAILURE);
-    }
-    if(isNumber(++line, (long*)n_read) == 1) {
-        printf("\nsecond argument of option -w should be in format 'n=value'\n");
-        exit(EXIT_FAILURE);
-    }
-}
-
-// Tokenizza la stringa di argomenti separati da virgola ','
-queue_t*
-argumentTokenizer(char *line)
-{
-    char    *save,
-            *token;
-    queue_t *arguments;
-
-    arguments = createQueue(MAX_ARGUMENT_LENGTH);
-    token = strtok_r(line, ",", &save);
-    while (token) {
-      enqueue(arguments, token);
-      token = strtok_r(NULL, ",", &save);
-    }
-    return arguments;
-}
-
-// Inizializza un nodo della coda di opzioni da command line
-option_t
-init_option(int option, char *arguments)
-{
-    option_t tmp;
-    tmp.opt = option;
-    // if args changed to pointer, insert malloc and free (not working now for unformatted text)
-    strncpy(tmp.args, arguments, strlen(arguments) + 1);
-    return tmp;
-}
-
-// Cleanup di variabili globali dinamicamente allocate
-void
-cleanup()
-{
-    if(socket_name) free(socket_name);
-    if(dump_dirname) free(dump_dirname);
-    if(read_dirname) free(read_dirname);
-    if(write_dirname) free(write_dirname);
-}
+OLIVER	Charles, I thank thee for thy love to me, which
+	thou shalt find I will most kindly requite. I had
+	myself notice of my brother's purpose herein and
+	have by underhand means laboured to dissuade him from
+	it, but he is resolute. I'll tell thee, Charles:
+	it is the stubbornest young fellow of France, full
+	of ambition, an envious emulator of every man's
+	good parts, a secret and villanous contriver against
+	me his natural brother: therefore use thy
+	discretion; I had as lief thou didst break his neck
+	as his finger. And thou wert best look to't; for if
+	thou dost him any slight disgrace or if he do not
+	mightily grace himself on thee, he will practise
+	against thee by poison, entrap thee by some
+	treacherous device and never leave thee till he
+	hath ta'en thy life by some indirect means or other;
+	for, I assure thee, and almost with tears I speak
+	it, there is not one so young and so villanous this
+	day living. I speak but brotherly of him; but
+	should I anatomize him to thee as he is, I must
+	blush and weep and thou must look pale and wonder.
+
+CHARLES	I am heartily glad I came hither to you. If he come
+	to-morrow, I'll give him his payment: if ever he go
+	alone again, I'll never wrestle for prize more: and
+	so God keep your worship!
+
+OLIVER	Farewell, good Charles.
+
+	[Exit CHARLES]
+
+	Now will I stir this gamester: I hope I shall see
+	an end of him; for my soul, yet I know not why,
+	hates nothing more than he. Yet he's gentle, never
+	schooled and yet learned, full of noble device, of
+	all sorts enchantingly beloved, and indeed so much
+	in the heart of the world, and especially of my own
+	people, who best know him, that I am altogether
+	misprised: but it shall not be so long; this
+	wrestler shall clear all: nothing remains but that
+	I kindle the boy thither; which now I'll go about.
+
+	[Exit]
+
+
+
+
+	AS YOU LIKE IT
+
+
+ACT I
+
+
+
+SCENE II	Lawn before the Duke's palace.
+
+
+	[Enter CELIA and ROSALIND]
+
+CELIA	I pray thee, Rosalind, sweet my coz, be merry.
+
+ROSALIND	Dear Celia, I show more mirth than I am mistress of;
+	and would you yet I were merrier? Unless you could
+	teach me to forget a banished father, you must not
+	learn me how to remember any extraordinary pleasure.
+
+CELIA	Herein I see thou lovest me not with the full weight
+	that I love thee. If my uncle, thy banished father,
+	had banished thy uncle, the duke my father, so thou
+	hadst been still with me, I could have taught my
+	love to take thy father for mine: so wouldst thou,
+	if the truth of thy love to me were so righteously
+	tempered as mine is to thee.
+
+ROSALIND	Well, I will forget the condition of my estate, to
+	rejoice in yours.
+
+CELIA	You know my father hath no child but I, nor none is
+	like to have: and, truly, when he dies, thou shalt
+	be his heir, for what he hath taken away from thy
+	father perforce, I will render thee again in
+	affection; by mine honour, I will; and when I break
+	that oath, let me turn monster: therefore, my
+	sweet Rose, my dear Rose, be merry.
+
+ROSALIND	From henceforth I will, coz, and devise sports. Let
+	me see; what think you of falling in love?
+
+CELIA	Marry, I prithee, do, to make sport withal: but
+	love no man in good earnest; nor no further in sport
+	neither than with safety of a pure blush thou mayst
+	in honour come off again.
+
+ROSALIND	What shall be our sport, then?
+
+CELIA	Let us sit and mock the good housewife Fortune from
+	her wheel, that her gifts may henceforth be bestowed equally.
+
+ROSALIND	I would we could do so, for her benefits are
+	mightily misplaced, and the bountiful blind woman
+	doth most mistake in her gifts to women.
+
+CELIA	'Tis true; for those that she makes fair she scarce
+	makes honest, and those that she makes honest she
+	makes very ill-favouredly.
+
+ROSALIND	Nay, now thou goest from Fortune's office to
+	Nature's: Fortune reigns in gifts of the world,
+	not in the lineaments of Nature.
+
+	[Enter TOUCHSTONE]
+
+CELIA	No? when Nature hath made a fair creature, may she
+	not by Fortune fall into the fire? Though Nature
+	hath given us wit to flout at Fortune, hath not
+	Fortune sent in this fool to cut off the argument?
+
+ROSALIND	Indeed, there is Fortune too hard for Nature, when
+	Fortune makes Nature's natural the cutter-off of
+	Nature's wit.
+
+CELIA	Peradventure this is not Fortune's work neither, but
+	Nature's; who perceiveth our natural wits too dull
+	to reason of such goddesses and hath sent this
+	natural for our whetstone; for always the dulness of
+	the fool is the whetstone of the wits. How now,
+	wit! whither wander you?
+
+TOUCHSTONE	Mistress, you must come away to your father.
+
+CELIA	Were you made the messenger?
+
+TOUCHSTONE	No, by mine honour, but I was bid to come for you.
+
+ROSALIND	Where learned you that oath, fool?
+
+TOUCHSTONE	Of a certain knight that swore by his honour they
+	were good pancakes and swore by his honour the
+	mustard was naught: now I'll stand to it, the
+	pancakes were naught and the mustard was good, and
+	yet was not the knight forsworn.
+
+CELIA	How prove you that, in the great heap of your
+	knowledge?
+
+ROSALIND	Ay, marry, now unmuzzle your wisdom.
+
+TOUCHSTONE	Stand you both forth now: stroke your chins, and
+	swear by your beards that I am a knave.
+
+CELIA	By our beards, if we had them, thou art.
+
+TOUCHSTONE	By my knavery, if I had it, then I were; but if you
+	swear by that that is not, you are not forsworn: no
+	more was this knight swearing by his honour, for he
+	never had any; or if he had, he had sworn it away
+	before ever he saw those pancakes or that mustard.
+
+CELIA	Prithee, who is't that thou meanest?
+
+TOUCHSTONE	One that old Frederick, your father, loves.
+
+CELIA	My father's love is enough to honour him: enough!
+	speak no more of him; you'll be whipped for taxation
+	one of these days.
+
+TOUCHSTONE	The more pity, that fools may not speak wisely what
+	wise men do foolishly.
+
+CELIA	By my troth, thou sayest true; for since the little
+	wit that fools have was silenced, the little foolery
+	that wise men have makes a great show. Here comes
+	Monsieur Le Beau.
+
+ROSALIND	With his mouth full of news.
+
+CELIA	Which he will put on us, as pigeons feed their young.
+
+ROSALIND	Then shall we be news-crammed.
+
+CELIA	All the better; we shall be the more marketable.
+
+	[Enter LE BEAU]
+
+	Bon jour, Monsieur Le Beau: what's the news?
+
+LE BEAU	Fair princess, you have lost much good sport.
+
+CELIA	Sport! of what colour?
+
+LE BEAU	What colour, madam! how shall I answer you?
+
+ROSALIND	As wit and fortune will.
+
+TOUCHSTONE	Or as the Destinies decree.
+
+CELIA	Well said: that was laid on with a trowel.
+
+TOUCHSTONE	Nay, if I keep not my rank,--
+
+ROSALIND	Thou losest thy old smell.
+
+LE BEAU	You amaze me, ladies: I would have told you of good
+	wrestling, which you have lost the sight of.
+
+ROSALIND	You tell us the manner of the wrestling.
+
+LE BEAU	I will tell you the beginning; and, if it please
+	your ladyships, you may see the end; for the best is
+	yet to do; and here, where you are, they are coming
+	to perform it.
+
+CELIA	Well, the beginning, that is dead and buried.
+
+LE BEAU	There comes an old man and his three sons,--
+
+CELIA	I could match this beginning with an old tale.
+
+LE BEAU	Three proper young men, of excellent growth and presence.
+
+ROSALIND	With bills on their necks, 'Be it known unto all men
+	by these presents.'
+
+LE BEAU	The eldest of the three wrestled with Charles, the
+	duke's wrestler; which Charles in a moment threw him
+	and broke three of his ribs, that there is little
+	hope of life in him: so he served the second, and
+	so the third. Yonder they lie; the poor old man,
+	their father, making such pitiful dole over them
+	that all the beholders take his part with weeping.
+
+ROSALIND	Alas!
+
+TOUCHSTONE	But what is the sport, monsieur, that the ladies
+	have lost?
+
+LE BEAU	Why, this that I speak of.
+
+TOUCHSTONE	Thus men may grow wiser every day: it is the first
+	time that ever I heard breaking of ribs was sport
+	for ladies.
+
+CELIA	Or I, I promise thee.
+
+ROSALIND	But is there any else longs to see this broken music
+	in his sides? is there yet another dotes upon
+	rib-breaking? Shall we see this wrestling, cousin?
+
+LE BEAU	You must, if you stay here; for here is the place
+	appointed for the wrestling, and they are ready to
+	perform it.
+
+CELIA	Yonder, sure, they are coming: let us now stay and see it.
+
+	[Flourish. Enter DUKE FREDERICK, Lords, ORLANDO,
+	CHARLES, and Attendants]
+
+DUKE FREDERICK	Come on: since the youth will not be entreated, his
+	own peril on his forwardness.
+
+ROSALIND	Is yonder the man?
+
+LE BEAU	Even he, madam.
+
+CELIA	Alas, he is too young! yet he looks successfully.
+
+DUKE FREDERICK	How now, daughter and cousin! are you crept hither
+	to see the wrestling?
+
+ROSALIND	Ay, my liege, so please you give us leave.
+
+DUKE FREDERICK	You will take little delight in it, I can tell you;
+	there is such odds in the man. In pity of the
+	challenger's youth I would fain dissuade him, but he
+	will not be entreated. Speak to him, ladies; see if
+	you can move him.
+
+CELIA	Call him hither, good Monsieur Le Beau.
+
+DUKE FREDERICK	Do so: I'll not be by.
+
+LE BEAU	Monsieur the challenger, the princesses call for you.
+
+ORLANDO	I attend them with all respect and duty.
+
+ROSALIND	Young man, have you challenged Charles the wrestler?
+
+ORLANDO	No, fair princess; he is the general challenger: I
+	come but in, as others do, to try with him the
+	strength of my youth.
+
+CELIA	Young gentleman, your spirits are too bold for your
+	years. You have seen cruel proof of this man's
+	strength: if you saw yourself with your eyes or
+	knew yourself with your judgment, the fear of your
+	adventure would counsel you to a more equal
+	enterprise. We pray you, for your own sake, to
+	embrace your own safety and give over this attempt.
+
+ROSALIND	Do, young sir; your reputation shall not therefore
+	be misprised: we will make it our suit to the duke
+	that the wrestling might not go forward.
+
+ORLANDO	I beseech you, punish me not with your hard
+	thoughts; wherein I confess me much guilty, to deny
+	so fair and excellent ladies any thing. But let
+	your fair eyes and gentle wishes go with me to my
+	trial: wherein if I be foiled, there is but one
+	shamed that was never gracious; if killed, but one
+	dead that was willing to be so: I shall do my
+	friends no wrong, for I have none to lament me, the
+	world no injury, for in it I have nothing; only in
+	the world I fill up a place, which may be better
+	supplied when I have made it empty.
+
+ROSALIND	The little strength that I have, I would it were with you.
+
+CELIA	And mine, to eke out hers.
+
+ROSALIND	Fare you well: pray heaven I be deceived in you!
+
+CELIA	Your heart's desires be with you!
+
+CHARLES	Come, where is this young gallant that is so
+	desirous to lie with his mother earth?
+
+ORLANDO	Ready, sir; but his will hath in it a more modest working.
+
+DUKE FREDERICK	You shall try but one fall.
+
+CHARLES	No, I warrant your grace, you shall not entreat him
+	to a second, that have so mightily persuaded him
+	from a first.
+
+ORLANDO	An you mean to mock me after, you should not have
+	mocked me before: but come your ways.
+
+ROSALIND	Now Hercules be thy speed, young man!
+
+CELIA	I would I were invisible, to catch the strong
+	fellow by the leg.
+
+	[They wrestle]
+
+ROSALIND	O excellent young man!
+
+CELIA	If I had a thunderbolt in mine eye, I can tell who
+	should down.
+
+	[Shout. CHARLES is thrown]
+
+DUKE FREDERICK	No more, no more.
+
+ORLANDO	Yes, I beseech your grace: I am not yet well breathed.
+
+DUKE FREDERICK	How dost thou, Charles?
+
+LE BEAU	He cannot speak, my lord.
+
+DUKE FREDERICK	Bear him away. What is thy name, young man?
+
+ORLANDO	Orlando, my liege; the youngest son of Sir Rowland de Boys.
+
+DUKE FREDERICK	I would thou hadst been son to some man else:
+	The world esteem'd thy father honourable,
+	But I did find him still mine enemy:
+	Thou shouldst have better pleased me with this deed,
+	Hadst thou descended from another house.
+	But fare thee well; thou art a gallant youth:
+	I would thou hadst told me of another father.
+
+	[Exeunt DUKE FREDERICK, train, and LE BEAU]
+
+CELIA	Were I my father, coz, would I do this?
+
+ORLANDO	I am more proud to be Sir Rowland's son,
+	His youngest son; and would not change that calling,
+	To be adopted heir to Frederick.
+
+ROSALIND	My father loved Sir Rowland as his soul,
+	And all the world was of my father's mind:
+	Had I before known this young man his son,
+	I should have given him tears unto entreaties,
+	Ere he should thus have ventured.
+
+CELIA	Gentle cousin,
+	Let us go thank him and encourage him:
+	My father's rough and envious disposition
+	Sticks me at heart. Sir, you have well deserved:
+	If you do keep your promises in love
+	But justly, as you have exceeded all promise,
+	Your mistress shall be happy.
+
+ROSALIND	Gentleman,
+
+	[Giving him a chain from her neck]
+
+	Wear this for me, one out of suits with fortune,
+	That could give more, but that her hand lacks means.
+	Shall we go, coz?
+
+CELIA	                  Ay. Fare you well, fair gentleman.
+
+ORLANDO	Can I not say, I thank you? My better parts
+	Are all thrown down, and that which here stands up
+	Is but a quintain, a mere lifeless block.
+
+ROSALIND	He calls us back: my pride fell with my fortunes;
+	I'll ask him what he would. Did you call, sir?
+	Sir, you have wrestled well and overthrown
+	More than your enemies.
+
+CELIA	Will you go, coz?
+
+ROSALIND	Have with you. Fare you well.
+
+	[Exeunt ROSALIND and CELIA]
+
+ORLANDO	What passion hangs these weights upon my tongue?
+	I cannot speak to her, yet she urged conference.
+	O poor Orlando, thou art overthrown!
+	Or Charles or something weaker masters thee.
+
+	[Re-enter LE BEAU]
+
+LE BEAU	Good sir, I do in friendship counsel you
+	To leave this place. Albeit you have deserved
+	High commendation, true applause and love,
+	Yet such is now the duke's condition
+	That he misconstrues all that you have done.
+	The duke is humorous; what he is indeed,
+	More suits you to conceive than I to speak of.
+
+ORLANDO	I thank you, sir: and, pray you, tell me this:
+	Which of the two was daughter of the duke
+	That here was at the wrestling?
+
+LE BEAU	Neither his daughter, if we judge by manners;
+	But yet indeed the lesser is his daughter
+	The other is daughter to the banish'd duke,
+	And here detain'd by her usurping uncle,
+	To keep his daughter company; whose loves
+	Are dearer than the natural bond of sisters.
+	But I can tell you that of late this duke
+	Hath ta'en displeasure 'gainst his gentle niece,
+	Grounded upon no other argument
+	But that the people praise her for her virtues
+	And pity her for her good father's sake;
+	And, on my life, his malice 'gainst the lady
+	Will suddenly break forth. Sir, fare you well:
+	Hereafter, in a better world than this,
+	I shall desire more love and knowledge of you.
+
+ORLANDO	I rest much bounden to you: fare you well.
+
+	[Exit LE BEAU]
+
+	Thus must I from the smoke into the smother;
+	From tyrant duke unto a tyrant brother:
+	But heavenly Rosalind!
+
+	[Exit]
+
+
+
+
+	AS YOU LIKE IT
+
+
+ACT I
+
+
+
+SCENE III	A room in the palace.
+
+
+	[Enter CELIA and ROSALIND]
+
+CELIA	Why, cousin! why, Rosalind! Cupid have mercy! not a word?
+
+ROSALIND	Not one to throw at a dog.
+
+CELIA	No, thy words are too precious to be cast away upon
+	curs; throw some of them at me; come, lame me with reasons.
+
+ROSALIND	Then there were two cousins laid up; when the one
+	should be lamed with reasons and the other mad
+	without any.
+
+CELIA	But is all this for your father?
+
+ROSALIND	No, some of it is for my child's father. O, how
+	full of briers is this working-day world!
+
+CELIA	They are but burs, cousin, thrown upon thee in
+	holiday foolery: if we walk not in the trodden
+	paths our very petticoats will catch them.
+
+ROSALIND	I could shake them off my coat: these burs are in my heart.
+
+CELIA	Hem them away.
+
+ROSALIND	I would try, if I could cry 'hem' and have him.
+
+CELIA	Come, come, wrestle with thy affections.
+
+ROSALIND	O, they take the part of a better wrestler than myself!
+
+CELIA	O, a good wish upon you! you will try in time, in
+	despite of a fall. But, turning these jests out of
+	service, let us talk in good earnest: is it
+	possible, on such a sudden, you should fall into so
+	strong a liking with old Sir Rowland's youngest son?
+
+ROSALIND	The duke my father loved his father dearly.
+
+CELIA	Doth it therefore ensue that you should love his son
+	dearly? By this kind of chase, I should hate him,
+	for my father hated his father dearly; yet I hate
+	not Orlando.
+
+ROSALIND	No, faith, hate him not, for my sake.
+
+CELIA	Why should I not? doth he not deserve well?
+
+ROSALIND	Let me love him for that, and do you love him
+	because I do. Look, here comes the duke.
+
+CELIA	With his eyes full of anger.
+
+	[Enter DUKE FREDERICK, with Lords]
+
+DUKE FREDERICK	Mistress, dispatch you with your safest haste
+	And get you from our court.
+
+ROSALIND	Me, uncle?
+
+DUKE FREDERICK	You, cousin
+	Within these ten days if that thou be'st found
+	So near our public court as twenty miles,
+	Thou diest for it.
+
+ROSALIND	                  I do beseech your grace,
+	Let me the knowledge of my fault bear with me:
+	If with myself I hold intelligence
+	Or have acquaintance with mine own desires,
+	If that I do not dream or be not frantic,--
+	As I do trust I am not--then, dear uncle,
+	Never so much as in a thought unborn
+	Did I offend your highness.
+
+DUKE FREDERICK	Thus do all traitors:
+	If their purgation did consist in words,
+	They are as innocent as grace itself:
+	Let it suffice thee that I trust thee not.
+
+ROSALIND	Yet your mistrust cannot make me a traitor:
+	Tell me whereon the likelihood depends.
+
+DUKE FREDERICK	Thou art thy father's daughter; there's enough.
+
+ROSALIND	So was I when your highness took his dukedom;
+	So was I when your highness banish'd him:
+	Treason is not inherited, my lord;
+	Or, if we did derive it from our friends,
+	What's that to me? my father was no traitor:
+	Then, good my liege, mistake me not so much
+	To think my poverty is treacherous.
+
+CELIA	Dear sovereign, hear me speak.
+
+DUKE FREDERICK	Ay, Celia; we stay'd her for your sake,
+	Else had she with her father ranged along.
+
+CELIA	I did not then entreat to have her stay;
+	It was your pleasure and your own remorse:
+	I was too young that time to value her;
+	But now I know her: if she be a traitor,
+	Why so am I; we still have slept together,
+	Rose at an instant, learn'd, play'd, eat together,
+	And wheresoever we went, like Juno's swans,
+	Still we went coupled and inseparable.

@@ -144,7 +144,7 @@ new_response(response_code status, char *status_phrase, size_t body_size, void* 
 }
 
 int
-send_response(int conn_fd, response_code status, char *status_phrase, size_t body_size, void* body)
+send_response(int conn_fd, response_code status, char *status_phrase, char *file_path, size_t body_size, void* body)
 {
     if (conn_fd < 0) {
         errno = EINVAL;
@@ -155,6 +155,8 @@ send_response(int conn_fd, response_code status, char *status_phrase, size_t bod
     SYSCALL_RETURN(result, write(conn_fd, (void*)&status, sizeof(response_code)), 
                 "write()", result);
     SYSCALL_RETURN(result, write(conn_fd, (void*)status_phrase, sizeof(char) * MAX_PATH), 
+                "write()", result);
+    SYSCALL_RETURN(result, write(conn_fd, (void*)file_path, sizeof(char) * MAX_PATH), 
                 "write()", result);
     SYSCALL_RETURN(result, write(conn_fd, (void*)&body_size, sizeof(size_t)), 
                 "write()", result);
@@ -185,6 +187,8 @@ recv_response(int conn_fd)
                 "read()", NULL);
     //fprintf(stderr, "got code\n");            
     SYSCALL_RETURN(result, read(conn_fd, (void*)response->status_phrase, sizeof(char) * MAX_PATH),
+                "read()", NULL);
+    SYSCALL_RETURN(result, read(conn_fd, (void*)response->file_path, sizeof(char) * MAX_PATH),
                 "read()", NULL);
     //fprintf(stderr, "got name\n");
     SYSCALL_RETURN(result, read(conn_fd, (void*)&response->body_size, sizeof(size_t)),
