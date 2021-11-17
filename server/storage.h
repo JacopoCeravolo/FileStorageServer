@@ -50,6 +50,9 @@ typedef struct _storage_t {
 /********************** Main Storage Functions  **********************/
 
 
+int
+storage_add1_file(storage_t *storage, file_t *file);
+
 storage_t*
 storage_create(size_t max_size, size_t max_files);
 

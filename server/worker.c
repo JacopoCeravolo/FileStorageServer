@@ -70,23 +70,28 @@ worker_thread(void* args)
     
                 log_info("[%s] open file (%s)\n", worker_name, request->resource_path);
 
-                int status = 0;
-                list_t *files_opened_by_client;
+                int status = 0; // will be the final response status
+
+                list_t *files_opened_by_client; 
                 files_opened_by_client = (list_t*)hash_map_get(storage->opened_files, client_fd);
                 if (files_opened_by_client == NULL) {
                     log_error("opened files list not recoverable\n");
                     // exit?
                 }
 
-                int flags = (int)request->body;
+                /* Check the flags received  */
 
-                if (CHK_FLAG(flags, O_CREATE)) {
+                int flags = *(int*)request->body;
+
+                if (CHK_FLAG(flags, O_CREATE)) { // file is O_CREATE, empty file will be created
+
                     log_info("[%s] create file (%s)\n", worker_name, request->resource_path);
 
                     file_t *new_file = malloc(sizeof(file_t));
                     strcpy(new_file->path, request->resource_path);
                     new_file->size = 0;
 
+                    /* Checks if a file should be expelled to make place for the new one */
                     list_t *expelled_files = list_create(NULL, free_file, NULL);
                     if (expelled_files == NULL) {
                         log_fatal("[%s] list_create failed: %s\n", worker_name, strerror(errno));
@@ -97,8 +102,8 @@ worker_thread(void* args)
                     }
 
                     if (storage->no_of_files + 1 > storage->max_files) {
-                        
-                        char *removed_file_path = list_remove_head(storage->basic_fifo);
+
+                        char *removed_file_path = (char*)list_remove_head(storage->basic_fifo);
                         file_t *removed_file = storage_remove_file(storage, removed_file_path);
                         list_insert_tail(expelled_files, removed_file); 
 
@@ -106,22 +111,30 @@ worker_thread(void* args)
                         status = FILES_EXPELLED;
 
                         file_t *expelled = (file_t*)list_remove_head(expelled_files);
-                        log_info("[%s] sending expelled file (%s)\n", worker_name, expelled->path);
-
+                        if (expelled == NULL) {
+                            log_error("file was removed but its not recoverable\n");
+                            status = INTERNAL_ERROR;
+                        } else {
+                            log_info("[%s] sending expelled file (%s)\n", worker_name, expelled->path);
+                        }
                     }
 
-                    storage->no_of_files++;
-                    list_destroy(expelled_files);
+                    /* At this point we should be able to safely add the file */
 
-                    // add file;
+                    storage_add1_file(storage, new_file);
+                    list_destroy(expelled_files);
                 }
+
+
+                /* Other flags yet to be implemented */
+
+                /* Adds the file to list of files opened by client */
 
                 list_insert_tail(files_opened_by_client, request->resource_path);
                 hash_map_insert(storage->opened_files, client_fd, files_opened_by_client);
     
                 send_response(client_fd, status, status_message[status], "", 0, NULL);
 
-    
                 break;
             }
             case CLOSE_FILE: {

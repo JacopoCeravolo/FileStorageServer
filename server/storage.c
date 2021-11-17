@@ -5,6 +5,15 @@
 #include "utils/logger.h"
 
 
+int
+storage_add1_file(storage_t *storage, file_t *file)
+{
+    hash_map_insert(storage->files, file->path, (void*)file);
+    storage->current_size += file->size;
+    storage->no_of_files++;
+    list_insert_tail(storage->basic_fifo, file->path);
+}
+
 /**
  * \brief Initializes the storage unit with maximum capacity and maximum number of files.
  * 

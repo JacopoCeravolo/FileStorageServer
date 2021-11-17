@@ -171,21 +171,21 @@ int main(int argc, char const *argv[])
 
     
      open_file(socket_fd, "file500");
-     write_file(socket_fd, "file500");
+     // write_file(socket_fd, "file500");
 
     
      open_file(socket_fd, "file500_copy");
-     write_file(socket_fd, "file500_copy");
+     // write_file(socket_fd, "file500_copy");
 
     
      open_file(socket_fd, "longfile");
-     write_file(socket_fd, "longfile");
+     // write_file(socket_fd, "longfile");
 
      open_file(socket_fd, "full");
-     write_file(socket_fd, "full");
+     // write_file(socket_fd, "full");
 
      open_file(socket_fd, "Makefile");
-     write_file(socket_fd, "Makefile");
+     // write_file(socket_fd, "Makefile");
 
      /* open_file(socket_fd, "file5");
      write_file(socket_fd, "file5"); */

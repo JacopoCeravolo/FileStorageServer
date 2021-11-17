@@ -186,6 +186,12 @@ int main(int argc, char const *argv[])
 
     
      open_file(socket_fd, "file5");
+     open_file(socket_fd, "full");
+     open_file(socket_fd, "longfile");
+     open_file(socket_fd, "Makefile");
+     open_file(socket_fd, "file1");
+     open_file(socket_fd, "longfile");
+
      // write_file(socket_fd, "file5");
 
     
