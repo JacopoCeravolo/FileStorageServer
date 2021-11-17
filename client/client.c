@@ -39,7 +39,7 @@ read_file(int socket_fd, char *file)
     send_request(socket_fd, READ_FILE, file, 0, NULL);
     response_t *r = recv_response(socket_fd);
     printf("> received: %d : %s : %lu\n", r->status, r->status_phrase, r->body_size);
-    if (r->body_size != 0) printf("%s\n", (char*)r->body);
+    // if (r->body_size != 0) printf("%s\n", (char*)r->body);
     //free_response(r);
 }
 
@@ -100,8 +100,8 @@ write_file(int socket_fd, char *file)
 
         while (n_files > 0) {
             response_t *r1 = recv_response(socket_fd);
-            printf("> received: %d : %s : %lu\n", r1->status, r1->status_phrase, r1->body_size);
-            printf("\n%s\n\n%s\n\n", r1->file_path, (char*)r1->body);
+            printf("> received: %d : %s :  %s : %lu\n", r1->status, r1->status_phrase, r1->file_path, r1->body_size);
+            //printf("\n%s\n\n%s\n\n", r1->file_path, (char*)r1->body);
             n_files--;
         }
     }
@@ -111,8 +111,10 @@ write_file(int socket_fd, char *file)
 void
 open_file(int socket_fd, char * file)
 {
+    int flags = 0;
+    SET_FLAG(flags, O_CREATE);
     printf("\n> client opening file %s\n", file);
-    send_request(socket_fd, OPEN_FILE, file, 0, NULL);
+    send_request(socket_fd, OPEN_FILE, file, sizeof(int), &flags);
     response_t *r = recv_response(socket_fd);
     printf("> received: %d : %s\n", r->status, r->status_phrase);
     //free_response(r);
@@ -151,38 +153,64 @@ int main(int argc, char const *argv[])
     result = connect(socket_fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)); // Use SUN_LEN
     if (result < 0) return -1;
 
+    printf("\n****** START ******\n\n");
 
     open_connection(socket_fd);
 
-    open_file(socket_fd, "file500");
-    open_file(socket_fd, "file500_copy");
-    // open_file(socket_fd, "file3");
-    open_file(socket_fd, "full");
-    /* open_file(socket_fd, "file3");
+    printf("\n** Expecting success **");
+    open_file(socket_fd, "file1");
+
+    printf("\n** Expecting success **");
+    open_file(socket_fd, "file2");
+
+    printf("\n** Expecting success **");
+    open_file(socket_fd, "file3");
+
+    printf("\n** Expecting expelled **");
     open_file(socket_fd, "file4");
+
+    printf("\n** Expecting expelled **");
     open_file(socket_fd, "file5");
+    /* open_file(socket_fd, "file500");
+    open_file(socket_fd, "file500_copy");
+    open_file(socket_fd, "full");
     open_file(socket_fd, "longfile"); */
     //sleep(20);
 
+    printf("\n** Expecting not found **");
+    write_file(socket_fd, "file1");
 
-    write_file(socket_fd, "full");
-    write_file(socket_fd, "file500");
-    write_file(socket_fd, "file500_copy");
-    // write_file(socket_fd, "file3");
-    /* write_file(socket_fd, "file4");
+    printf("\n** Expecting not found **");
+    write_file(socket_fd, "file2");
+
+    printf("\n** Expecting success **");
+    write_file(socket_fd, "file3");
+
+    printf("\n** Expecting success **");
+    write_file(socket_fd, "file4");
+
+    printf("\n** Expecting success **");
     write_file(socket_fd, "file5");
+    /* write_file(socket_fd, "file500");
+    write_file(socket_fd, "file500_copy");
+    write_file(socket_fd, "full");
     write_file(socket_fd, "longfile"); */
 
-    //remove_file(socket_fd, "file2");
-    //remove_file(socket_fd, "file3");
-    //remove_file(socket_fd, "file5");
+    printf("\n** Expecting not found **");
+    remove_file(socket_fd, "file1");
 
-    //read_file(socket_fd, "file1");
+    printf("\n** Expecting not found **");
+    remove_file(socket_fd, "file2");
 
-    /* close_file(socket_fd, "file1");
-    close_file(socket_fd, "file4"); */
+    printf("\n** Expecting success **");
+    remove_file(socket_fd, "file3");
+
+    printf("\n** Expecting not found **");
+    read_file(socket_fd, "full");
 
     close_connection(socket_fd);
+
+    printf("\n****** END ******\n\n");
 
     /* do
     {

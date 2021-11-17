@@ -1,6 +1,8 @@
 #include <errno.h>
 
-#include "storage.h"
+#include "server/storage.h"
+#include "utils/utilities.h"
+
 
 /**
  * \brief Initializes the storage unit with maximum capacity and maximum number of files.
@@ -97,8 +99,9 @@ storage_remove_client(storage_t *storage, int client_id)
  * \return 0 on success, -1 on failure. Errno is set.
  */
 int 
-storage_open_file(storage_t *storage, int client_id, char *file_name)
+storage_open_file(storage_t *storage, int client_id, char *file_name, int flags)
 {
+    int result = 0;
     list_t *opened;
     opened = (list_t*)hash_map_get(storage->opened_files, client_id);
 
@@ -108,9 +111,38 @@ storage_open_file(storage_t *storage, int client_id, char *file_name)
         if (opened == NULL) return -1;
     }
 
+    if (CHK_FLAG(flags, O_CREATE)) {
+        printf("Flag is O_CREATE\n");
+
+        file_t *new_file = malloc(sizeof(file_t));
+        strcpy(new_file->path, file_name);
+        new_file->size = 0;
+
+        char   *removed_file_path;
+        file_t *removed_file = NULL;
+
+        if ((storage->no_of_files + 1) > storage->max_files) {
+            removed_file_path = list_remove_head(storage->basic_fifo);
+            printf("dequeued %s\n", removed_file_path);
+            removed_file = storage_remove_file(storage, removed_file_path);
+            result = E_EXPELLED;
+        }
+        
+        
+        if (removed_file != NULL) {
+            printf("file [%s] was deleted during creation\n", removed_file_path);
+        }
+
+        storage->no_of_files++;
+        list_insert_tail(storage->basic_fifo, file_name);
+        hash_map_insert(storage->files, file_name, new_file);
+
+    }
+    
+
     list_insert_tail(opened, file_name);
     hash_map_insert(storage->opened_files, client_id, opened);
-    return 0;
+    return result;
 }   
 
 int
@@ -133,29 +165,43 @@ storage_close_file(storage_t *storage, int client_id, char *file_name)
  * \return 0 on success, -1 on failure. Errno is set.
  */
 int
-storage_add_file(storage_t *storage, int client_id, file_t *file, list_t *expelled_files)
+storage_add_file(storage_t *storage, int client_id, char *file_name, size_t size, void* contents, list_t *expelled_files)
 {
-    if (storage == NULL || file == NULL) {
+    if (storage == NULL || contents == NULL) {
         errno = EINVAL;
         return -1;
     }
 
-    list_t *files_opened_by = (list_t*)hash_map_get(storage->opened_files, client_id);
+    /* Does file exists? */
 
+    file_t *file = (file_t*)hash_map_get(storage->files, file_name);
+    if (file == NULL) return E_NOTFOUND;
+
+    /* Does client have permission? */
+
+    list_t *files_opened_by = (list_t*)hash_map_get(storage->opened_files, client_id);
     if (list_index_of(files_opened_by, file->path) == -1) return E_NOPERM;
 
+    /* Is file too big? */
+
     if (file->size > storage->max_size) return E_TOOBIG;
+    
+    /* Creates the file */
 
-    int files_removed = storage_FIFO_replace(storage, file->size, expelled_files);
+    file->size = size;
+    file->contents = malloc(size);
+    memcpy(file->contents, contents, size);
 
-    /* printf("REPLACED FILES:\n");
-    list_dump(replaced_files, stdout);
-    printf("\n"); */
+    /* Make space for the file */
+
+    int files_removed = storage_FIFO_replace(storage, 0, file->size, expelled_files);
+
+    /* Update storage with the new file */
 
     storage->current_size += file->size;
-    storage->no_of_files++;
-    list_insert_tail(storage->basic_fifo, file->path);
     hash_map_insert(storage->files, file->path, (void*)file);
+    //storage->no_of_files++;
+    // list_insert_tail(storage->basic_fifo, file->path);
 
     return files_removed;
 }
@@ -178,10 +224,10 @@ storage_remove_file(storage_t *storage, char *file_name)
         return NULL;
     }
 
-    storage->no_of_files--;
-    storage->current_size = storage->current_size - to_remove->size;
     list_remove_element(storage->basic_fifo, file_name);
     if (hash_map_remove(storage->files, file_name) != 0) return NULL;
+    storage->no_of_files--;
+    storage->current_size = storage->current_size - to_remove->size;
     return to_remove;
 }
 
@@ -206,24 +252,17 @@ storage_get_file(storage_t *storage, int client_id, char *file_name)
 }
 
 int
-storage_FIFO_replace(storage_t *storage, size_t required_size, list_t *replaced_files)
+storage_FIFO_replace(storage_t *storage, int how_many, size_t required_size, list_t *replaced_files)
 {
     /* This all should be in a separate function */
 
     char   *removed_file_path;
     file_t *removed_file;
-
     int files_removed = 0;
-    if (storage->no_of_files + 1 > storage->max_files) {
-        removed_file_path = list_remove_head(storage->basic_fifo);
-        removed_file = storage_remove_file(storage, removed_file_path);
-        list_insert_tail(replaced_files, removed_file);
-        files_removed++;
-    }
-    
-    while (files_removed <= storage->no_of_files) {
-        if (storage->current_size + required_size <= storage->max_size) break;
 
+    while ( (storage->no_of_files + how_many > storage->max_files) ||
+            (storage->current_size + required_size > storage->max_size) ) {
+        
         removed_file_path = list_remove_head(storage->basic_fifo);
         removed_file = storage_remove_file(storage, removed_file_path);
         list_insert_tail(replaced_files, removed_file);
@@ -281,8 +320,10 @@ free_file(void *e)
 void
 print_file(file_t *f, FILE *stream)
 {
-    fprintf(stream, "\n------------------------------------------------------\n");
     fprintf(stream,
-    "%lu (bytes)\n\n%s", f->size, (char*)f->contents);
+    " %lu (bytes)\n", f->size);
+    fprintf(stream, "\n------------------------------------------------------\n");
+    /* fprintf(stream,
+    "%lu (bytes)\n\n%s", f->size, (char*)f->contents); */
     fprintf(stream, "\n------------------------------------------------------\n\n");
 }

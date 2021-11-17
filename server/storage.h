@@ -63,13 +63,13 @@ int
 storage_remove_client(storage_t *storage, int client_id);
 
 int 
-storage_open_file(storage_t *storage, int client_id, char *file_name);
+storage_open_file(storage_t *storage, int client_id, char *file_name, int flags);
 
 int
 storage_close_file(storage_t *storage, int client_id, char *file_name);
 
 int
-storage_add_file(storage_t *storage, int client_id, file_t *file, list_t *expelled_files);
+storage_add_file(storage_t *storage, int client_id, char *file_name, size_t size, void* contents, list_t *expelled_files);
 
 file_t*
 storage_remove_file(storage_t *storage, char *file_name);
@@ -78,7 +78,7 @@ file_t*
 storage_get_file(storage_t *storage, int client_id, char *file_name);
 
 int
-storage_FIFO_replace(storage_t *storage, size_t required_size, list_t *replaced_files);
+storage_FIFO_replace(storage_t *storage, int how_many, size_t required_size, list_t *replaced_files);
 
 void
 storage_dump(storage_t *storage, FILE *stream);

@@ -67,7 +67,7 @@ main(int argc, char const *argv[])
 
    /* Initialize storage with size 16384 and 10 files */
 
-   storage = storage_create(1000, 10);
+   storage = storage_create(50000, 3);
    if (storage == NULL) {
       printf("FATAL ERROR, storage could not be initialized\n");
       exit(EXIT_FAILURE);

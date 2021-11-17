@@ -55,9 +55,9 @@ worker_thread(void* args)
                 // WHAT ELSE? Close and unlock all open files by client
     
                 printf("CLOSE CONNECTION [client %d]\n", client_fd);
-                if (storage_remove_client(storage, client_fd) != 0) {
+                /* if (storage_remove_client(storage, client_fd) != 0) {
                     printf("client %d was not removed from client table\n", client_fd);
-                }
+                } */
                 close(client_fd);
                 client_fd = -1;
                 break;
@@ -67,11 +67,14 @@ worker_thread(void* args)
                 // WHAT ELSE? Ensure all request components, check for availability and cache the file
     
                 printf("OPEN FILE [%s]\n", request->resource_path);
-                if (storage_open_file(storage, client_fd, request->resource_path) != 0) {
-                    printf("Could not open file, %s\n", strerror(errno));
+                int result, status = 0;
+                if ((result = storage_open_file(storage, client_fd, request->resource_path, *(int*)request->body)) != 0) {
+                    switch (result) {
+                        case E_EXPELLED: status = FILES_EXPELLED; break;
+                    }
                 }
     
-                send_response(client_fd, SUCCESS, status_message[SUCCESS], request->resource_path, 0, NULL);
+                send_response(client_fd, status, status_message[status], request->resource_path, 0, NULL);
     
                 break;
             }
@@ -106,11 +109,6 @@ worker_thread(void* args)
 
                 /* Creates the file */
 
-                file_t *new_file = malloc(sizeof(file_t));
-                strcpy(new_file->path, request->resource_path);
-                new_file->size = request->body_size;
-                new_file->contents = malloc(new_file->size);
-                memcpy(new_file->contents, request->body, new_file->size);
 
                 /** Writes the file to storage unit, an uninitialized list
                  *  is passed to hold any expelled file
@@ -121,7 +119,8 @@ worker_thread(void* args)
                 if (expelled_files == NULL) return -1;
 
                 int status = 0;
-                if ((result = storage_add_file(storage, client_fd, new_file, expelled_files)) > 0) {
+                if ((result = storage_add_file(storage, client_fd, request->resource_path, 
+                        request->body_size, request->body, expelled_files)) > 0) {
                     if (list_is_empty(expelled_files)) {
                         send_response(client_fd, INTERNAL_ERROR, status_message[INTERNAL_ERROR], "", 0, NULL);
                     } else {
@@ -139,6 +138,7 @@ worker_thread(void* args)
                     switch (result) {
                         // case EINVAL: status = INTERNAL_ERROR; break; // Better invalid argument status?
                         case E_NOPERM: status = UNAUTHORIZED; break;
+                        case E_NOTFOUND: status = NOT_FOUND; break;
                         case E_TOOBIG: status = FILE_TOO_BIG; break;
                     }
 

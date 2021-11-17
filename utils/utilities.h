@@ -14,6 +14,15 @@
 #define ONE_EIGHTH      ((int) (BITS_IN_int / 8))
 #define HIGH_BITS       ( ~((unsigned int)(~0) >> ONE_EIGHTH ))
 
+#define O_CREATE    (1 << 0)
+#define O_LOCK      (1 << 1)
+#define O_READ      (1 << 2)
+
+#define SET_FLAG(n, f) ((n) |= (f)) 
+#define CLR_FLAG(n, f) ((n) &= ~(f)) 
+#define TGL_FLAG(n, f) ((n) ^= (f)) 
+#define CHK_FLAG(n, f) ((n) & (f))
+
 #define MAX_PATH    1024
 #define MAX_NAME    64
 #define MAX_BUFFER  2048
