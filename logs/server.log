@@ -1,0 +1,28 @@
+****** SERVER STARTED ******
+> new connection from client 8
+[WORKER 4] open connection (client 8)
+worker.c:49: [ error ] send_response(): Success
+[WORKER 3] open file (file1)
+storage.c:116: Flag is O_CREATE
+[WORKER 2] open file (file2)
+storage.c:116: Flag is O_CREATE
+[WORKER 1] open file (file3)
+storage.c:116: Flag is O_CREATE
+[WORKER 0] open file (file4)
+storage.c:116: Flag is O_CREATE
+storage.c:127: dequeued file1
+storage.c:134: file [file1] was deleted during creation
+[WORKER 4] open file (file5)
+storage.c:116: Flag is O_CREATE
+storage.c:127: dequeued file2
+storage.c:134: file [file2] was deleted during creation
+[WORKER 3] write file (file1)
+[WORKER 2] write file (file2)
+[WORKER 1] write file (file3)
+[WORKER 0] write file (file4)
+[WORKER 4] write file (file5)
+[WORKER 3] delete file (file1)
+[WORKER 2] delete file (file2)
+[WORKER 1] delete file (file3)
+[WORKER 0] read file (full)
+[WORKER 4] close connection (client 8)

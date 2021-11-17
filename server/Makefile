@@ -2,12 +2,13 @@ CC := gcc
 
 ORIGIN = $(realpath ../)
 
-CFLAGS += -Wall -g -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -Wno-incompatible-pointer-types -Wno-int-conversion -Wno-int-to-void-pointer-cast -Wno-unused-variable
+CFLAGS += -Wall -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -Wno-incompatible-pointer-types \
+			-Wno-int-conversion -Wno-int-to-void-pointer-cast -Wno-unused-variable -D DEBUG
 INCLUDES = -I $(ORIGIN)
 
 TARGETS = server
 
-.PHONY = all clean cleanall 
+.PHONY = all clean cleanall debug build
 
 %.o: %.c %.h
 	$(CC) $(INCLUDES) $(CFLAGS) -c $< -o $@ 
@@ -15,10 +16,18 @@ TARGETS = server
 all: $(TARGETS)
 
 server: server.c storage.o worker.o
-	$(CC) $(INCLUDES) $(CFLAGS) -o $@ $^ -Wl,-rpath,$(ORIGIN)/libs -L $(ORIGIN)/libs -lprotocol -lconcurrent_queue -llinked_list -lhash_map -lpthread
+	$(CC) $(INCLUDES) $(CFLAGS) -o $@ $^ -Wl,-rpath,$(ORIGIN)/libs -L $(ORIGIN)/libs -lprotocol -lconcurrent_queue -llinked_list -lhash_map -lpthread -llogger
 
 clean:
 	rm -rf server
+
+debug: CFLAGS += -g -DDEBUG=1
+debug:
+	@make all
+
+build: CFLAGS += -O3 -DBUILD=1
+build:
+	@make all
 
 cleanall:
 	rm -rf server *.o *.dSYM

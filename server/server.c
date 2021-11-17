@@ -16,14 +16,15 @@
 
 #include "utils/concurrent_queue.h"
 #include "utils/protocol.h"
+#include "utils/utilities.h"
+#include "utils/logger.h"
 #include "server/storage.h"
 #include "server/server_config.h"
-#include "utils/utilities.h"
 #include "server/worker.h"
 
 
 storage_t *storage;
-FILE *logfile;
+FILE *storage_file;
 
 void
 cleanup()
@@ -34,8 +35,8 @@ cleanup()
 void 
 int_handler(int dummy) {
    printf("\nIn Interrupted Signal Handler\n");
-   storage_dump(storage, logfile);
-   fclose(logfile);
+   storage_dump(storage, storage_file);
+   fclose(storage_file);
    storage_destroy(storage);
    printf("Exiting...\n");
    exit(EXIT_SUCCESS);
@@ -45,8 +46,8 @@ void
 seg_handler(int dummy) 
 {
    printf("\nIn Segmentation Fault Signal Handler. ERRNO: %s\n", strerror(errno));
-   storage_dump(storage, logfile);
-   fclose(logfile);
+   storage_dump(storage, storage_file);
+   fclose(storage_file);
    storage_destroy(storage);
    printf("Exiting...\n");
    exit(EXIT_SUCCESS);
@@ -54,6 +55,15 @@ seg_handler(int dummy)
 int
 main(int argc, char const *argv[])
 {
+
+#ifdef DEBUG
+   log_init("/Users/jacopoceravolo/Desktop/FileStorageServer/logs/server.log");
+   set_log_level(LOG_DEBUG);
+#else
+   log_init(NULL);
+#endif
+
+
    /* Exit cleanup and basic signal handling */
 
    atexit(cleanup);
@@ -61,19 +71,17 @@ main(int argc, char const *argv[])
    signal(SIGINT, int_handler);
    signal(SIGSEGV, seg_handler);
 
-   /* Opens logfile */
+   /* Opens storage_file */
 
-   logfile = fopen("server_log.txt", "w+");
+   storage_file = fopen("/Users/jacopoceravolo/Desktop/FileStorageServer/logs/storage.txt", "w+");
 
    /* Initialize storage with size 16384 and 10 files */
 
    storage = storage_create(50000, 3);
    if (storage == NULL) {
-      printf("FATAL ERROR, storage could not be initialized\n");
+      log_error("storage could not be initialized\n");
       exit(EXIT_FAILURE);
    }
-
-   printf("Storage created\n");
 
    /* Opening the socket */
 
@@ -84,7 +92,7 @@ main(int argc, char const *argv[])
 
    socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
    if (socket_fd < 0) {
-      perror("socket() failed");
+      log_fatal("socket() failed");
       exit(EXIT_FAILURE);
    }
 
@@ -94,17 +102,15 @@ main(int argc, char const *argv[])
 
    rc = bind(socket_fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
    if (rc < 0) {
-      perror("bind() failed");
+      log_fatal("bind() failed");
       return -1;
    }
 
    rc = listen(socket_fd, 50);
    if (rc< 0) {
-      perror("listen() failed");
+      log_fatal("listen() failed");
       return -1;
    }
-
-   printf("Socket ready\n");
 
    /* Setting pipes and file descriptor set */
 
@@ -117,7 +123,7 @@ main(int argc, char const *argv[])
    FD_ZERO(&rdset);
 
    if (pipe(mw_pipe) != 0) {
-      perror("pipe()");
+      log_fatal("pipe()");
       return -1;
    }
 
@@ -133,7 +139,7 @@ main(int argc, char const *argv[])
    concurrent_queue_t *requests_queue;
    requests_queue = concurrent_queue_create(int_compare, NULL, print_int);
    if (requests_queue == NULL) {
-      printf("FATAL ERROR, dispatcher queue could not be initialized\n");
+      log_fatal("dispatcher queue could not be initialized\n");
       exit(EXIT_FAILURE);
    }
 
@@ -147,19 +153,19 @@ main(int argc, char const *argv[])
       worker_args->pipe_fd = mw_pipe[1];
       worker_args->requests = requests_queue;
       if (pthread_create(&workers[id], NULL, worker_thread, (void*)worker_args) != 0) {
-         printf("could not create thread\n");
+         log_fatal("could not create thread\n");
          exit(EXIT_FAILURE);
       }
    }
 
    /* Start accepting requests */
 
-   printf("Server can now accept connections\n");
+   log_info("****** SERVER STARTED ******\n");
    while (1) {
       
       rdset = set;
       if (select(fd_max+1, &rdset, NULL, NULL, NULL) == -1 && errno != EINTR) {
-	       perror("select");
+	       log_fatal("select");
 	       exit(-1);
 	   }
 
@@ -171,11 +177,11 @@ main(int argc, char const *argv[])
                
                client_fd = accept(socket_fd, (struct sockaddr*)NULL, NULL);
                if (client_fd < 0) {
-                  perror("accept() failed");
+                  log_fatal("accept() failed");
                   return -1;
                }
 
-               printf("Accepted new connection from client %d\n", client_fd);
+               log_debug("new connection from client %d\n", client_fd);
                FD_SET(client_fd, &set);
                if (client_fd > fd_max) fd_max = client_fd;
 
@@ -183,7 +189,7 @@ main(int argc, char const *argv[])
                void *tmp_fd;
                tmp_fd = (void*)fd;
                if (concurrent_queue_put(requests_queue, tmp_fd) != 0) {
-                  printf("ERROR, could not add fd %d to queue\n", fd);
+                  log_error("could not add fd %d to queue\n", fd);
                }
 
                FD_CLR(fd, &set);
@@ -199,7 +205,7 @@ main(int argc, char const *argv[])
             int new_fd;
 
 			   if( (read(mw_pipe[0], &new_fd, sizeof(int))) == -1 ) {
-			   	perror("read_pipe");
+			   	log_fatal("read_pipe");
 			   	return -1;
 			   } else{
 			   	if( new_fd != -1 ){ // reinserisco il fd tra quelli da ascoltare

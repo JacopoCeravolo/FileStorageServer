@@ -5,7 +5,7 @@ ORIGIN = $(realpath ../)
 CFLAGS += -Wall -g -Wno-pointer-to-int-cast -Wno-unused-variable
 INCLUDES = -I $(ORIGIN)
 
-TARGETS = libconcurrent_queue.so libhash_map.so liblinked_list.so libprotocol.so
+TARGETS = libconcurrent_queue.so libhash_map.so liblinked_list.so libprotocol.so liblogger.so
 
 .PHONY = all clean cleanall 
 
@@ -26,6 +26,9 @@ libhash_map.so: hash_map.o
 	$(CC) -shared -o $(ORIGIN)/libs/$@ $^
 
 liblinked_list.so: linked_list.o 
+	$(CC) -shared -o $(ORIGIN)/libs/$@ $^
+
+liblogger.so: logger.o 
 	$(CC) -shared -o $(ORIGIN)/libs/$@ $^
 
 libconcurrent_queue.so: concurrent_queue.o linked_list.o 

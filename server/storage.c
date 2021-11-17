@@ -2,6 +2,7 @@
 
 #include "server/storage.h"
 #include "utils/utilities.h"
+#include "utils/logger.h"
 
 
 /**
@@ -112,7 +113,7 @@ storage_open_file(storage_t *storage, int client_id, char *file_name, int flags)
     }
 
     if (CHK_FLAG(flags, O_CREATE)) {
-        printf("Flag is O_CREATE\n");
+        log_debug("Flag is O_CREATE\n");
 
         file_t *new_file = malloc(sizeof(file_t));
         strcpy(new_file->path, file_name);
@@ -123,14 +124,14 @@ storage_open_file(storage_t *storage, int client_id, char *file_name, int flags)
 
         if ((storage->no_of_files + 1) > storage->max_files) {
             removed_file_path = list_remove_head(storage->basic_fifo);
-            printf("dequeued %s\n", removed_file_path);
+            log_debug("dequeued %s\n", removed_file_path);
             removed_file = storage_remove_file(storage, removed_file_path);
             result = E_EXPELLED;
         }
         
         
         if (removed_file != NULL) {
-            printf("file [%s] was deleted during creation\n", removed_file_path);
+            log_debug("file [%s] was deleted during creation\n", removed_file_path);
         }
 
         storage->no_of_files++;
@@ -267,6 +268,7 @@ storage_FIFO_replace(storage_t *storage, int how_many, size_t required_size, lis
         removed_file = storage_remove_file(storage, removed_file_path);
         list_insert_tail(replaced_files, removed_file);
         files_removed++;
+        log_debug("file [%s] was deleted during creation\n", removed_file_path);
     }
 
     return files_removed;

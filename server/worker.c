@@ -7,6 +7,7 @@
 #include "server/server_config.h"
 #include "server/worker.h"
 #include "utils/protocol.h"
+#include "utils/logger.h"
 
 void 
 worker_thread(void* args)
@@ -30,7 +31,7 @@ worker_thread(void* args)
         request_t *request;
         request = recv_request(client_fd);
         if (request == NULL) {
-          printf("request could not be received, exiting\n");
+          log_fatal("request could not be received, exiting\n");
           exit(EXIT_FAILURE);
         }
 
@@ -40,12 +41,12 @@ worker_thread(void* args)
                 // As for now new connections are always accepted
                 // WHAT ELSE? Check server state (active, gracefull or brutal)
     
-                printf("OPEN CONNECTION [client %d]\n", client_fd);
+                log_info("[WORKER %d] open connection (client %d)\n", worker_id, client_fd);
                 int status = 0;
                 if (storage_add_client(storage, client_fd) != 0) status = INTERNAL_ERROR;
 
-                if (send_response(client_fd, status, status_message[status], "", 0, NULL) != 0) {
-                    printf("Error when sending response, %s\n", strerror(errno));
+                if (send_response(client_fd, status, status_message[status], request->resource_path, 0, NULL) != 0) {
+                    log_error("send_response(): %s\n", strerror(errno));
                 }
                 break;
             }
@@ -54,7 +55,7 @@ worker_thread(void* args)
                 // Basic end of connection, closes associated fd and writes -1 on pipe
                 // WHAT ELSE? Close and unlock all open files by client
     
-                printf("CLOSE CONNECTION [client %d]\n", client_fd);
+                log_info("[WORKER %d] close connection (client %d)\n", worker_id, client_fd);
                 /* if (storage_remove_client(storage, client_fd) != 0) {
                     printf("client %d was not removed from client table\n", client_fd);
                 } */
@@ -66,7 +67,7 @@ worker_thread(void* args)
                 // TODO: concurrent access to storage
                 // WHAT ELSE? Ensure all request components, check for availability and cache the file
     
-                printf("OPEN FILE [%s]\n", request->resource_path);
+                log_info("[WORKER %d] open file (%s)\n", worker_id, request->resource_path);
                 int result, status = 0;
                 if ((result = storage_open_file(storage, client_fd, request->resource_path, *(int*)request->body)) != 0) {
                     switch (result) {
@@ -82,7 +83,7 @@ worker_thread(void* args)
                 // TODO: concurrent access to storage
                 // WHAT ELSE? Ensure all request components
 
-                printf("CLOSE FILE [%s]\n", request->resource_path);
+                log_info("[WORKER %d] close file (%s)\n", worker_id, request->resource_path);
                 int status = 0;
                 if (storage_close_file(storage, client_fd, request->resource_path) != 0) {
                     switch (errno) {
@@ -99,7 +100,7 @@ worker_thread(void* args)
                 // TODO: concurrent access to storage
                 // WHAT ELSE? Ensure all request components, check for availability and cache the file
     
-                printf("WRITE FILE [%s]\n", request->resource_path);
+                log_info("[WORKER %d] write file (%s)\n", worker_id, request->resource_path);
     
                 /* Checks if the request contains any content */
 
@@ -116,7 +117,7 @@ worker_thread(void* args)
 
                 int result;
                 list_t *expelled_files = list_create(NULL, free_file, print_file);
-                if (expelled_files == NULL) return -1;
+                if (expelled_files == NULL) return;
 
                 int status = 0;
                 if ((result = storage_add_file(storage, client_fd, request->resource_path, 
@@ -151,7 +152,7 @@ worker_thread(void* args)
             }
             case READ_FILE: {
                 // TODO: concurrent access to storage
-                printf("READ FILE [%s]\n", request->resource_path);
+                log_info("[WORKER %d] read file (%s)\n", worker_id, request->resource_path);
     
                 file_t *file;
     
@@ -173,7 +174,7 @@ worker_thread(void* args)
                 // TODO: concurrent access to storage
                 // WHAT ELSE? Ensure all request components
 
-                printf("DELETE FILE [%s]\n", request->resource_path);
+                log_info("[WORKER %d] delete file (%s)\n", worker_id, request->resource_path);
                 int status = 0;
                 if (storage_remove_file(storage, request->resource_path) == NULL) {
                     switch (errno) {

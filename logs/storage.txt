@@ -9,7 +9,7 @@ NO OF FILES: 2
 
 **********************
 OPENED FILES MAP
-7 file1 file2 file3 file4 file5 
+8 file1 file2 file3 file4 file5 
 **********************
 
 **********************

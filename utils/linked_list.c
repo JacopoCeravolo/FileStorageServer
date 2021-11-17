@@ -145,7 +145,7 @@ list_remove_head(list_t *list)
 {
     if (list == NULL || list_is_empty(list)) {
         errno = EINVAL;
-        return -1;
+        return NULL;
     }
 
     node_t *tmp = list->head;
