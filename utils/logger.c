@@ -1,8 +1,20 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h> 
+#include <time.h>
+#include <sys/timeb.h>
 
 #include "logger.h"
+
+static char* 
+get_timestamp(char* buf) {
+    int bytes;
+    struct timeb start;
+    ftime(&start);
+    bytes = strftime(buf, 20, "%H:%M:%S", localtime(&start.time));
+    sprintf(&buf[bytes], ".%03u", start.millitm);
+    return buf;
+}
 
 void 
 log_init(const char* path) 
@@ -32,8 +44,10 @@ set_log_level(loglevel level)
 void 
 logfatal(const char *file, const int line, const char* format, ...) 
 {
+    char tmp[50] = { 0 };
     va_list args;
     va_start (args, format);
+    fprintf(fp, "%s ", get_timestamp(tmp));
     fprintf(fp, "%s:%d: [ fatal error ] ", file, line);
     vfprintf (fp, format, args);
     va_end (args);
@@ -44,8 +58,10 @@ void
 logerror(const char *file, const int line, const char* format, ...) 
 {
     if (log_level >= LOG_ERROR) {
+        char tmp[50] = { 0 };
         va_list args;
         va_start (args, format);
+        fprintf(fp, "%s ", get_timestamp(tmp));
         fprintf(fp, "%s:%d: [ error ] ", file, line);
         vfprintf (fp, format, args);
         va_end (args);
@@ -57,8 +73,10 @@ void
 loginfo(const char* format, ...) 
 {
     if (log_level >= LOG_INFO) {
+        char tmp[50] = { 0 };
         va_list args;
         va_start (args, format);
+        fprintf(fp, "%s ", get_timestamp(tmp));
         vfprintf (fp, format, args);
         va_end (args);
         fflush(fp);
@@ -69,8 +87,10 @@ void
 logwarning(const char *file, const int line, const char* format, ...) 
 {
     if (log_level >= LOG_WARNING) {
+        char tmp[50] = { 0 };
         va_list args;
         va_start (args, format);
+        fprintf(fp, "%s ", get_timestamp(tmp));
         fprintf(fp, "%s:%d: [ warning ] ", file, line);
         vfprintf (fp, format, args);
         va_end (args);
@@ -82,8 +102,10 @@ void
 logdebug(const char *file, const int line, const char* format, ...) 
 {
     if (log_level >= LOG_DEBUG) {
+        char tmp[50] = { 0 };
         va_list args;
         va_start (args, format);
+        fprintf(fp, "%s ", get_timestamp(tmp));
         fprintf(fp, "%s:%d: ", file, line);
         vfprintf (fp, format, args);
         va_end (args);

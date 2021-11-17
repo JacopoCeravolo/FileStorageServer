@@ -240,4 +240,5 @@ list_dump(list_t *list, FILE *stream)
         (list->print)(curr->data, stream);
         curr = curr->next;
     }
+    fprintf(stream, "\n");
 }

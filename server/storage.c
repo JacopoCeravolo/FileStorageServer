@@ -113,7 +113,7 @@ storage_open_file(storage_t *storage, int client_id, char *file_name, int flags)
     }
 
     if (CHK_FLAG(flags, O_CREATE)) {
-        log_debug("Flag is O_CREATE\n");
+        // log_debug("Flag is O_CREATE\n");
 
         file_t *new_file = malloc(sizeof(file_t));
         strcpy(new_file->path, file_name);
@@ -124,14 +124,14 @@ storage_open_file(storage_t *storage, int client_id, char *file_name, int flags)
 
         if ((storage->no_of_files + 1) > storage->max_files) {
             removed_file_path = list_remove_head(storage->basic_fifo);
-            log_debug("dequeued %s\n", removed_file_path);
+            // log_debug("dequeued %s\n", removed_file_path);
             removed_file = storage_remove_file(storage, removed_file_path);
             result = E_EXPELLED;
         }
         
         
         if (removed_file != NULL) {
-            log_debug("file [%s] was deleted during creation\n", removed_file_path);
+            // log_debug("file [%s] was deleted during creation\n", removed_file_path);
         }
 
         storage->no_of_files++;

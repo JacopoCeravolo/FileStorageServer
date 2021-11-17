@@ -1,0 +1,37 @@
+18:39:37.405 
+****** START ******
+
+18:39:37.405 client opens connection
+18:39:37.406  eceived: 0 : Operation successfull
+18:39:37.406 client opening file file500
+18:39:37.406 received: 0 : Operation successfull
+18:39:37.406 client writing file file500
+18:39:37.409 received: 0 : Operation successfull
+18:39:37.409 client opening file file500_copy
+18:39:37.409 received: 0 : Operation successfull
+18:39:37.409 client writing file file500_copy
+18:39:37.414 received: 0 : Operation successfull
+18:39:37.414 client opening file longfile
+18:39:37.414 received: 0 : Operation successfull
+18:39:37.414 client writing file longfile
+18:39:37.419 received: 0 : Operation successfull
+18:39:37.419 client opening file full
+18:39:37.419 received: 0 : Operation successfull
+18:39:37.419 client writing file full
+18:39:37.428 received: 0 : Operation successfull
+18:39:37.428 client opening file Makefile
+18:39:37.428 received: 8 : Some files were expelled
+18:39:37.428 client writing file Makefile
+18:39:37.433 received: 0 : Operation successfull
+18:39:37.433 client opening file file5
+18:39:37.433 received: 8 : Some files were expelled
+18:39:37.433 client writing file file5
+18:39:37.437 received: 8 : Some files were expelled
+18:39:37.437 1 files were expelled
+18:39:37.438 received: 8 : Some files were expelled :  125179
+18:39:37.438 client reading file file2
+18:39:37.438 received: 0 : Operation successfull : 597
+18:39:37.438 client closing connection
+18:39:37.438 
+****** END ******
+

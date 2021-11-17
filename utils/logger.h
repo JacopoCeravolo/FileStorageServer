@@ -31,11 +31,11 @@ void logdebug(const char *file, const int line, const char *fmt, ...);
 void flush_log();
 void close_log();
 
-#define log_fatal(fmt, args...) logfatal(__FILE__, __LINE__, fmt, ##args); flush_log();
-#define log_error(fmt, args...) logerror(__FILE__, __LINE__, fmt, ##args); flush_log();
-#define log_info(fmt, args...) loginfo(fmt, ##args); flush_log();
-#define log_warning(fmt, args...) logwarning(__FILE__, __LINE__, fmt, ##args); flush_log();
-#define log_debug(fmt, args...) logdebug(__FILE__, __LINE__, fmt, ##args); flush_log();
+#define log_fatal(fmt, args...) logfatal(__FILE__, __LINE__, fmt, ##args); 
+#define log_error(fmt, args...) logerror(__FILE__, __LINE__, fmt, ##args); 
+#define log_info(fmt, args...) loginfo(fmt, ##args); 
+#define log_warning(fmt, args...) logwarning(__FILE__, __LINE__, fmt, ##args);
+#define log_debug(fmt, args...) logdebug(__FILE__, __LINE__, fmt, ##args); 
 
 
 #endif

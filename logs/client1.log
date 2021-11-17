@@ -1,0 +1,21 @@
+18:39:37.417 
+****** START ******
+
+18:39:37.417 client opens connection
+18:39:37.417 received: 0 : Operation successfull
+18:39:37.417 client opening file file1
+18:39:37.417 received: 0 : Operation successfull
+18:39:37.417 client writing file file1
+18:39:37.421 received: 0 : Operation successfull
+18:39:37.421 client opening file file2
+18:39:37.421 received: 8 : Some files were expelled
+18:39:37.421 client writing file file2
+18:39:37.427 received: 0 : Operation successfull
+18:39:37.427 client opening file file3
+18:39:37.427 received: 8 : Some files were expelled
+18:39:37.428 client writing file file3
+18:39:37.433 received: 0 : Operation successfull
+18:39:37.433 client closing connection
+18:39:37.433 
+****** END ******
+
