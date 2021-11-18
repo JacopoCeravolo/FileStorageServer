@@ -10,10 +10,15 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <time.h>
 
 #include "utils/utilities.h"
 #include "utils/protocol.h"
 #include "utils/logger.h"
+
+#ifndef PRINT
+#define PRINT 0
+#endif
 
 int socket_fd;
 
@@ -26,39 +31,39 @@ cleanup()
 void
 open_connection(int socket_fd)
 {
-    log_info("client opens connection\n");
+    if (PRINT) log_info("client opens connection\n");
     send_request(socket_fd, OPEN_CONNECTION, "", 0, NULL);
     response_t *r = recv_response(socket_fd);
-    log_info("received: %d : %s\n", r->status, r->status_phrase);
+    if (PRINT) log_info("received: %d : %s\n", r->status, r->status_phrase);
     //free_response(r);
 }
 
 void
 read_file(int socket_fd, char *file)
 {
-    log_info("client reading file %s\n", file);
+    if (PRINT) log_info("client reading file %s\n", file);
     send_request(socket_fd, READ_FILE, file, 0, NULL);
     response_t *r = recv_response(socket_fd);
-    log_info("received: %d : %s : %lu\n", r->status, r->status_phrase, r->body_size);
-    // if (r->body_size != 0) log_info("%s\n", (char*)r->body);
+    if (PRINT) log_info("received: %d : %s : %lu\n", r->status, r->status_phrase, r->body_size);
+    // if (r->body_size != 0) if (PRINT) log_info("%s\n", (char*)r->body);
     //free_response(r);
 }
 
 void
 remove_file(int socket_fd, char *file)
 {
-    log_info("client removing file %s\n", file);
+    if (PRINT) log_info("client removing file %s\n", file);
     send_request(socket_fd, DELETE_FILE, file, 0, NULL);
     response_t *r = recv_response(socket_fd);
-    log_info("received: %d : %s : %lu\n", r->status, r->status_phrase, r->body_size);
-    if (r->body_size != 0) log_info("%s\n", (char*)r->body);
+    if (PRINT) log_info("received: %d : %s : %lu\n", r->status, r->status_phrase, r->body_size);
+    if (r->body_size != 0) if (PRINT) log_info("%s\n", (char*)r->body);
     //free_response(r);
 }
 
 void 
 write_file(int socket_fd, char *file)
 {
-    log_info("client writing file %s\n", file);
+    if (PRINT) log_info("client writing file %s\n", file);
     FILE *file_ptr;
         file_ptr = fopen(file, "rb");
         if (file_ptr == NULL) {
@@ -93,17 +98,17 @@ write_file(int socket_fd, char *file)
     
     send_request(socket_fd, WRITE_FILE, file, file_size, file_data);
     response_t *r = recv_response(socket_fd);
-    log_info("received: %d : %s\n", r->status, r->status_phrase);
+    if (PRINT) log_info("received: %d : %s\n", r->status, r->status_phrase);
 
     if (r->status == FILES_EXPELLED) {
         int n_files = *(int*)r->body;
-        log_info("%d files were expelled\n", n_files);
+        if (PRINT) log_info("%d files were expelled\n", n_files);
 
         while (n_files > 0) {
             response_t *r1 = recv_response(socket_fd);
             if (r1->status == INTERNAL_ERROR) break;
-            log_info("received: %d : %s : %lu\n", r1->status, r1->status_phrase, r1->body_size);
-            //log_info("\n%s\n\n%s\n\n", r1->file_path, (char*)r1->body);
+            if (PRINT) log_info("received: %d : %s : %lu\n", r1->status, r1->status_phrase, r1->body_size);
+            //if (PRINT) log_info("\n%s\n\n%s\n\n", r1->file_path, (char*)r1->body);
             n_files--;
         }
     }
@@ -115,27 +120,27 @@ open_file(int socket_fd, char * file)
 {
     int flags = 0;
     SET_FLAG(flags, O_CREATE);
-    log_info("client opening file %s\n", file);
+    if (PRINT) log_info("client opening file %s\n", file);
     send_request(socket_fd, OPEN_FILE, file, sizeof(int), &flags);
     response_t *r = recv_response(socket_fd);
-    log_info("received: %d : %s\n", r->status, r->status_phrase);
+    if (PRINT) log_info("received: %d : %s\n", r->status, r->status_phrase);
     //free_response(r);
 }
 
 void
 close_file(int socket_fd, char * file)
 {
-    log_info("client closing file %s\n", file);
+    if (PRINT) log_info("client closing file %s\n", file);
     send_request(socket_fd, CLOSE_FILE, file, 0, NULL);
     response_t *r = recv_response(socket_fd);
-    log_info("received: %d : %s\n", r->status, r->status_phrase);
+    if (PRINT) log_info("received: %d : %s\n", r->status, r->status_phrase);
     //free_response(r);
 }
 
 void
 close_connection(int socket_fd)
 {
-    log_info("client closing connection\n");
+    if (PRINT) log_info("client closing connection\n");
     send_request(socket_fd, CLOSE_CONNECTION, "", 0, NULL);
 }
 
@@ -152,6 +157,7 @@ int main(int argc, char const *argv[])
     atexit(cleanup);
     int result;
     struct sockaddr_un serveraddr;
+    srand(time(NULL));
 
     socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (socket_fd < 0) return -1;
@@ -163,34 +169,46 @@ int main(int argc, char const *argv[])
     result = connect(socket_fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)); // Use SUN_LEN
     if (result < 0) return -1;
 
-    log_info("\n****** START ******\n\n");
+    if (PRINT) log_info("\n****** START ******\n\n");
 
     open_connection(socket_fd);
 
     /* Open file */
 
-    
+    do {
      open_file(socket_fd, "file1");
-     // write_file(socket_fd, "file1");
+     write_file(socket_fd, "file1");
+     sleep(rand() % 3);
 
-    
      open_file(socket_fd, "file2");
-     // write_file(socket_fd, "file2");
+     write_file(socket_fd, "file2");
+     sleep(rand() % 3);
 
     
      open_file(socket_fd, "file3");
-     // write_file(socket_fd, "file3");
+     write_file(socket_fd, "file3");
+     sleep(rand() % 3);
+     
 
      open_file(socket_fd, "file4");
-     // write_file(socket_fd, "file4");
+     write_file(socket_fd, "file4");
+     sleep(rand() % 3);
 
-    
      open_file(socket_fd, "file5");
-     open_file(socket_fd, "full");
+     write_file(socket_fd, "file5");
+     sleep(rand() % 3);
+
      open_file(socket_fd, "longfile");
-     open_file(socket_fd, "Makefile");
-     open_file(socket_fd, "file1");
-     open_file(socket_fd, "longfile");
+     write_file(socket_fd, "longfile");
+     sleep(rand() % 3);
+
+     open_file(socket_fd, "file500");
+     write_file(socket_fd, "file500");
+     sleep(rand() % 3);
+
+    } while(0);
+    
+
 
      // write_file(socket_fd, "file5");
 
@@ -237,7 +255,7 @@ int main(int argc, char const *argv[])
 
     close_connection(socket_fd);
 
-    log_info("\n****** END ******\n\n");
+    if (PRINT) log_info("\n\n****** END ******\n\n");
 
     close_log();
 

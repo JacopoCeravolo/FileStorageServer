@@ -23,17 +23,20 @@ worker_thread(void* args)
    free(args);
 
     int error;
-    while (1) {
+    while (exit_signal == 0) {
 
         int client_fd;
-
+  
         client_fd = (int)concurrent_queue_get(requests);
+        
 
         request_t *request;
         request = recv_request(client_fd);
         if (request == NULL) {
-          log_fatal("request could not be received, exiting\n");
-          exit(EXIT_FAILURE);
+          log_error("request could not be received: %s\n", strerror(errno));
+          close(client_fd);
+          client_fd = -1;
+          goto _write_pipe;
         }
 
         switch (request->type) {
@@ -43,8 +46,15 @@ worker_thread(void* args)
                 log_info("[%s] open connection (client %d)\n", worker_name, client_fd);
 
                 int status = 0;
-                if (storage_add_client(storage, client_fd) != 0) {
-                    log_error("[%s] could not add client %d\n", worker_name, client_fd);
+                list_t *files_opened_by_client; 
+                files_opened_by_client = list_create(string_compare, NULL, string_print);
+                if (files_opened_by_client == NULL) {
+                    log_fatal("could not create opened file list: %s\n", strerror(errno));
+                    status = INTERNAL_ERROR;
+                }
+
+                if (hash_map_insert(storage->opened_files, client_fd, files_opened_by_client) != 0) {
+                    log_fatal("could not add opened file list: %s\n", strerror(errno));
                     status = INTERNAL_ERROR;
                 }
 
@@ -56,6 +66,7 @@ worker_thread(void* args)
     
                 log_info("[%s] close connection (client %d)\n", worker_name, client_fd);
 
+                hash_map_remove(storage->opened_files, client_fd);
                 /* if (storage_remove_client(storage, client_fd) != 0) {
                     printf("client %d was not removed from client table\n", client_fd);
                 } */
@@ -64,6 +75,7 @@ worker_thread(void* args)
                 client_fd = -1;
                 break;
             }
+            
             case OPEN_FILE: {
                 // TODO: concurrent access to storage
                 // WHAT ELSE? Ensure all request components, check for availability and cache the file
@@ -87,9 +99,15 @@ worker_thread(void* args)
 
                     log_info("[%s] create file (%s)\n", worker_name, request->resource_path);
 
-                    file_t *new_file = malloc(sizeof(file_t));
+                    if (hash_map_get(storage->files, request->resource_path) != NULL) {
+                        send_response(client_fd, FILE_EXISTS, status_message[FILE_EXISTS], request->resource_path, 0, NULL);
+                        break;
+                    }
+
+                    file_t *new_file = calloc(1, sizeof(file_t));
                     strcpy(new_file->path, request->resource_path);
                     new_file->size = 0;
+                    new_file->fresh = 1;
 
                     /* Checks if a file should be expelled to make place for the new one */
                     list_t *expelled_files = list_create(NULL, free_file, NULL);
@@ -107,7 +125,6 @@ worker_thread(void* args)
                         file_t *removed_file = storage_remove_file(storage, removed_file_path);
                         list_insert_tail(expelled_files, removed_file); 
 
-                        
                         status = FILES_EXPELLED;
 
                         file_t *expelled = (file_t*)list_remove_head(expelled_files);
@@ -121,7 +138,9 @@ worker_thread(void* args)
 
                     /* At this point we should be able to safely add the file */
 
-                    storage_add1_file(storage, new_file);
+                    hash_map_insert(storage->files, new_file->path, new_file);
+                    list_insert_tail(storage->basic_fifo, new_file->path);
+                    storage->no_of_files++;
                     list_destroy(expelled_files);
                 }
 
@@ -130,36 +149,38 @@ worker_thread(void* args)
 
                 /* Adds the file to list of files opened by client */
 
-                list_insert_tail(files_opened_by_client, request->resource_path);
+                char filename[MAX_NAME];
+                strcpy(filename, request->resource_path);
+                list_insert_tail(files_opened_by_client, filename);
                 hash_map_insert(storage->opened_files, client_fd, files_opened_by_client);
     
                 send_response(client_fd, status, status_message[status], "", 0, NULL);
 
                 break;
             }
+            
             case CLOSE_FILE: {
                 // TODO: concurrent access to storage
                 // WHAT ELSE? Ensure all request components
 
-                log_info("[%s] close file (%s)\n", worker_name, request->resource_path);
-                int status = 0;
-                if (storage_close_file(storage, client_fd, request->resource_path) != 0) {
-                    switch (errno) {
-                        case ENOMEM: {
-                            log_fatal("[%s] reported out of memory\n", worker_name);
-                            status = INTERNAL_ERROR; break;
-                        }
-                        case ENOENT: {
-                            log_error("[%s] file (%s) wasn't found\n", worker_name, request->resource_path);
-                            status = NOT_FOUND; break;
-                        }
-                    }
+                int status = 0; // will be the final response status
+
+                list_t *files_opened_by_client; 
+                files_opened_by_client = (list_t*)hash_map_get(storage->opened_files, client_fd);
+                if (files_opened_by_client == NULL) {
+                    log_error("opened files list not recoverable\n");
+                    // exit?
                 }
 
+                if (list_remove_element(files_opened_by_client, request->resource_path) != 0)
+                    status = NOT_FOUND;
+
+                hash_map_insert(storage->opened_files, client_fd, files_opened_by_client);
                 send_response(client_fd, status, status_message[status], request->resource_path, 0, NULL);
 
                 break;
             }
+            
             case WRITE_FILE: {
                 // TODO: concurrent access to storage
                 // WHAT ELSE? Ensure all request components, check for availability and cache the file
@@ -171,67 +192,71 @@ worker_thread(void* args)
                 if (request->body_size == 0 || request->body == NULL) {
                     log_error("[%s] body of message is missing\n", worker_name);
                     send_response(client_fd, MISSING_BODY, status_message[MISSING_BODY], "", 0, NULL);
+                    break;
                 }
 
+
                 /* Creates the file */
+                file_t *file = storage_get_file(storage, client_fd, request->resource_path);
+                if (file == NULL) {
+                    send_response(client_fd, NOT_FOUND, status_message[NOT_FOUND], request->resource_path, 0, NULL);
+                    break;
+                }
 
+                if (file->fresh == 0) {
+                    send_response(client_fd, FILE_EXISTS, status_message[FILE_EXISTS], request->resource_path, 0, NULL);
+                    break;
+                }
 
-                /** Writes the file to storage unit, an uninitialized list
-                 *  is passed to hold any expelled file
-                 */
+                file->fresh = 0;
+                file->size = request->body_size;
+                file->contents = calloc(1, file->size);
+                memcpy(file->contents, request->body, file->size);
 
-                int result;
-                list_t *expelled_files = list_create(NULL, free_file, print_file);
-                if (expelled_files == NULL) return;
+                /* Checks if a file should be expelled to make place for the new one */
+                list_t *expelled_files = list_create(NULL, free_file, NULL);
+                if (expelled_files == NULL) {
+                    log_fatal("[%s] list_create failed: %s\n", worker_name, strerror(errno));
+                    send_response(client_fd, INTERNAL_ERROR, status_message[INTERNAL_ERROR], 
+                                    "", 0, NULL);
+                    exit(EXIT_FAILURE);
+                    // exit?
+                }
 
-                int status = 0;
-                if ((result = storage_add_file(storage, client_fd, request->resource_path, 
-                        request->body_size, request->body, expelled_files)) > 0) {
-                    if (list_is_empty(expelled_files)) {
-                        log_error("[%s] %d files were expelled but could not be recovered\n", worker_name, result);
-                        send_response(client_fd, INTERNAL_ERROR, status_message[INTERNAL_ERROR], "", 0, NULL);
-                    } else {
-                        log_info("[%s] %d files were expelled writing (%s)\n", worker_name, result, request->resource_path);
-                        send_response(client_fd, FILES_EXPELLED, status_message[FILES_EXPELLED], "", sizeof(int), &result);
+                // int no_expelled = storage_FIFO_replace(storage, 0, request->body_size, expelled_files);
+                int no_expelled = 0;
+                if (no_expelled) {
+                    /* if (no_expelled > storage->max_files - 1) {
+                            send_response(client_fd, INTERNAL_ERROR, status_message[INTERNAL_ERROR], "", 0, NULL);
+                            exit(EXIT_FAILURE);
+                    } */
+                    while (no_expelled > 0) {
 
-                        while (result > 0) {
-                            file_t *expelled = (file_t*)list_remove_head(expelled_files);
-                            if (expelled == NULL) {
-                                log_error("[%s] a file was expelled but could not be recovered\n", worker_name);
-                                send_response(client_fd, INTERNAL_ERROR, status_message[INTERNAL_ERROR], "", 0, NULL);
-                                break;
-                            }
+                        file_t *expelled = (file_t*)list_remove_head(expelled_files);
+                        if (expelled == NULL) {
+                            log_error("[%s] a file was expelled but could not be recovered\n", worker_name);
+                            send_response(client_fd, INTERNAL_ERROR, status_message[INTERNAL_ERROR], "", 0, NULL);
+                        } else {
                             log_info("[%s] sending expelled file (%s)\n", worker_name, expelled->path);
                             send_response(client_fd, FILES_EXPELLED, status_message[FILES_EXPELLED], expelled->path, 
                                             expelled->size, expelled->contents);
-                            result--;
                         }
+                        
+                        no_expelled--;
                     }
-                } else {
-                    // error checking
-                    switch (result) {
-                        // case EINVAL: status = INTERNAL_ERROR; break; // Better invalid argument status?
-                        case E_NOPERM: {
-                            status = UNAUTHORIZED; break;
-                            log_error("[%s] client %d doesn't have permission to write (%s)\n", worker_name, client_fd, request->resource_path);
-                        } 
-                        case E_NOTFOUND: {
-                            status = NOT_FOUND; break;
-                            log_error("[%s] file (%s) could not be found\n", worker_name, request->resource_path);
-                        } 
-                        case E_TOOBIG: {
-                            status = FILE_TOO_BIG; break;
-                            log_error("[%s] file (%s) exceeds storage total capacity\n", worker_name, request->resource_path);
-                        } 
-                    }
-
-                    send_response(client_fd, status, status_message[status], request->resource_path, 0, NULL);
                 }
+
+                hash_map_insert(storage->files, file->path, file);
+                storage->current_size += file->size;
+                list_destroy(expelled_files);
+                send_response(client_fd, SUCCESS, status_message[SUCCESS], "", 0, NULL);
                 break;
             }
+
             case WRITE_DIRECTORY: {
                 break;
             }
+
             case READ_FILE: {
                 // TODO: concurrent access to storage
                 log_info("[%s] read file (%s)\n", worker_name, request->resource_path);
@@ -243,23 +268,25 @@ worker_thread(void* args)
                     log_error("[%s] file (%s) could not be found\n", worker_name, request->resource_path);
                     send_response(client_fd, NOT_FOUND, status_message[NOT_FOUND], request->resource_path, 0, NULL);
                 } else {
-                    /* reading_buffer = malloc(file->size);
-                    memcpy(reading_buffer, file->contents, file->size); */
                     send_response(client_fd, SUCCESS, status_message[SUCCESS], file->path, file->size, file->contents);
                 }
     
                 break;
             }
+
             case READ_N_FILES: {
                 break;
             }
-            case DELETE_FILE: {
+
+            case DELETE_FILE: { // NOT WORKING
                 // TODO: concurrent access to storage
                 // WHAT ELSE? Ensure all request components
 
                 log_info("[%s] delete file (%s)\n", worker_name, request->resource_path);
+                
                 int status = 0;
-                if (storage_remove_file(storage, request->resource_path) == NULL) {
+                file_t *to_remove;
+                if ((to_remove = storage_remove_file(storage, request->resource_path)) == NULL) {
                     switch (errno) {
                         // Will be more
                         case ENOENT: {
@@ -267,20 +294,26 @@ worker_thread(void* args)
                             status = NOT_FOUND; break; 
                         }
                     }
+                } else {
+                    // free_file(to_remove);
                 }
 
-                send_response(client_fd, status, status_message[status], request->resource_path, 0, NULL);
+                send_response(client_fd, status, status_message[status], "", 0, NULL);
                 break;
             }
+
             case LOCK_FILE: {
                 break;
             }
+
             case UNLOCK_FILE: {
                 break;
             }
         }     
-    
+_write_pipe:  
         write(pipe_fd, &client_fd, sizeof(int));
-        // if (request) free_request(request);
+        free_request(request);
     }
+
+    log_info("[%s] terminating\n", worker_name);
 }

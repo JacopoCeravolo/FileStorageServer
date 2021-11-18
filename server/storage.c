@@ -25,7 +25,7 @@ storage_add1_file(storage_t *storage, file_t *file)
 storage_t*
 storage_create(size_t max_size, size_t max_files)
 {
-    storage_t *storage = malloc(sizeof(storage_t));
+    storage_t *storage = calloc(1, sizeof(storage_t));
     if (storage == NULL) {
         errno = ENOMEM;
         return NULL;
@@ -43,7 +43,7 @@ storage_create(size_t max_size, size_t max_files)
         return NULL;
     }
 
-    storage->opened_files = hash_map_create(200, int_hash, int_compare, NULL, list_destroy);
+    storage->opened_files = hash_map_create(500, int_hash, int_compare, NULL, list_destroy);
     if (storage->opened_files == NULL) {
         hash_map_destroy(storage->files);
         free(storage);
@@ -74,9 +74,13 @@ storage_create(size_t max_size, size_t max_files)
 int
 storage_destroy(storage_t *storage)
 {
+    log_debug("deallocating file table\n");
     if (storage->files) hash_map_destroy(storage->files);
+    log_debug("deallocating client table\n");
     if (storage->opened_files) hash_map_destroy(storage->opened_files);
+    log_debug("deallocating FIFO queue\n");
     if (storage->basic_fifo) list_destroy(storage->basic_fifo);
+    log_debug("deallocating storage unit\n");
     if (storage) free(storage);
     return 0;
 }
@@ -124,7 +128,7 @@ storage_open_file(storage_t *storage, int client_id, char *file_name, int flags)
     if (CHK_FLAG(flags, O_CREATE)) {
         // log_debug("Flag is O_CREATE\n");
 
-        file_t *new_file = malloc(sizeof(file_t));
+        file_t *new_file = calloc(1, sizeof(file_t));
         strcpy(new_file->path, file_name);
         new_file->size = 0;
 
@@ -199,7 +203,7 @@ storage_add_file(storage_t *storage, int client_id, char *file_name, size_t size
     /* Creates the file */
 
     file->size = size;
-    file->contents = malloc(size);
+    file->contents = calloc(1, size);
     memcpy(file->contents, contents, size);
 
     /* Make space for the file */
@@ -324,6 +328,7 @@ void
 free_file(void *e) 
 {
     file_t *f = (file_t*)e;
+    log_debug("deallocating file (%s)\n", f->path);
     free(f->contents);
     free(f);
 }

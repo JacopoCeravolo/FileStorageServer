@@ -2,7 +2,7 @@ CC := gcc
 
 ORIGIN = $(realpath ../)
 
-CFLAGS += -Wall -g -Wno-pointer-to-int-cast -Wno-unused-variable -D DEBUG
+CFLAGS += -Wall -g -Wno-pointer-to-int-cast -Wno-unused-variable -D DEBUG -D PRINT=1
 INCLUDES = -I $(ORIGIN)
 
 TARGETS = client1 client2

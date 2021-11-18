@@ -42,6 +42,7 @@ typedef enum {
     MISSING_BODY        = 6,
     FILE_TOO_BIG        = 7,
     FILES_EXPELLED      = 8,
+    FILE_EXISTS         = 9,
     
 } response_code;
 
@@ -84,7 +85,7 @@ typedef struct _response_t {
  * Messages corresponding to a
  * certain response status
  */
-static char status_message[9][128] = {
+static char status_message[10][128] = {
     "Operation successfull",
     "Connection accepted",
     "Internal server error",
@@ -93,7 +94,8 @@ static char status_message[9][128] = {
     "Unauthorized access",
     "Missing message body",
     "File exceeds maximum space",
-    "Some files were expelled"
+    "Some files were expelled",
+    "File already exists"
 };
 
 

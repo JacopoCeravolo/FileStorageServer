@@ -6,7 +6,7 @@
 concurrent_queue_t*
 concurrent_queue_create(bool cmp(void*, void*), void free_fun(void*), void print(void*, FILE*))
 {
-    concurrent_queue_t *queue = malloc(sizeof(concurrent_queue_t));
+    concurrent_queue_t *queue = calloc(1, sizeof(concurrent_queue_t));
     if (queue == NULL) {
         errno = ENOMEM;
         return NULL;
@@ -32,10 +32,11 @@ concurrent_queue_create(bool cmp(void*, void*), void free_fun(void*), void print
 int
 concurrent_queue_destroy(concurrent_queue_t *queue)
 {
+    printf("still waiting: %d\n", queue->q_size);
     list_destroy(queue->elems);
 
     pthread_mutex_destroy(&(queue->q_lock));
-    pthread_cond_destroy(&(queue->q_cond));
+    // pthread_cond_destroy(&(queue->q_cond));
 
     free(queue);
 

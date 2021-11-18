@@ -14,6 +14,8 @@
 #include <fcntl.h>
 #include <pthread.h>
 
+#define EXTERN
+
 #include "utils/concurrent_queue.h"
 #include "utils/protocol.h"
 #include "utils/utilities.h"
@@ -22,9 +24,14 @@
 #include "server/server_config.h"
 #include "server/worker.h"
 
+#define N_THREADS    8
+#define MAX_SIZE     128000000
+#define MAX_FILES    1000
+#define MAX_BACKLOG  200
 
-storage_t *storage;
 FILE *storage_file;
+concurrent_queue_t *requests_queue;
+pthread_t workers[N_THREADS];
 
 void
 cleanup()
@@ -38,6 +45,13 @@ int_handler(int dummy) {
    storage_dump(storage, storage_file);
    fclose(storage_file);
    storage_destroy(storage);
+   exit_signal = 1;
+   concurrent_queue_destroy(requests_queue);
+   printf("Threads notified\n");
+   /* for (size_t i = 0; i < N_THREADS; i++) {
+      pthread_join(workers[i], NULL);
+   } */
+   sleep(3);
    printf("Exiting...\n");
    exit(EXIT_SUCCESS);
 }
@@ -65,7 +79,7 @@ main(int argc, char const *argv[])
 
 
    /* Exit cleanup and basic signal handling */
-
+   exit_signal = 0;
    atexit(cleanup);
    signal(SIGPIPE, SIG_IGN);
    signal(SIGINT, int_handler);
@@ -77,7 +91,7 @@ main(int argc, char const *argv[])
 
    /* Initialize storage with size 16384 and 10 files */
 
-   storage = storage_create(5000, 2);
+   storage = storage_create(MAX_SIZE, MAX_FILES);
    if (storage == NULL) {
       log_error("storage could not be initialized\n");
       exit(EXIT_FAILURE);
@@ -106,7 +120,7 @@ main(int argc, char const *argv[])
       return -1;
    }
 
-   rc = listen(socket_fd, 50);
+   rc = listen(socket_fd, MAX_BACKLOG);
    if (rc< 0) {
       log_fatal("listen() failed");
       return -1;
@@ -136,7 +150,6 @@ main(int argc, char const *argv[])
 
    /* Initializing dispatcher->worker queue */
 
-   concurrent_queue_t *requests_queue;
    requests_queue = concurrent_queue_create(int_compare, NULL, print_int);
    if (requests_queue == NULL) {
       log_fatal("dispatcher queue could not be initialized\n");
@@ -145,10 +158,8 @@ main(int argc, char const *argv[])
 
    /* Starting all workers */
 
-   pthread_t *workers = malloc(sizeof(pthread_t) * 5);
-
-   for (int id = 0; id < 5; id++) {
-      worker_arg_t *worker_args = malloc(sizeof(worker_arg_t));
+   for (int id = 0; id < N_THREADS; id++) {
+      worker_arg_t *worker_args = calloc(1, sizeof(worker_arg_t));
       worker_args->worker_id = id;
       worker_args->pipe_fd = mw_pipe[1];
       worker_args->requests = requests_queue;

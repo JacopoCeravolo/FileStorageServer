@@ -17,7 +17,7 @@
 typedef struct _file_t {
 
     /* File identifier */
-    size_t  descriptor;
+    int     fresh;
     /* Unique file path */
     char    path[MAX_PATH];
     /* File size in bytes */

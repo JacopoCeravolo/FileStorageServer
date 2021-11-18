@@ -20,7 +20,7 @@ hash_map_t*
 hash_map_create(int n_buckets, size_t (*hash_function)(void*), bool (*key_cmp)(void*, void*), 
                 void (*free_key)(void*), void (*free_value)(void*))
 {
-    hash_map_t *hmap = malloc(sizeof(hash_map_t));
+    hash_map_t *hmap = calloc(1, sizeof(hash_map_t));
     if (hmap == NULL) {
         errno = ENOMEM;
         return NULL;
@@ -99,7 +99,7 @@ hash_map_insert(hash_map_t *hmap, void* key, void* value)
     }
 
     if (entry == NULL) {
-        entry = malloc(sizeof(hash_map_entry_t));
+        entry = calloc(1, sizeof(hash_map_entry_t));
         if (entry == NULL) {
             errno = ENOMEM;
             return -1;
@@ -156,6 +156,8 @@ hash_map_remove(hash_map_t *hmap, void *key)
     }
 
     hmap->buckets[hashed_key] = NULL;
+    hmap->free_key(entry->key);
+    hmap->free_value(entry->value);
     free(entry);
     return 0;
 }

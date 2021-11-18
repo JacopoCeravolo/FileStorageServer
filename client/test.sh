@@ -5,8 +5,11 @@ terminate(){
     exit
 }
 
-./client1 /Users/jacopoceravolo/Desktop/FileStorageServer/logs/client1.log &
-echo "Started client 1"
+for i in {0..3}
+do
+    ./client1 /Users/jacopoceravolo/Desktop/FileStorageServer/logs/client$i.log &
+  echo "Started client $i"
+done
 
-./client2 /Users/jacopoceravolo/Desktop/FileStorageServer/logs/client2.log &
-echo "Started client 2"
+
+

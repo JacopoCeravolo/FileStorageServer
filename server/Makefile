@@ -2,7 +2,7 @@ CC := gcc
 
 ORIGIN = $(realpath ../)
 
-CFLAGS += -Wall -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -Wno-incompatible-pointer-types \
+CFLAGS += -g -Wall -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -Wno-incompatible-pointer-types \
 			-Wno-int-conversion -Wno-int-to-void-pointer-cast -Wno-unused-variable -D DEBUG
 INCLUDES = -I $(ORIGIN)
 

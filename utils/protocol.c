@@ -15,7 +15,7 @@ request_t*
 new_request(request_code type, char *resource_path, size_t body_size, void* body)
 {
     request_t *request;
-    request = (request_t*)malloc(sizeof(request_t));
+    request = (request_t*)calloc(1, sizeof(request_t));
     if (request == NULL) {
         errno = ENOMEM;
         return NULL;
@@ -26,7 +26,7 @@ new_request(request_code type, char *resource_path, size_t body_size, void* body
 
     if (body_size != 0) {
         request->body_size = body_size;
-        request->body = malloc(body_size);
+        request->body = calloc(1, body_size);
         if (request->body == NULL) {
             free(request);
             errno = ENOMEM;
@@ -50,17 +50,14 @@ send_request(int conn_fd, request_code type, char *resource_path, size_t body_si
     }
 
     int result;
-    SYSCALL_RETURN(result, write(conn_fd, (void*)&type, sizeof(request_code)), 
-                "write()", result);
-    SYSCALL_RETURN(result, write(conn_fd, (void*)resource_path, sizeof(char) * MAX_PATH), 
-                "write()", result);
-    SYSCALL_RETURN(result, write(conn_fd, (void*)&body_size, sizeof(size_t)), 
-                "write()", result);
+    if (write(conn_fd, (void*)&type, sizeof(response_code)) == -1) return -1;
+    if (write(conn_fd, (void*)resource_path, sizeof(char) * MAX_PATH) == -1) return -1;
+    if (write(conn_fd, (void*)&body_size, sizeof(size_t)) == -1) return -1;
+
     if (body_size != 0) {
-        SYSCALL_RETURN(result, write(conn_fd, body, body_size), 
-                "write()", result);
+        if (write(conn_fd, body, body_size) == -1) return -1;
     }
-    return result;
+    return 0;
 }
 
 request_t*
@@ -72,31 +69,25 @@ recv_request(int conn_fd)
     }
 
     request_t *request;
-    request = (request_t*)malloc(sizeof(request_t));
+    request = (request_t*)calloc(1, sizeof(request_t));
     if (request == NULL) {
         errno = ENOMEM;
         return NULL;
     }
 
-    int result;
-    SYSCALL_RETURN(result, read(conn_fd, (void*)&request->type, sizeof(request_code)),
-                "read()", NULL);
-    //fprintf(stderr, "got code\n");            
-    SYSCALL_RETURN(result, read(conn_fd, (void*)request->resource_path, sizeof(char) * MAX_PATH),
-                "read()", NULL);
-    //fprintf(stderr, "got name\n");
-    SYSCALL_RETURN(result, read(conn_fd, (void*)&request->body_size, sizeof(size_t)),
-                "read()", NULL);
+    if (read(conn_fd, (void*)&request->type, sizeof(response_code)) == -1) return NULL;
+    if (read(conn_fd, (void*)request->resource_path, sizeof(char) * MAX_PATH) == -1) return NULL;           
+    if (read(conn_fd, (void*)&request->body_size, sizeof(size_t)) == -1) return NULL;
 
     if (request->body_size != 0) {
-        request->body = malloc(request->body_size);
+        request->body = calloc(1, request->body_size);
         if (request->body == NULL) {
             free(request);
             errno = ENOMEM;
             return NULL;
         }
-        SYSCALL_RETURN(result, read(conn_fd, request->body, request->body_size),
-                "read()", NULL);
+
+        if (read(conn_fd, request->body, request->body_size) == -1) return NULL;
     }
 
     return request;
@@ -117,7 +108,7 @@ response_t*
 new_response(response_code status, char *status_phrase, size_t body_size, void* body)
 {
     response_t *response;
-    response = (response_t*)malloc(sizeof(response_t));
+    response = (response_t*)calloc(1, sizeof(response_t));
     if (response == NULL) {
         errno = ENOMEM;
         return NULL;
@@ -128,7 +119,7 @@ new_response(response_code status, char *status_phrase, size_t body_size, void* 
 
     if (body_size != 0) {
         response->body_size = body_size;
-        response->body = malloc(body_size);
+        response->body = calloc(1, body_size);
         if (response->body == NULL) {
             free(response);
             errno = ENOMEM;
@@ -152,19 +143,15 @@ send_response(int conn_fd, response_code status, char *status_phrase, char *file
     }
 
     int result;
-    SYSCALL_RETURN(result, write(conn_fd, (void*)&status, sizeof(response_code)), 
-                "write()", result);
-    SYSCALL_RETURN(result, write(conn_fd, (void*)status_phrase, sizeof(char) * MAX_PATH), 
-                "write()", result);
-    SYSCALL_RETURN(result, write(conn_fd, (void*)file_path, sizeof(char) * MAX_PATH), 
-                "write()", result);
-    SYSCALL_RETURN(result, write(conn_fd, (void*)&body_size, sizeof(size_t)), 
-                "write()", result);
+    if (write(conn_fd, (void*)&status, sizeof(response_code)) == -1) return -1;
+    if (write(conn_fd, (void*)status_phrase, sizeof(char) * MAX_PATH) == -1) return -1;
+    if (write(conn_fd, (void*)file_path, sizeof(char) * MAX_PATH) == -1) return -1;
+    if (write(conn_fd, (void*)&body_size, sizeof(size_t)) == -1) return -1;
+
     if (body_size != 0) {
-        SYSCALL_RETURN(result, write(conn_fd, body, body_size), 
-                "write()", result);
+        if (write(conn_fd, body, body_size) == -1) return -1;
     }
-    return result;
+    return 0;
 }
 
 response_t*
@@ -176,33 +163,27 @@ recv_response(int conn_fd)
     }
 
     response_t *response;
-    response = (response_t*)malloc(sizeof(response_t));
+    response = (response_t*)calloc(1, sizeof(response_t));
     if (response == NULL) {
         errno = ENOMEM;
         return NULL;
     }
 
-    int result;
-    SYSCALL_RETURN(result, read(conn_fd, (void*)&response->status, sizeof(response_code)),
-                "read()", NULL);
-    //fprintf(stderr, "got code\n");            
-    SYSCALL_RETURN(result, read(conn_fd, (void*)response->status_phrase, sizeof(char) * MAX_PATH),
-                "read()", NULL);
-    SYSCALL_RETURN(result, read(conn_fd, (void*)response->file_path, sizeof(char) * MAX_PATH),
-                "read()", NULL);
-    //fprintf(stderr, "got name\n");
-    SYSCALL_RETURN(result, read(conn_fd, (void*)&response->body_size, sizeof(size_t)),
-                "read()", NULL);
+
+    if (read(conn_fd, (void*)&response->status, sizeof(response_code)) == -1) return NULL;
+    if (read(conn_fd, (void*)response->status_phrase, sizeof(char) * MAX_PATH) == -1) return NULL;           
+    if (read(conn_fd, (void*)response->file_path, sizeof(char) * MAX_PATH) == -1) return NULL;
+    if (read(conn_fd, (void*)&response->body_size, sizeof(size_t)) == -1) return NULL;
 
     if (response->body_size != 0) {
-        response->body = malloc(response->body_size);
+        response->body = calloc(1, response->body_size);
         if (response->body == NULL) {
             free(response);
             errno = ENOMEM;
             return NULL;
         }
-        SYSCALL_RETURN(result, read(conn_fd, response->body, response->body_size),
-                "read()", NULL);
+
+        if (read(conn_fd, response->body, response->body_size) == -1) return NULL;
     }
 
     return response;

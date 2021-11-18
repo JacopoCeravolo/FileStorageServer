@@ -170,25 +170,32 @@ int main(int argc, char const *argv[])
     /* Open file */
 
     
-     open_file(socket_fd, "file500");
-     // write_file(socket_fd, "file500");
+     do {
+     open_file(socket_fd, "file1");
+     write_file(socket_fd, "file1");
+
+
+     open_file(socket_fd, "file2");
+     write_file(socket_fd, "file2");
 
     
-     open_file(socket_fd, "file500_copy");
-     // write_file(socket_fd, "file500_copy");
+     open_file(socket_fd, "file3");
+     write_file(socket_fd, "file3");
+     
 
-    
+     open_file(socket_fd, "file4");
+     write_file(socket_fd, "file4");
+
+     open_file(socket_fd, "file5");
+     write_file(socket_fd, "file5");
+
      open_file(socket_fd, "longfile");
-     // write_file(socket_fd, "longfile");
+     write_file(socket_fd, "longfile");
 
-     open_file(socket_fd, "full");
-     // write_file(socket_fd, "full");
+     open_file(socket_fd, "file500");
+     write_file(socket_fd, "file500");
 
-     open_file(socket_fd, "Makefile");
-     // write_file(socket_fd, "Makefile");
-
-     /* open_file(socket_fd, "file5");
-     write_file(socket_fd, "file5"); */
+    } while (0);
 
     
     /* sleep(1); open_file(socket_fd, "full");
@@ -227,11 +234,11 @@ int main(int argc, char const *argv[])
     /* Read file */
 
     
-    read_file(socket_fd, "file2");
+    
 
     close_connection(socket_fd);
 
-    log_info("\n****** END ******\n\n");
+    log_info("\n\n****** END ******\n\n");
 
     close_log();
 
