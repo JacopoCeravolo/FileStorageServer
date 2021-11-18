@@ -16,8 +16,12 @@
 
 typedef struct _file_t {
 
-    /* File identifier */
+    /* File flags */
+    int     flags;
+    /* Is the file freshly opened? */
     int     fresh;
+    /* Client who has the lock */
+    int     locked_by;
     /* Unique file path */
     char    path[MAX_PATH];
     /* File size in bytes */

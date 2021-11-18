@@ -191,8 +191,6 @@ main(int argc, char const *argv[])
                   log_fatal("accept() failed");
                   return -1;
                }
-
-               log_debug("new connection from client %d\n", client_fd);
                FD_SET(client_fd, &set);
                if (client_fd > fd_max) fd_max = client_fd;
 

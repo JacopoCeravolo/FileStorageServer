@@ -111,10 +111,8 @@ write_file(int socket_fd, char *file)
 }
 
 void
-open_file(int socket_fd, char * file)
+open_file(int socket_fd, char * file, int flags)
 {
-    int flags = 0;
-    SET_FLAG(flags, O_CREATE);
     log_info("client opening file %s\n", file);
     send_request(socket_fd, OPEN_FILE, file, sizeof(int), &flags);
     response_t *r = recv_response(socket_fd);
@@ -171,29 +169,21 @@ int main(int argc, char const *argv[])
 
     
      do {
-     open_file(socket_fd, "file1");
-     write_file(socket_fd, "file1");
-
-
-     open_file(socket_fd, "file2");
-     write_file(socket_fd, "file2");
-
-    
-     open_file(socket_fd, "file3");
-     write_file(socket_fd, "file3");
      
+         sleep(5);
+        int flags = 0;
+        // SET_FLAG(flags, O_CREATE);
+        SET_FLAG(flags, O_LOCK);
 
-     open_file(socket_fd, "file4");
-     write_file(socket_fd, "file4");
+        open_file(socket_fd, "file1", flags);
+        write_file(socket_fd, "file1");
 
-     open_file(socket_fd, "file5");
-     write_file(socket_fd, "file5");
+        open_file(socket_fd, "file2", flags);
+        write_file(socket_fd, "file2");
 
-     open_file(socket_fd, "longfile");
-     write_file(socket_fd, "longfile");
-
-     open_file(socket_fd, "file500");
-     write_file(socket_fd, "file500");
+        
+        close_file(socket_fd, "file1");
+        close_file(socket_fd, "file2");
 
     } while (0);
 

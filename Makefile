@@ -10,16 +10,7 @@ TARGETS = utils client server
 .PHONY = all clean cleanall 
 
 all: 
-	@echo "${BOLD}Building application... ${RESET}"
-	@echo "${BOLD}Building utilities... ${RESET}"
-	@make utils
-	@echo "${GREEN}Utilities built ${RESET}"
-	@echo "${BOLD}Building client... ${RESET}"
-	@make client
-	@echo "${GREEN}Client built ${RESET}"
-	@echo "${BOLD}Building server... ${RESET}"
-	@make server
-	@echo "${GREEN}Server built ${RESET}"
+	@cd utils/ && make cleanall all ; cd ../client && make cleanall all ; cd ../server && make cleanall all ; cd ../
 
 utils:
 	@cd utils && make all
@@ -34,5 +25,6 @@ cleanall:
 	@cd utils && make cleanall
 	@cd client && make cleanall
 	@cd server && make cleanall
+	@cd logs && rm -rf *.log *.txt
 
 

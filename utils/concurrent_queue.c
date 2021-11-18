@@ -32,7 +32,6 @@ concurrent_queue_create(bool cmp(void*, void*), void free_fun(void*), void print
 int
 concurrent_queue_destroy(concurrent_queue_t *queue)
 {
-    printf("still waiting: %d\n", queue->q_size);
     list_destroy(queue->elems);
 
     pthread_mutex_destroy(&(queue->q_lock));

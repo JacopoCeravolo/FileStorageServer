@@ -15,7 +15,7 @@ TARGETS = server
 
 all: $(TARGETS)
 
-server: server.c storage.o worker.o
+server: server.c storage.o worker.o request_handlers.o
 	$(CC) $(INCLUDES) $(CFLAGS) -o $@ $^ -Wl,-rpath,$(ORIGIN)/libs -L $(ORIGIN)/libs -lprotocol -lconcurrent_queue -llinked_list -lhash_map -lpthread -llogger
 
 clean:
