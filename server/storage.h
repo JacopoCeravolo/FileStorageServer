@@ -28,6 +28,8 @@ typedef struct _file_t {
     size_t  size;
     /* Pointer to file contents */
     void*   contents;   
+    /* List of client waiting for the lock */
+    list_t  *waiting_on_lock;
 
 } file_t;
 

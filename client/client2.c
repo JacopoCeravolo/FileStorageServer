@@ -48,7 +48,7 @@ void
 remove_file(int socket_fd, char *file)
 {
     log_info("client removing file %s\n", file);
-    send_request(socket_fd, DELETE_FILE, file, 0, NULL);
+    send_request(socket_fd, REMOVE_FILE, file, 0, NULL);
     response_t *r = recv_response(socket_fd);
     log_info("received: %d : %s : %lu\n", r->status, r->status_phrase, r->body_size);
     if (r->body_size != 0) log_info("%s\n", (char*)r->body);
@@ -136,6 +136,27 @@ close_connection(int socket_fd)
     log_info("client closing connection\n");
     send_request(socket_fd, CLOSE_CONNECTION, "", 0, NULL);
 }
+void
+lock_file(int socket_fd, char *file)
+{
+    log_info("client locking file %s\n", file);
+    send_request(socket_fd, LOCK_FILE, file, 0, NULL);
+    response_t *r = recv_response(socket_fd);
+    log_info("received: %d : %s : %lu\n", r->status, r->status_phrase, r->body_size);
+    // if (r->body_size != 0) if (PRINT) log_info("%s\n", (char*)r->body);
+    //free_response(r);
+}
+
+void
+unlock_file(int socket_fd, char *file)
+{
+    log_info("client unlocking file %s\n", file);
+    send_request(socket_fd, UNLOCK_FILE, file, 0, NULL);
+    response_t *r = recv_response(socket_fd);
+    log_info("received: %d : %s : %lu\n", r->status, r->status_phrase, r->body_size);
+    // if (r->body_size != 0) if (PRINT) log_info("%s\n", (char*)r->body);
+    //free_response(r);
+}
 
 int main(int argc, char const *argv[])
 {
@@ -173,17 +194,13 @@ int main(int argc, char const *argv[])
          sleep(5);
         int flags = 0;
         // SET_FLAG(flags, O_CREATE);
-        SET_FLAG(flags, O_LOCK);
+        // SET_FLAG(flags, O_LOCK);
 
         open_file(socket_fd, "file1", flags);
-        write_file(socket_fd, "file1");
-
         open_file(socket_fd, "file2", flags);
-        write_file(socket_fd, "file2");
 
-        
-        close_file(socket_fd, "file1");
-        close_file(socket_fd, "file2");
+        lock_file(socket_fd, "file1");
+        lock_file(socket_fd, "file2");
 
     } while (0);
 

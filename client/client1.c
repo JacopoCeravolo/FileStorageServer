@@ -50,10 +50,32 @@ read_file(int socket_fd, char *file)
 }
 
 void
+lock_file(int socket_fd, char *file)
+{
+    if (PRINT) log_info("client locking file %s\n", file);
+    send_request(socket_fd, LOCK_FILE, file, 0, NULL);
+    response_t *r = recv_response(socket_fd);
+    if (PRINT) log_info("received: %d : %s : %lu\n", r->status, r->status_phrase, r->body_size);
+    // if (r->body_size != 0) if (PRINT) log_info("%s\n", (char*)r->body);
+    //free_response(r);
+}
+
+void
+unlock_file(int socket_fd, char *file)
+{
+    if (PRINT) log_info("client unlocking file %s\n", file);
+    send_request(socket_fd, UNLOCK_FILE, file, 0, NULL);
+    response_t *r = recv_response(socket_fd);
+    if (PRINT) log_info("received: %d : %s : %lu\n", r->status, r->status_phrase, r->body_size);
+    // if (r->body_size != 0) if (PRINT) log_info("%s\n", (char*)r->body);
+    //free_response(r);
+}
+
+void
 remove_file(int socket_fd, char *file)
 {
     if (PRINT) log_info("client removing file %s\n", file);
-    send_request(socket_fd, DELETE_FILE, file, 0, NULL);
+    send_request(socket_fd, REMOVE_FILE, file, 0, NULL);
     response_t *r = recv_response(socket_fd);
     if (PRINT) log_info("received: %d : %s : %lu\n", r->status, r->status_phrase, r->body_size);
     if (r->body_size != 0) if (PRINT) log_info("%s\n", (char*)r->body);
@@ -180,9 +202,25 @@ int main(int argc, char const *argv[])
         SET_FLAG(flags, O_LOCK);
 
         open_file(socket_fd, "file1", flags);
-        // write_file(socket_fd, "file1");
-
         open_file(socket_fd, "file2", flags);
+        
+        /* write_file(socket_fd, "file1");
+        write_file(socket_fd, "file2"); */
+
+        // read_file(socket_fd, "file1");
+
+        lock_file(socket_fd, "file1");
+        lock_file(socket_fd, "file2");
+
+        sleep(10);
+
+        unlock_file(socket_fd, "file1");
+        unlock_file(socket_fd, "file2");
+
+        // close_file(socket_fd, "file1");
+
+
+        // open_file(socket_fd, "file2", flags);
         // write_file(socket_fd, "file2");
 
         

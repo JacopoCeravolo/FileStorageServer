@@ -5,6 +5,9 @@
 #include "utils/linked_list.h"
 
 int
+open_connection_handler(int client_fd);
+
+int
 close_connection_handler(int client_fd);
 
 int
@@ -17,9 +20,15 @@ int
 write_file_handler(int client_fd, request_t *request, list_t *expelled_files);
 
 int
-read_file_handler(int client_fd, request_t *request);
+read_file_handler(int client_fd, request_t *request, void** read_buffer, size_t *size);
 
 int
 remove_file_handler(int client_fd, request_t *request);
+
+int
+lock_file_handler(int client_fd, request_t *request);
+
+int
+unlock_file_handler(int client_fd, request_t *request);
 
 #endif

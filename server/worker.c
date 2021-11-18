@@ -43,23 +43,10 @@ worker_thread(void* args)
         switch (request->type) {
 
             case OPEN_CONNECTION: {
-    
-                log_info("client %d opening connection\n", client_fd);
-
                 int status = 0;
-                list_t *files_opened_by_client; 
-                files_opened_by_client = list_create(string_compare, NULL, string_print);
-                if (files_opened_by_client == NULL) {
-                    log_fatal("could not create opened file list: %s\n", strerror(errno));
-                    status = INTERNAL_ERROR;
-                }
-
-                if (hash_map_insert(storage->opened_files, client_fd, files_opened_by_client) != 0) {
-                    log_fatal("could not add opened file list: %s\n", strerror(errno));
-                    status = INTERNAL_ERROR;
-                }
-
-                send_response(client_fd, status, status_message[status], request->resource_path, 0, NULL);
+                status = open_connection_handler(client_fd);
+                send_response(client_fd, status, status_message[status], "", 0, NULL);
+                log_info("client %d connection opened\n", client_fd);
                 break;
             }
     
@@ -80,6 +67,7 @@ worker_thread(void* args)
                 list_destroy(expelled_files);
                 break;
             }
+            
             case CLOSE_FILE: {
                 int status = close_file_handler(client_fd, request);
                 send_response(client_fd, status, status_message[status], "", 0, NULL);
@@ -94,36 +82,41 @@ worker_thread(void* args)
                 break;
             }
 
-            case WRITE_DIRECTORY: {
-                break;
-            }
-
             case READ_FILE: {
-                int status = read_file_handler(client_fd, request);
-                send_response(client_fd, status, status_message[status], "", 0, NULL);
-                break;
-    
+                void *read_buffer = NULL;
+                size_t buffer_size = 0;
+                int status = read_file_handler(client_fd, request, &read_buffer, &buffer_size);
+                /* if (status == SUCCESS && ((buffer_size < 0) || (read_buffer == NULL))) {
+                    send_response(client_fd, INTERNAL_ERROR, status_message[INTERNAL_ERROR], "", 0, NULL);
+                } */
+                send_response(client_fd, status, status_message[status], "", buffer_size, read_buffer);
+                if (read_buffer) free(read_buffer);
                 break;
             }
 
             case READ_N_FILES: {
+                log_info("READ_N_FILES has not been implemented yet\n");
                 break;
             }
 
-            case DELETE_FILE: { // NOT WORKING
+            case REMOVE_FILE: { 
                 int status = remove_file_handler(client_fd, request);
                 send_response(client_fd, status, status_message[status], "", 0, NULL);
-                break;
                 break;
             }
 
             case LOCK_FILE: {
+                int status = lock_file_handler(client_fd, request);
+                send_response(client_fd, status, status_message[status], "", 0, NULL);
                 break;
             }
 
             case UNLOCK_FILE: {
+                int status = unlock_file_handler(client_fd, request);
+                send_response(client_fd, status, status_message[status], "", 0, NULL);
                 break;
             }
+        
         }     
 _write_pipe:  
         write(pipe_fd, &client_fd, sizeof(int));

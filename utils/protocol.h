@@ -18,12 +18,11 @@ typedef enum {
     OPEN_FILE           = 102,
     CLOSE_FILE          = 103,
     WRITE_FILE          = 104,
-    WRITE_DIRECTORY     = 105,
-    READ_FILE           = 106,
-    READ_N_FILES        = 107,
-    DELETE_FILE         = 108,   
-    LOCK_FILE           = 109,
-    UNLOCK_FILE         = 110,    
+    READ_FILE           = 105,
+    READ_N_FILES        = 106,
+    REMOVE_FILE         = 107,   
+    LOCK_FILE           = 108,
+    UNLOCK_FILE         = 109,    
 
 } request_code;
 

@@ -77,6 +77,10 @@ print_int(void* x, FILE* f) {
 
 /********************** Type Specific Free Functions  **********************/
 
+static inline void
+free_string(void *s) {
+    free(s);
+}
 
 /********************** Type Specific Compare Functions  **********************/
 

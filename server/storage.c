@@ -184,6 +184,7 @@ free_file(void *e)
     file_t *f = (file_t*)e;
     log_debug("deallocating file (%s)\n", f->path);
     free(f->contents);
+    list_destroy(f->waiting_on_lock);
     free(f);
 }
 
@@ -193,6 +194,9 @@ print_file(file_t *f, FILE *stream)
     fprintf(stream,
     " %lu (bytes)\n", f->size);
     fprintf(stream, "\n------------------------------------------------------\n");
+    fprintf(stream, "Clients waiting for lock: ");
+    list_dump(f->waiting_on_lock, stream);
+    fprintf(stream, "\n");
     /* fprintf(stream,
     "%lu (bytes)\n\n%s", f->size, (char*)f->contents); */
     fprintf(stream, "\n------------------------------------------------------\n\n");
