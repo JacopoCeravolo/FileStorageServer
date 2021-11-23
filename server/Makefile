@@ -3,7 +3,7 @@ CC := gcc
 ORIGIN = $(realpath ../)
 
 CFLAGS += -g -Wall -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -Wno-incompatible-pointer-types \
-			-Wno-int-conversion -Wno-int-to-void-pointer-cast -Wno-unused-variable -D DEBUG
+			-Wno-int-conversion -Wno-int-to-void-pointer-cast -Wno-unused-variable # -D DEBUG
 INCLUDES = -I $(ORIGIN)
 
 TARGETS = server

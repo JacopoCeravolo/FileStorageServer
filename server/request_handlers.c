@@ -55,8 +55,8 @@ close_connection_handler(int client_fd)
         }
     }
 
-    hash_map_remove(storage->opened_files, client_fd);
-    log_info("client %d successfully closed all files\n", client_fd);
+    if (hash_map_remove(storage->opened_files, client_fd) == -1) { log_error("cannot close client %d files\n"); }
+    else { log_info("client %d successfully closed all files\n", client_fd); }
     
     return status;    
 }
@@ -292,10 +292,10 @@ remove_file_handler(int client_fd, request_t *request)
         return UNAUTHORIZED;
     }
 
-    list_remove_element(storage->basic_fifo, to_remove->path);
-    hash_map_remove(storage->files, to_remove->path);
     storage->no_of_files--;
     storage->current_size = storage->current_size - to_remove->size;
+    list_remove_element(storage->basic_fifo, to_remove->path);
+    hash_map_remove(storage->files, to_remove->path);
 
     return status;
 }

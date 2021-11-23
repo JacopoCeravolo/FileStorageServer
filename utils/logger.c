@@ -70,14 +70,13 @@ logerror(const char *file, const int line, const char* format, ...)
 }
 
 void 
-loginfo(const char *file, const int line, const char* format, ...) 
+loginfo(const char* format, ...) 
 {
     if (log_level >= LOG_INFO) {
         char tmp[50] = { 0 };
         va_list args;
         va_start (args, format);
         fprintf(fp, "%s ", get_timestamp(tmp));
-        fprintf(fp, "%s:%d: ", file, line);
         vfprintf (fp, format, args);
         va_end (args);
         fflush(fp);

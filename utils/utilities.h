@@ -39,7 +39,6 @@
             fprintf(stderr, "%s: %s\n", msg, err_buf); return ret; }
 
 
-
 /********************** Generic print, compare and free functions  **********************/
 
 static inline void

@@ -9,6 +9,5 @@
 #include "utils/hash_map.h"
 
 EXTERN storage_t *storage;
-EXTERN int       exit_signal;
 
 #endif

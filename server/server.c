@@ -24,7 +24,7 @@
 #include "server/server_config.h"
 #include "server/worker.h"
 
-#define N_THREADS    8
+#define N_THREADS    1
 #define MAX_SIZE     128000000
 #define MAX_FILES    1000
 #define MAX_BACKLOG  200
@@ -39,6 +39,40 @@ cleanup()
    unlink(DEFAULT_SOCKET_PATH);
 }
 
+typedef struct {
+    sigset_t     *set;           /// set dei segnali da gestire (mascherati)
+    int           signal_pipe;   /// descrittore di scrittura di una pipe senza nome
+} sigHandler_t;
+
+
+// funzione eseguita dal signal handler thread
+static void *sigHandler(void *arg) {
+    sigset_t *set = ((sigHandler_t*)arg)->set;
+    int fd_pipe   = ((sigHandler_t*)arg)->signal_pipe;
+
+    for( ;; ) {
+	int sig;
+	int r = sigwait(set, &sig);
+	if (r != 0) {
+	    errno = r;
+	    perror("FATAL ERROR 'sigwait'");
+	    return NULL;
+	}
+
+	switch(sig) {
+	case SIGINT:
+	case SIGTERM:
+	case SIGQUIT:
+	    log_info("received signal %s, exiting\n", (sig==SIGINT) ? "SIGINT": ((sig==SIGTERM)?"SIGTERM":"SIGQUIT") );
+	    close(fd_pipe);  // notifico il listener thread della ricezione del segnale
+	    return NULL;
+	default:  ; 
+	}
+    }
+    return NULL;	   
+}
+
+/* 
 void 
 int_handler(int dummy) {
    printf("\nIn Interrupted Signal Handler\n");
@@ -47,16 +81,16 @@ int_handler(int dummy) {
    storage_destroy(storage);
    exit_signal = 1;
    concurrent_queue_destroy(requests_queue);
-   printf("Threads notified\n");
-   /* for (size_t i = 0; i < N_THREADS; i++) {
-      pthread_join(workers[i], NULL);
-   } */
    sleep(3);
+   printf("Shutting down thread\n");
+   for (size_t i = 0; i < N_THREADS; i++) {
+      pthread_join(workers[i], NULL);
+   }
    printf("Exiting...\n");
    exit(EXIT_SUCCESS);
 }
-
-void
+ */
+/* void
 seg_handler(int dummy) 
 {
    printf("\nIn Segmentation Fault Signal Handler. ERRNO: %s\n", strerror(errno));
@@ -65,7 +99,8 @@ seg_handler(int dummy)
    storage_destroy(storage);
    printf("Exiting...\n");
    exit(EXIT_SUCCESS);
-}
+} */
+
 int
 main(int argc, char const *argv[])
 {
@@ -79,11 +114,40 @@ main(int argc, char const *argv[])
 
 
    /* Exit cleanup and basic signal handling */
-   exit_signal = 0;
-   atexit(cleanup);
-   signal(SIGPIPE, SIG_IGN);
-   signal(SIGINT, int_handler);
-   signal(SIGSEGV, seg_handler);
+
+   sigset_t mask;
+   sigemptyset(&mask);
+   sigaddset(&mask, SIGINT); 
+   sigaddset(&mask, SIGQUIT);
+   sigaddset(&mask, SIGTERM);
+    
+   if (pthread_sigmask(SIG_BLOCK, &mask, NULL) != 0) {
+	   log_fatal("could not set signal mask\n");
+	   exit(EXIT_FAILURE);
+   }
+
+   // ignoro SIGPIPE per evitare di essere terminato da una scrittura su un socket
+   struct sigaction s;
+   memset(&s,0,sizeof(s));    
+   s.sa_handler=SIG_IGN;
+   if ( (sigaction(SIGPIPE,&s,NULL) ) == -1 ) {   
+	   log_fatal("error when ignoring SIGPIPE\n");
+      exit(EXIT_FAILURE);
+   } 
+
+   int signal_pipe[2];
+   if (pipe(signal_pipe)==-1) {
+	   log_fatal("pipe failed\n");
+      exit(EXIT_FAILURE);
+   }
+
+   pthread_t sighandler_thread;
+   sigHandler_t handlerArgs = { &mask, signal_pipe[1] };
+   
+   if (pthread_create(&sighandler_thread, NULL, sigHandler, &handlerArgs) != 0) {
+	   log_fatal("could not start signal handler\n");
+	   exit(EXIT_FAILURE);
+   }
 
    /* Opens storage_file */
 
@@ -143,10 +207,12 @@ main(int argc, char const *argv[])
 
    FD_SET(socket_fd, &set);
    FD_SET(mw_pipe[0], &set);
+   FD_SET(signal_pipe[0], &set);
 
    int fd_max = 0;
    if (socket_fd > fd_max) fd_max = socket_fd;
    if (mw_pipe[0] > fd_max) fd_max = mw_pipe[0];
+   if (signal_pipe[0] > fd_max) fd_max = signal_pipe[0];
 
    /* Initializing dispatcher->worker queue */
 
@@ -158,8 +224,11 @@ main(int argc, char const *argv[])
 
    /* Starting all workers */
 
+   volatile long exit_signal = 0;
+
    for (int id = 0; id < N_THREADS; id++) {
       worker_arg_t *worker_args = calloc(1, sizeof(worker_arg_t));
+      worker_args->exit_signal = (long)&exit_signal;
       worker_args->worker_id = id;
       worker_args->pipe_fd = mw_pipe[1];
       worker_args->requests = requests_queue;
@@ -171,8 +240,9 @@ main(int argc, char const *argv[])
 
    /* Start accepting requests */
 
+
    fprintf(stdout, "****** SERVER STARTED ******\n");
-   while (1) {
+   while (exit_signal == 0) {
       
       rdset = set;
       if (select(fd_max+1, &rdset, NULL, NULL, NULL) == -1 && errno != EINTR) {
@@ -223,11 +293,25 @@ main(int argc, char const *argv[])
 			   	}
 			   }
 		   }
+
+         if (FD_ISSET(fd, &rdset) && fd == signal_pipe[0]) {
+            exit_signal = 1;
+            break;
+         }
       }
    }
 
+   pthread_join(sighandler_thread, NULL);
+   log_info("Joined signal handler\n"); 
+   for (int i = 0; i < N_THREADS; i++) {
+      pthread_join(workers[i], NULL);
+      log_info("Joined worker %d\n", i);
+   }
    
-   concurrent_queue_destroy(requests_queue);
+
+   fprintf(stdout, "****** SERVER CLOSED ******\n");
+   
+   // concurrent_queue_destroy(requests_queue);
    close(socket_fd);
    return 0;
 }

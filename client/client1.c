@@ -20,6 +20,7 @@
 #define PRINT 0
 #endif
 
+
 int socket_fd;
 
 void 
@@ -184,127 +185,44 @@ int main(int argc, char const *argv[])
     memset(&serveraddr, 0, sizeof(serveraddr));
     serveraddr.sun_family = AF_UNIX;
     strcpy(serveraddr.sun_path, DEFAULT_SOCKET_PATH);
-    // strcpy(socket_name, sockname);
 
     result = connect(socket_fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)); // Use SUN_LEN
     if (result < 0) return -1;
 
     if (PRINT) log_info("\n****** START ******\n\n");
 
-    open_connection(socket_fd);
 
-    /* Open file */
 
     do {
 
         int flags = 0;
+
         SET_FLAG(flags, O_CREATE);
         SET_FLAG(flags, O_LOCK);
 
+        open_connection(socket_fd);
+
         open_file(socket_fd, "file1", flags);
+        write_file(socket_fd, "file1");
+        close_file(socket_fd, "file1");
+
+
         open_file(socket_fd, "file2", flags);
-        
-        /* write_file(socket_fd, "file1");
-        write_file(socket_fd, "file2"); */
-
-        // read_file(socket_fd, "file1");
-
-        lock_file(socket_fd, "file1");
-        lock_file(socket_fd, "file2");
-
-        sleep(10);
-
-        unlock_file(socket_fd, "file1");
+        write_file(socket_fd, "file2");
         unlock_file(socket_fd, "file2");
-
-        // close_file(socket_fd, "file1");
-
-
-        // open_file(socket_fd, "file2", flags);
-        // write_file(socket_fd, "file2");
-
+        read_file(socket_fd, "file2");
+        lock_file(socket_fd, "file2");
+        remove_file(socket_fd, "file2");
         
-        // close_file(socket_fd, "file1");
+
         // close_file(socket_fd, "file2");
+
         
-     /* open_file(socket_fd, "file1");
-     write_file(socket_fd, "file1");
-     sleep(rand() % 3);
 
-     open_file(socket_fd, "file2");
-     write_file(socket_fd, "file2");
-     sleep(rand() % 3);
+        close_connection(socket_fd);
 
-    
-     open_file(socket_fd, "file3");
-     write_file(socket_fd, "file3");
-     sleep(rand() % 3);
-     
-
-     open_file(socket_fd, "file4");
-     write_file(socket_fd, "file4");
-     sleep(rand() % 3);
-
-     open_file(socket_fd, "file5");
-     write_file(socket_fd, "file5");
-     sleep(rand() % 3);
-
-     open_file(socket_fd, "longfile");
-     write_file(socket_fd, "longfile");
-     sleep(rand() % 3);
-
-     open_file(socket_fd, "file500");
-     write_file(socket_fd, "file500");
-     sleep(rand() % 3); */
 
     } while(0);
-    
-
-
-     // write_file(socket_fd, "file5");
-
-    
-    /* sleep(1); open_file(socket_fd, "file4");
-
-    
-    sleep(1); open_file(socket_fd, "file5");
-
-   
-
-
-    
-    sleep(1); write_file(socket_fd, "file1");
-
-    
-    sleep(1); write_file(socket_fd, "file2");
-
-    
-    sleep(1); write_file(socket_fd, "file3");
-
-    
-    sleep(1); write_file(socket_fd, "file4");
-
-    
-    sleep(1); write_file(socket_fd, "file5"); */
-
-    
-    /* Remove file */
-
-    /* 
-    remove_file(socket_fd, "file1");
-
-    
-    remove_file(socket_fd, "file2");
-
-    
-    remove_file(socket_fd, "file3"); */
-
-    /* Read file */
-
-    
-    // read_file(socket_fd, "file1");
-
-    close_connection(socket_fd);
 
     if (PRINT) log_info("\n\n****** END ******\n\n");
 

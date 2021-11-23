@@ -18,8 +18,6 @@ typedef struct _file_t {
 
     /* File flags */
     int     flags;
-    /* Is the file freshly opened? */
-    int     fresh;
     /* Client who has the lock */
     int     locked_by;
     /* Unique file path */
@@ -30,6 +28,7 @@ typedef struct _file_t {
     void*   contents;   
     /* List of client waiting for the lock */
     list_t  *waiting_on_lock;
+    
 
 } file_t;
 

@@ -7,15 +7,12 @@
 #include "utilities.h"
 
 
-/************** Generic compare, free and print **************/
-
-
 
 /************** Linked List Functions **************/
 
 
 list_t*
-list_create(bool (*cmp)(void*, void*), void (*free_fun)(void*), void (*print)(void*, FILE*))
+list_create(bool cmp(void*, void*), void free_fun(void*), void print(void*, FILE*))
 {
     list_t *list = calloc(1, sizeof(list_t));
     if (list == NULL) {
@@ -29,6 +26,7 @@ list_create(bool (*cmp)(void*, void*), void (*free_fun)(void*), void (*print)(vo
     list->cmp = (*cmp == NULL) ? default_cmp : cmp;
     list->free_fun = (*free_fun == NULL) ? default_free : free_fun;
     list->print = (*print == NULL) ? default_print : print;
+    
     return list;
 }
 
@@ -181,9 +179,9 @@ list_remove_element(list_t *list, void* elem)
     node_t *tmp = curr;
 
     if (prev == NULL) {
+        list->head = list->head->next;
         list->free_fun(tmp->data);
         free(tmp);
-        list->head = list->head->next;
     } else {
         prev->next = curr->next;
         if (prev->next == NULL) list->tail = prev;
@@ -237,8 +235,9 @@ list_dump(list_t *list, FILE *stream)
 {
     node_t *curr = list->head;
     while (curr != NULL) {
-        (list->print)(curr->data, stream);
+        list->print(curr->data, stream);
         curr = curr->next;
     }
     fprintf(stream, "\n");
 }
+

@@ -23,7 +23,7 @@ void set_log_level(loglevel level);
 /* Logging Functions */
 void logfatal(const char *file, const int line, const char *fmt, ...);
 void logerror(const char *file, const int line, const char *fmt, ...);
-void loginfo(const char *file, const int line, const char *fmt, ...);
+void loginfo(const char *fmt, ...);
 void logwarning(const char *file, const int line, const char *fmt, ...);
 void logdebug(const char *file, const int line, const char *fmt, ...); 
 
@@ -33,7 +33,7 @@ void close_log();
 
 #define log_fatal(fmt, args...) logfatal(__FILE__, __LINE__, fmt, ##args); 
 #define log_error(fmt, args...) logerror(__FILE__, __LINE__, fmt, ##args); 
-#define log_info(fmt, args...) loginfo(__FILE__, __LINE__, fmt, ##args); 
+#define log_info(fmt, args...) loginfo(fmt, ##args); 
 #define log_warning(fmt, args...) logwarning(__FILE__, __LINE__, fmt, ##args);
 #define log_debug(fmt, args...) logdebug(__FILE__, __LINE__, fmt, ##args); 
 

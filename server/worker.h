@@ -5,7 +5,7 @@
 
 typedef struct _worker_arg_t {
    concurrent_queue_t *requests;
-   int *exit;
+   long *exit_signal;
    int pipe_fd;
    int worker_id;
 } worker_arg_t;

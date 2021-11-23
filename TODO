@@ -1,1 +1,8 @@
-modificare header protocollo con nome dinamico anziche statico
+**** SERVER ****
+
+[] Concurrent queue non deallocata correttamente
+[] remove file dovrebbe eliminare il file dalla lista di file aperti da ogni client 
+[] cambiare da map <client, file aperti> a <file, openers> ma lineare nel numero dei file alla chiusura della connessione
+
+
+

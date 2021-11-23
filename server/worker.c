@@ -17,6 +17,7 @@ worker_thread(void* args)
 
    int pipe_fd = ((worker_arg_t*)args)->pipe_fd;
    int worker_id = ((worker_arg_t*)args)->worker_id;
+   long *exit_signal = ((worker_arg_t*)args)->exit_signal;
    concurrent_queue_t *requests = ((worker_arg_t*)args)->requests;
    char worker_name[32];
    sprintf(worker_name, "WORKER %d", worker_id);
@@ -24,8 +25,10 @@ worker_thread(void* args)
    free(args);
 
     int error;
-    while (exit_signal == 0) {
+    do {
 
+        if (*exit_signal == 1) { break; continue; }
+        
         int client_fd;
   
         client_fd = (int)concurrent_queue_get(requests);
@@ -117,11 +120,13 @@ worker_thread(void* args)
                 break;
             }
         
-        }     
+        } 
+
 _write_pipe:  
         write(pipe_fd, &client_fd, sizeof(int));
         free_request(request);
-    }
+    } while (*exit_signal == 0);
 
-    log_info("terminating\n", worker_name);
+    log_info("[%s] terminating\n", worker_name);
+    pthread_exit(0);
 }
