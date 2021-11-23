@@ -40,7 +40,8 @@ close_connection_handler(int client_fd)
     }
 
     while (!list_is_empty(files_opened_by_client)) {
-        char *file_name = (char*)list_remove_head(files_opened_by_client);
+        char *file_name;
+        list_remove_head(files_opened_by_client, &file_name);
         
         file_t *file = (file_t*)hash_map_get(storage->files, file_name);
         if (file == NULL) {
@@ -89,8 +90,8 @@ open_file_handler(int client_fd, request_t *request, list_t *expelled_files)
 
         /* Checks if a file should be expelled to make place for the new one */
         if (storage->no_of_files + 1 > storage->max_files) {
-
-            char *removed_file_path = (char*)list_remove_head(storage->basic_fifo);
+            char *removed_file_path;
+            list_remove_head(storage->basic_fifo, &removed_file_path);
             file_t *removed_file = storage_remove_file(storage, removed_file_path);
             list_insert_tail(expelled_files, removed_file);
             

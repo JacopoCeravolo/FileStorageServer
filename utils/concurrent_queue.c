@@ -76,7 +76,7 @@ concurrent_queue_get(concurrent_queue_t *queue)
     }
 
     void* data;
-    if ((data = list_remove_head(queue->elems)) == NULL) {
+    if (list_remove_head(queue->elems, &data) == -1) {
         return NULL;
     }
 

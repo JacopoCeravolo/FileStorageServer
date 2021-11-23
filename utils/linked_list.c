@@ -138,8 +138,8 @@ list_insert_at_index(list_t *list, void* to_insert, int index)
     return 0;
 }
 
-void* 
-list_remove_head(list_t *list)
+int
+list_remove_head(list_t *list, void** to_return)
 {
     if (list == NULL || list_is_empty(list)) {
         errno = EINVAL;
@@ -147,7 +147,7 @@ list_remove_head(list_t *list)
     }
 
     node_t *tmp = list->head;
-   /*  *to_return = (tmp->data); */
+    *to_return = (tmp->data);
 
     if (list->length == 1) { // There's only one element
         list->head = list->tail = NULL;
@@ -155,8 +155,7 @@ list_remove_head(list_t *list)
         list->head = list->head->next;
     }
 
-    /* list->free_fun(tmp->data);
-    free(tmp); */
+    free(tmp);
     list->length--;
     return tmp->data;
 }
