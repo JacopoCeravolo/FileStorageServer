@@ -45,7 +45,7 @@ parse_options(int argc,  char * const *argv, const char *options_string, list_t 
                 break;
             }
 
-            case 'w': {
+            case 'W': {
                 new_option->type = WRITE;
                 if (strlen(optarg) + 1 > MAX_ARG_LENGTH) {
                     log_error("-w arguments too long\n");
@@ -57,7 +57,7 @@ parse_options(int argc,  char * const *argv, const char *options_string, list_t 
                 break;
             }
 
-            case 'W': {
+            case 'w': {
                 new_option->type = WRITE_DIR;
                 if (strlen(optarg) + 1 > MAX_ARG_LENGTH) {
                     log_error("-W arguments too long\n");

@@ -143,7 +143,7 @@ list_remove_head(list_t *list, void** to_return)
 {
     if (list == NULL || list_is_empty(list)) {
         errno = EINVAL;
-        return NULL;
+        return -1;
     }
 
     node_t *tmp = list->head;
@@ -157,7 +157,7 @@ list_remove_head(list_t *list, void** to_return)
 
     free(tmp);
     list->length--;
-    return tmp->data;
+    return 0;
 }
 
 int 

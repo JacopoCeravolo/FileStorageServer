@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "api/fileserver_api.h"
+
 #include "utils/linked_list.h"
 #include "utils/logger.h"
 
@@ -48,6 +50,10 @@ int main(int argc, char const *argv[])
         log_info("socket name: %s\n", socket_name);
     }
 
+    struct timespec t;
+
+    openConnection(DEFAULT_SOCKET_PATH, 0, t);
+
     while (!list_is_empty(request_list)) {
 
         option_t *request;
@@ -56,10 +62,15 @@ int main(int argc, char const *argv[])
         switch (request->type) {
             
             case WRITE: {
-                fprintf(stdout, "WRITE: ");
                 char *token = strtok(request->arguments, ",");
                 while (token) {
-                    fprintf(stdout, "%s ", token);
+
+                    int flags;
+                    SET_FLAG(flags, O_CREATE|O_LOCK);
+                    openFile(token, flags);
+                    writeFile(token, NULL);
+                    closeFile(token);
+
                     token = strtok(NULL, ",");
                 }
                 fprintf(stdout, "\n");
@@ -67,10 +78,11 @@ int main(int argc, char const *argv[])
             }
 
             case READ: {
-                fprintf(stdout, "READ: ");
+            
                 char *token = strtok(request->arguments, ",");
                 while (token) {
-                    fprintf(stdout, "%s ", token);
+                   
+                    
                     token = strtok(NULL, ",");
                 }
                 fprintf(stdout, "\n");
@@ -86,10 +98,14 @@ int main(int argc, char const *argv[])
             }
 
             case LOCK: {
-                fprintf(stdout, "LOCK: ");
+
                 char *token = strtok(request->arguments, ",");
                 while (token) {
-                    fprintf(stdout, "%s ", token);
+                    
+                    openFile(token, NO_FLAG);
+                    lockFile(token);
+                    // closeFile(token);
+
                     token = strtok(NULL, ",");
                 }
                 fprintf(stdout, "\n");
@@ -97,10 +113,14 @@ int main(int argc, char const *argv[])
             }
             
             case UNLOCK: {
-                fprintf(stdout, "UNLOCK: ");
+              
                 char *token = strtok(request->arguments, ",");
                 while (token) {
-                    fprintf(stdout, "%s ", token);
+                    
+                    openFile(token, NO_FLAG);
+                    unlockFile(token);
+                    closeFile(token);
+
                     token = strtok(NULL, ",");
                 }
                 fprintf(stdout, "\n");
@@ -108,10 +128,14 @@ int main(int argc, char const *argv[])
             }
 
             case REMOVE: {
-                fprintf(stdout, "REMOVE: ");
+               
                 char *token = strtok(request->arguments, ",");
                 while (token) {
-                    fprintf(stdout, "%s ", token);
+                    
+                    openFile(token, NO_FLAG);
+                    removeFile(token);
+                    closeFile(token);
+
                     token = strtok(NULL, ",");
                 }
                 fprintf(stdout, "\n");
@@ -123,9 +147,9 @@ int main(int argc, char const *argv[])
 
     }
 
-    // list_dump(request_list, stdout);
 
 _client_exit:
+    closeConnection(DEFAULT_SOCKET_PATH);
     list_destroy(request_list);
     close_log();
     return 0;

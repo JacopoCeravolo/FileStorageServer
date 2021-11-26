@@ -14,6 +14,7 @@
 #define ONE_EIGHTH      ((int) (BITS_IN_int / 8))
 #define HIGH_BITS       ( ~((unsigned int)(~0) >> ONE_EIGHTH ))
 
+#define NO_FLAG     (0 << 0)
 #define O_CREATE    (1 << 0)
 #define O_LOCK      (1 << 1)
 #define O_READ      (1 << 2)

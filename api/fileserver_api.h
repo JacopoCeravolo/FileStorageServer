@@ -2,6 +2,14 @@
 #define FILESERVER_API_H
 
 #include <time.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+
+#include "utils/protocol.h"
+
+int socket_fd;
 
 /**
  * \brief Tries to open a connection to the socket file specified in the path variable socketname, 

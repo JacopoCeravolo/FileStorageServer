@@ -5,7 +5,7 @@ GREEN	= \033[1m\033[32m
 BOLD	= \033[1m
 RESET	= \033[0m
 
-TARGETS = utils client server
+TARGETS = utils client server api
 
 .PHONY = all clean cleanall 
 
@@ -25,6 +25,7 @@ cleanall:
 	@cd utils && make cleanall
 	@cd client && make cleanall
 	@cd server && make cleanall
+	@cd api && make cleanall
 	@cd logs && rm -rf *.log *.txt
 
 

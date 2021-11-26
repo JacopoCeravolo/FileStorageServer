@@ -15,7 +15,7 @@ TARGETS = client client1 client2
 all: $(TARGETS)
 
 client: client.c option_parser.o
-	$(CC) $(INCLUDES) $(CFLAGS) $(FLAGS) -o $@  $^ -Wl,-rpath,$(ORIGIN)/libs -L $(ORIGIN)/libs -llinked_list -llogger
+	$(CC) $(INCLUDES) $(CFLAGS) $(FLAGS) -o $@  $^ -Wl,-rpath,$(ORIGIN)/libs -L $(ORIGIN)/libs -llinked_list -llogger -lfileserver_api
 
 client1: client1.c
 	$(CC) $(INCLUDES) $(CFLAGS) $(FLAGS) $< -o $@ -Wl,-rpath,$(ORIGIN)/libs -L $(ORIGIN)/libs -lprotocol -llogger

@@ -42,7 +42,7 @@ new_request(request_code type, char *resource_path, size_t body_size, void* body
 }
 
 int
-send_request(int conn_fd, request_code type, char *resource_path, size_t body_size, void* body)
+send_request(int conn_fd, request_code type, const char *resource_path, size_t body_size, void* body)
 {
     if (conn_fd < 0) {
         errno = EINVAL;
@@ -135,7 +135,7 @@ new_response(response_code status, char *status_phrase, size_t body_size, void* 
 }
 
 int
-send_response(int conn_fd, response_code status, char *status_phrase, char *file_path, size_t body_size, void* body)
+send_response(int conn_fd, response_code status, const char *status_phrase, char *file_path, size_t body_size, void* body)
 {
     if (conn_fd < 0) {
         errno = EINVAL;

@@ -113,7 +113,7 @@ new_request(request_code type, char *resource_path, size_t body_size, void* body
  * -1 on failure, errno is set.
  */
 int
-send_request(int conn_fd, request_code type, char *resource_path, size_t body_size, void* body);
+send_request(int conn_fd, request_code type, const char *resource_path, size_t body_size, void* body);
 
 /**
  * Receives a request on socket associated with conn_fd, return the request
@@ -144,7 +144,7 @@ new_response(response_code status, char *status_phrase, size_t body_size, void* 
  * -1 on failure, errno is set.
  */
 int
-send_response(int conn_fd, response_code status, char *status_phrase, char *file_path, size_t body_size, void* body);
+send_response(int conn_fd, response_code status, const char *status_phrase, char *file_path, size_t body_size, void* body);
 
 /**
  * Receives a response on socket associated with conn_fd, return the response
