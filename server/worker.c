@@ -27,13 +27,14 @@ worker_thread(void* args)
     int error;
     do {
 
-        if (*exit_signal == 1) { break; continue; }
+        if (worker_exit_signal == 1) { break; continue;}
         
         int client_fd;
   
         client_fd = (int)concurrent_queue_get(requests);
         
-
+        if (client_fd == -1) {break; continue; }
+        
         request_t *request;
         request = recv_request(client_fd);
         if (request == NULL) {
@@ -125,8 +126,8 @@ worker_thread(void* args)
 _write_pipe:  
         write(pipe_fd, &client_fd, sizeof(int));
         free_request(request);
-    } while (*exit_signal == 0);
 
-    log_info("[%s] terminating\n", worker_name);
+    } while (worker_exit_signal == 0);
+
     pthread_exit(0);
 }

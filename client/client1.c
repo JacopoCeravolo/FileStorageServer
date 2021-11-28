@@ -35,6 +35,8 @@ open_connection(int socket_fd)
     if (PRINT) log_info("client opens connection\n");
     send_request(socket_fd, OPEN_CONNECTION, "", 0, NULL);
     response_t *r = recv_response(socket_fd);
+if (errno == ENOTCONN || errno == ECONNRESET) exit(-1);
+; 
     if (PRINT) log_info("received: %d : %s\n", r->status, r->status_phrase);
     //free_response(r);
 }
@@ -45,6 +47,8 @@ read_file(int socket_fd, char *file)
     if (PRINT) log_info("client reading file %s\n", file);
     send_request(socket_fd, READ_FILE, file, 0, NULL);
     response_t *r = recv_response(socket_fd);
+if (errno == ENOTCONN || errno == ECONNRESET) exit(-1);
+; 
     if (PRINT) log_info("received: %d : %s : %lu\n", r->status, r->status_phrase, r->body_size);
     // if (r->body_size != 0) if (PRINT) log_info("%s\n", (char*)r->body);
     //free_response(r);
@@ -56,6 +60,8 @@ lock_file(int socket_fd, char *file)
     if (PRINT) log_info("client locking file %s\n", file);
     send_request(socket_fd, LOCK_FILE, file, 0, NULL);
     response_t *r = recv_response(socket_fd);
+if (errno == ENOTCONN || errno == ECONNRESET) exit(-1);
+; 
     if (PRINT) log_info("received: %d : %s : %lu\n", r->status, r->status_phrase, r->body_size);
     // if (r->body_size != 0) if (PRINT) log_info("%s\n", (char*)r->body);
     //free_response(r);
@@ -67,6 +73,8 @@ unlock_file(int socket_fd, char *file)
     if (PRINT) log_info("client unlocking file %s\n", file);
     send_request(socket_fd, UNLOCK_FILE, file, 0, NULL);
     response_t *r = recv_response(socket_fd);
+if (errno == ENOTCONN || errno == ECONNRESET) exit(-1);
+; 
     if (PRINT) log_info("received: %d : %s : %lu\n", r->status, r->status_phrase, r->body_size);
     // if (r->body_size != 0) if (PRINT) log_info("%s\n", (char*)r->body);
     //free_response(r);
@@ -78,6 +86,8 @@ remove_file(int socket_fd, char *file)
     if (PRINT) log_info("client removing file %s\n", file);
     send_request(socket_fd, REMOVE_FILE, file, 0, NULL);
     response_t *r = recv_response(socket_fd);
+if (errno == ENOTCONN || errno == ECONNRESET) exit(-1);
+; 
     if (PRINT) log_info("received: %d : %s : %lu\n", r->status, r->status_phrase, r->body_size);
     if (r->body_size != 0) if (PRINT) log_info("%s\n", (char*)r->body);
     //free_response(r);
@@ -121,6 +131,8 @@ write_file(int socket_fd, char *file)
     
     send_request(socket_fd, WRITE_FILE, file, file_size, file_data);
     response_t *r = recv_response(socket_fd);
+if (errno == ENOTCONN || errno == ECONNRESET) exit(-1);
+; 
     if (PRINT) log_info("received: %d : %s\n", r->status, r->status_phrase);
 
     if (r->status == FILES_EXPELLED) {
@@ -129,6 +141,8 @@ write_file(int socket_fd, char *file)
 
         while (n_files > 0) {
             response_t *r1 = recv_response(socket_fd);
+if (errno == ENOTCONN || errno == ECONNRESET) exit(-1);
+; 
             if (r1->status == INTERNAL_ERROR) break;
             if (PRINT) log_info("received: %d : %s : %lu\n", r1->status, r1->status_phrase, r1->body_size);
             //if (PRINT) log_info("\n%s\n\n%s\n\n", r1->file_path, (char*)r1->body);
@@ -144,9 +158,13 @@ open_file(int socket_fd, char * file, int flags)
     if (PRINT) log_info("client opening file %s\n", file);
     send_request(socket_fd, OPEN_FILE, file, sizeof(int), &flags);
     response_t *r = recv_response(socket_fd);
+if (errno == ENOTCONN || errno == ECONNRESET) exit(-1);
+; 
     if (PRINT) log_info("received: %d : %s\n", r->status, r->status_phrase);
     //free_response(r);
 }
+
+
 
 void
 close_file(int socket_fd, char * file)
@@ -154,6 +172,8 @@ close_file(int socket_fd, char * file)
     if (PRINT) log_info("client closing file %s\n", file);
     send_request(socket_fd, CLOSE_FILE, file, 0, NULL);
     response_t *r = recv_response(socket_fd);
+if (errno == ENOTCONN || errno == ECONNRESET) exit(-1);
+; 
     if (PRINT) log_info("received: %d : %s\n", r->status, r->status_phrase);
     //free_response(r);
 }

@@ -16,22 +16,27 @@
 
 #define EXTERN
 
-#include "utils/concurrent_queue.h"
-#include "utils/protocol.h"
-#include "utils/utilities.h"
-#include "utils/logger.h"
-#include "server/storage.h"
 #include "server/server_config.h"
 #include "server/worker.h"
+#include "server/signal_handler.h"
 
 #define N_THREADS    1
 #define MAX_SIZE     128000000
 #define MAX_FILES    1000
 #define MAX_BACKLOG  200
 
-FILE *storage_file;
-concurrent_queue_t *requests_queue;
-pthread_t workers[N_THREADS];
+
+server_config_t      server_config;
+server_mode_t        server_status;
+storage_t            *storage;
+concurrent_queue_t   *requests_queue;
+
+/* FILE *storage_file; */
+
+pthread_t            *worker_tids;
+pthread_t            *sig_handler_tid;
+
+volatile long        worker_exit_signal;
 
 void
 cleanup()
@@ -39,279 +44,301 @@ cleanup()
    unlink(DEFAULT_SOCKET_PATH);
 }
 
-typedef struct {
-    sigset_t     *set;           /// set dei segnali da gestire (mascherati)
-    int           signal_pipe;   /// descrittore di scrittura di una pipe senza nome
-} sigHandler_t;
+int
+start_worker_threads(int *mw_pipe);
 
-
-// funzione eseguita dal signal handler thread
-static void *sigHandler(void *arg) {
-    sigset_t *set = ((sigHandler_t*)arg)->set;
-    int fd_pipe   = ((sigHandler_t*)arg)->signal_pipe;
-
-    for( ;; ) {
-	int sig;
-	int r = sigwait(set, &sig);
-	if (r != 0) {
-	    errno = r;
-	    perror("FATAL ERROR 'sigwait'");
-	    return NULL;
-	}
-
-	switch(sig) {
-	case SIGINT:
-	case SIGTERM:
-	case SIGQUIT:
-	    log_info("received signal %s, exiting\n", (sig==SIGINT) ? "SIGINT": ((sig==SIGTERM)?"SIGTERM":"SIGQUIT") );
-	    close(fd_pipe);  // notifico il listener thread della ricezione del segnale
-	    return NULL;
-	default:  ; 
-	}
-    }
-    return NULL;	   
-}
-
-/* 
-void 
-int_handler(int dummy) {
-   printf("\nIn Interrupted Signal Handler\n");
-   storage_dump(storage, storage_file);
-   fclose(storage_file);
-   storage_destroy(storage);
-   exit_signal = 1;
-   concurrent_queue_destroy(requests_queue);
-   sleep(3);
-   printf("Shutting down thread\n");
-   for (size_t i = 0; i < N_THREADS; i++) {
-      pthread_join(workers[i], NULL);
-   }
-   printf("Exiting...\n");
-   exit(EXIT_SUCCESS);
-}
- */
-/* void
-seg_handler(int dummy) 
-{
-   printf("\nIn Segmentation Fault Signal Handler. ERRNO: %s\n", strerror(errno));
-   storage_dump(storage, storage_file);
-   fclose(storage_file);
-   storage_destroy(storage);
-   printf("Exiting...\n");
-   exit(EXIT_SUCCESS);
-} */
+int
+shutdown_all_threads();
 
 int
 main(int argc, char const *argv[])
 {
+   int ret = 0;
 
-#ifdef DEBUG
-   log_init("/Users/jacopoceravolo/Desktop/FileStorageServer/logs/server.log");
-   set_log_level(LOG_DEBUG);
-#else
+   /* Configuration of the server */
+   server_config.no_of_workers = 1;
+   strcpy(server_config.socket_path, DEFAULT_SOCKET_PATH);
+   server_status = OPEN;
+
+   /* Max fd for select */
+   int fd_max = -1;
+
+   /* Initialize log file */
    log_init(NULL);
-#endif
 
-
-   /* Exit cleanup and basic signal handling */
-
-   sigset_t mask;
-   sigemptyset(&mask);
-   sigaddset(&mask, SIGINT); 
-   sigaddset(&mask, SIGQUIT);
-   sigaddset(&mask, SIGTERM);
-    
-   if (pthread_sigmask(SIG_BLOCK, &mask, NULL) != 0) {
-	   log_fatal("could not set signal mask\n");
-	   exit(EXIT_FAILURE);
+   /* Install signal handler */
+   int *signal_pipe = calloc(2, sizeof(int));
+   if ( signal_pipe == NULL ) {
+      log_fatal("Could not allocate signal handler pipe\n");
+      return -1; 
    }
 
-   // ignoro SIGPIPE per evitare di essere terminato da una scrittura su un socket
-   struct sigaction s;
-   memset(&s,0,sizeof(s));    
-   s.sa_handler=SIG_IGN;
-   if ( (sigaction(SIGPIPE,&s,NULL) ) == -1 ) {   
-	   log_fatal("error when ignoring SIGPIPE\n");
-      exit(EXIT_FAILURE);
-   } 
-
-   int signal_pipe[2];
-   if (pipe(signal_pipe)==-1) {
-	   log_fatal("pipe failed\n");
-      exit(EXIT_FAILURE);
+   if ( pipe(signal_pipe) == -1 ) {
+	   log_fatal("Could not create signal handler pipe\n");
+      free(signal_pipe);
+      return -1;
    }
 
-   pthread_t sighandler_thread;
-   sigHandler_t handlerArgs = { &mask, signal_pipe[1] };
+   fd_max = signal_pipe[0];
+   sig_handler_tid = calloc(1, sizeof(pthread_t));
    
-   if (pthread_create(&sighandler_thread, NULL, sigHandler, &handlerArgs) != 0) {
-	   log_fatal("could not start signal handler\n");
-	   exit(EXIT_FAILURE);
+   if ( install_signal_handler(signal_pipe, sig_handler_tid) != 0 ) {
+      log_fatal("Could not install signal handler\n");
+      free(signal_pipe);
+      return -1;
    }
 
-   /* Opens storage_file */
+   /* Initialize request queue */
+   requests_queue = concurrent_queue_create(int_compare, NULL, print_int); // ugly af
+   if ( requests_queue == NULL ) {
+      log_fatal("Could not initialize request queue\n");
+      free(signal_pipe);
+      return -1;
+   }
 
-   storage_file = fopen("/Users/jacopoceravolo/Desktop/FileStorageServer/logs/storage.txt", "w+");
-
-   /* Initialize storage with size 16384 and 10 files */
-
+   /* Initialize storage*/
    storage = storage_create(MAX_SIZE, MAX_FILES);
-   if (storage == NULL) {
-      log_error("storage could not be initialized\n");
-      exit(EXIT_FAILURE);
+   if ( storage == NULL ) {
+      log_error("Could not initialize storage\n");
+      ret = -1;
+      goto _server_exit1;
    }
 
-   /* Opening the socket */
+   /* Creates and starts workers */
+   int mw_pipe[2];
 
-   int socket_fd, rc;
+   if ( pipe(mw_pipe) != 0 ) {
+      log_fatal("Could not create master - worker pipe\n");
+      ret = -1;
+      goto _server_exit1;
+   }
+
+   if ( mw_pipe[0] > fd_max ) {
+      fd_max = mw_pipe[0];
+   }
+
+   worker_tids = calloc(server_config.no_of_workers, sizeof(pthread_t));
+   if ( worker_tids == NULL ) {
+      ret = -1;
+      goto _server_exit1;
+   }
+
+   worker_exit_signal = 0;
+
+   if ( start_worker_threads(mw_pipe) != 0 ) {
+      log_fatal("Could not start worker threads\n");
+      free(worker_tids);
+      ret = -1;
+      goto _server_exit1;
+   }
+   
+   /* Opening the socket */
+   int socket_fd, res;
    struct sockaddr_un serveraddr;
 
-   unlink(DEFAULT_SOCKET_PATH);
+   unlink(server_config.socket_path);
 
-   socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-   if (socket_fd < 0) {
-      log_fatal("socket() failed");
-      exit(EXIT_FAILURE);
+   if ( (socket_fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+      log_fatal("Cloud not initialize socket\n");
+      ret = -1;
+      goto _server_exit2;
+
    }
+
+   if (socket_fd > fd_max) fd_max = socket_fd;
 
    memset(&serveraddr, 0, sizeof(serveraddr));
    serveraddr.sun_family = AF_UNIX;
-   strcpy(serveraddr.sun_path, DEFAULT_SOCKET_PATH);
+   strcpy(serveraddr.sun_path, server_config.socket_path);
 
-   rc = bind(socket_fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
-   if (rc < 0) {
-      log_fatal("bind() failed");
-      return -1;
+   if ( bind(socket_fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) != 0 ) {
+      log_fatal("Cloud not bind socket\n");
+      ret = -1;
+      goto _server_exit2;
    }
 
-   rc = listen(socket_fd, MAX_BACKLOG);
-   if (rc< 0) {
-      log_fatal("listen() failed");
-      return -1;
+   if ( listen(socket_fd, MAX_BACKLOG) != 0 ) {
+      log_fatal("Cloud not listen on socket\n");
+      ret = -1;
+      goto _server_exit2;
    }
 
-   /* Setting pipes and file descriptor set */
-
-   int    mw_pipe[2];   // master-worker pipe
-   fd_set set;          // set of opened file descriptors
-   fd_set rdset;        // set of descriptors ready on read
-
+   /* Setting up file descriptors set */
+   fd_set set;         
+   fd_set rdset;  
 
    FD_ZERO(&set);
-   FD_ZERO(&rdset);
+   FD_ZERO(&rdset); 
 
-   if (pipe(mw_pipe) != 0) {
-      log_fatal("pipe()");
-      return -1;
-   }
-
-   FD_SET(socket_fd, &set);
-   FD_SET(mw_pipe[0], &set);
    FD_SET(signal_pipe[0], &set);
+   FD_SET(mw_pipe[0], &set);
+   FD_SET(socket_fd, &set);
+        
 
-   int fd_max = 0;
-   if (socket_fd > fd_max) fd_max = socket_fd;
-   if (mw_pipe[0] > fd_max) fd_max = mw_pipe[0];
-   if (signal_pipe[0] > fd_max) fd_max = signal_pipe[0];
+   
+   /* Opens storage_file */
+   /* storage_file = fopen("/Users/jacopoceravolo/Desktop/FileStorageServer/logs/storage.txt", "w+"); */
 
-   /* Initializing dispatcher->worker queue */
-
-   requests_queue = concurrent_queue_create(int_compare, NULL, print_int);
-   if (requests_queue == NULL) {
-      log_fatal("dispatcher queue could not be initialized\n");
-      exit(EXIT_FAILURE);
-   }
-
-   /* Starting all workers */
-
-   volatile long exit_signal = 0;
-
-   for (int id = 0; id < N_THREADS; id++) {
-      worker_arg_t *worker_args = calloc(1, sizeof(worker_arg_t));
-      worker_args->exit_signal = (long)&exit_signal;
-      worker_args->worker_id = id;
-      worker_args->pipe_fd = mw_pipe[1];
-      worker_args->requests = requests_queue;
-      if (pthread_create(&workers[id], NULL, worker_thread, (void*)worker_args) != 0) {
-         log_fatal("could not create thread\n");
-         exit(EXIT_FAILURE);
-      }
-   }
 
    /* Start accepting requests */
 
 
    fprintf(stdout, "****** SERVER STARTED ******\n");
-   while (exit_signal == 0) {
+
+   while (server_status != SHUTDOWN_NOW) {
       
       rdset = set;
-      if (select(fd_max+1, &rdset, NULL, NULL, NULL) == -1 && errno != EINTR) {
-	       log_fatal("select");
-	       exit(-1);
+
+      if ( select(fd_max + 1, &rdset, NULL, NULL, NULL) == -1 && errno != EINTR) {
+	         log_fatal("Fatal error when selecting file descriptor\n");
+            ret = -1;
+	         goto _server_exit2;
 	   }
+
+      if ( FD_ISSET(signal_pipe[0], &rdset) ) {
+
+            FD_CLR(signal_pipe[0], &set);
+            if ( signal_pipe[0] == fd_max ) {
+               fd_max--;
+            }
+
+            FD_CLR(socket_fd, &set);
+            if ( socket_fd == fd_max ) {
+               fd_max--;
+            }
+            close(socket_fd);
+
+
+            log_info("Server mode is %s\n", (server_status == SHUTDOWN) ? "SHUTDOWN" : "SHUTDOWN_NOW");
+            continue;
+      }
 
       for(int fd = 0; fd <= fd_max; fd++) {
 
-         if (FD_ISSET(fd, &rdset) && (fd != mw_pipe[0])) {
+         if ( FD_ISSET(fd, &rdset) && (fd != mw_pipe[0]) ) {
+
             int client_fd;
-		      if (fd == socket_fd && FD_ISSET(socket_fd, &set)) { // new client
+
+		      if ( (fd == socket_fd) && FD_ISSET(socket_fd, &set) 
+                  && server_status != SHUTDOWN ) { // new client
                
-               client_fd = accept(socket_fd, (struct sockaddr*)NULL, NULL);
-               if (client_fd < 0) {
-                  log_fatal("accept() failed");
-                  return -1;
+               if ( (client_fd = accept(socket_fd, (struct sockaddr*)NULL, NULL)) < 0) {
+                  log_fatal("Could not accept new client connection\n");
+                  continue;
                }
+
                FD_SET(client_fd, &set);
+
                if (client_fd > fd_max) fd_max = client_fd;
 
             } else { // new request from already connected client
-               void *tmp_fd;
-               tmp_fd = (void*)fd;
-               if (concurrent_queue_put(requests_queue, tmp_fd) != 0) {
-                  log_error("could not add fd %d to queue\n", fd);
+
+               void *tmp_fd = (void*)fd;
+         
+               if ( concurrent_queue_put(requests_queue, tmp_fd) != 0 ) {
+                  log_error("Could not enqueue new client request\n");
                }
 
                FD_CLR(fd, &set);
-               if (fd == fd_max) {
+               if ( fd == fd_max ) {
                   fd_max--;
                }
-               
             }
          }
 
-         if (FD_ISSET(fd, &rdset) && FD_ISSET(mw_pipe[0], &rdset)) {
+         if ( FD_ISSET(fd, &rdset) && FD_ISSET(mw_pipe[0], &rdset) ) {
             
             int new_fd;
 
 			   if( (read(mw_pipe[0], &new_fd, sizeof(int))) == -1 ) {
-			   	log_fatal("read_pipe");
-			   	return -1;
-			   } else{
-			   	if( new_fd != -1 ){ // reinserisco il fd tra quelli da ascoltare
-			   		FD_SET(new_fd, &set);
+			   	log_fatal("Could not read on master - worker pipe\n");
+			   	continue; // Should probably fail
+			   } else {
+               
+			   	if( new_fd != -1 ){ // reinsert fd in listen set
+			   		
+                  FD_SET(new_fd, &set);
 			         if( new_fd > fd_max ) fd_max = new_fd;
 			   	}
 			   }
 		   }
 
-         if (FD_ISSET(fd, &rdset) && fd == signal_pipe[0]) {
-            exit_signal = 1;
-            break;
-         }
+         
       }
    }
 
-   pthread_join(sighandler_thread, NULL);
-   log_info("Joined signal handler\n"); 
-   for (int i = 0; i < N_THREADS; i++) {
-      pthread_join(workers[i], NULL);
-      log_info("Joined worker %d\n", i);
+   fprintf(stdout, "****** SERVER CLOSING ******\n");
+
+   /* Joining threads */
+   if ( shutdown_all_threads() != 0 ) {
+      ret = -1;
    }
    
 
-   fprintf(stdout, "****** SERVER CLOSED ******\n");
-   
-   // concurrent_queue_destroy(requests_queue);
+_server_exit2:
    close(socket_fd);
+   unlink(server_config.socket_path);
+   free(worker_tids);
+   close(mw_pipe[0]);
+   close(mw_pipe[1]);
+_server_exit1:
+   close(signal_pipe[0]); 
+   close(signal_pipe[1]);
+   free(signal_pipe);
+   storage_destroy(storage);
+   // concurrent_queue_destroy(request_queue);
+   
+   return ret;
+}
+
+
+int
+start_worker_threads(int *mw_pipe)
+{
+   for (int i = 0; i < server_config.no_of_workers; i++) {
+
+      worker_arg_t *worker_args = calloc(1, sizeof(worker_arg_t));
+      if ( worker_args == NULL ) {
+         log_fatal("Could not allocate worker thread arguments\n");
+         return -1;
+      }
+
+      worker_args->exit_signal = (long)&worker_exit_signal;
+      worker_args->worker_id = i;
+      worker_args->pipe_fd = mw_pipe[1];
+      worker_args->requests = requests_queue;
+
+      if ( pthread_create(&worker_tids[i], NULL, worker_thread, (void*)worker_args ) != 0) {
+         log_fatal("Could not create worker thread\n");
+         return -1;
+      }
+   }
+
    return 0;
+}
+
+int
+shutdown_all_threads() 
+{
+   int res;
+
+   worker_exit_signal = 1;
+
+   /* This all should be moved to a separate pipe between master and workers */
+   for (int i = 0; i < server_config.no_of_workers; i++) {
+      
+      int terminate = -1;
+      void *signal_worker = (void*)terminate;
+      
+      if ( concurrent_queue_put(requests_queue, signal_worker) != 0 ) {
+         log_error("Could not send thread termination signal\n");
+      }
+   }
+
+   for (int i = 0; i < server_config.no_of_workers; i++) {
+      if ( (res = pthread_join(worker_tids[i], NULL)) != 0 ) {
+         log_error("Could not join worker thread %d\n", i);
+      } 
+   }
+   return res;
 }

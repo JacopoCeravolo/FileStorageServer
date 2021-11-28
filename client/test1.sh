@@ -5,5 +5,6 @@ terminate(){
     exit
 }
 
-./client1 /Users/jacopoceravolo/Desktop/FileStorageServer/logs/client1.log &
-./client2 /Users/jacopoceravolo/Desktop/FileStorageServer/logs/client2.log &
+./client2 &> client1.txt &
+sleep 4
+./client2 &> client2.txt 
