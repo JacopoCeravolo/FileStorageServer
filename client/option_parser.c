@@ -7,9 +7,9 @@
 #include "utils/logger.h"
 
 int
-parse_options(int argc,  char * const *argv, const char *options_string, list_t *parsed_options)
+parse_options(int argc, char const *argv[], const char *options_string, list_t *parsed_options)
 {
-    int opt, err = 0, socket_set = 0;
+    int opt, socket_set = 0;
 
     while ((opt = getopt(argc, argv, options_string)) != -1) {
 

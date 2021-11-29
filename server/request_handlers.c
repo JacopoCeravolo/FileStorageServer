@@ -379,7 +379,7 @@ lock_file_handler(int client_fd, request_t *request)
         return MISSING_BODY; // FOR ME TO REMEMBER THAT IT HAS TO WAIT UNTIL LOCK IS RELEASED
     }
 
-    return 0;
+    return status;
 
 }
 

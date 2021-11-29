@@ -189,8 +189,9 @@ free_file(void *e)
 }
 
 void
-print_file(file_t *f, FILE *stream)
+print_file(void *e, FILE *stream)
 {
+    file_t *f = (file_t*)e;
     fprintf(stream,
     " %lu (bytes)\n", f->size);
     fprintf(stream, "\n------------------------------------------------------\n");

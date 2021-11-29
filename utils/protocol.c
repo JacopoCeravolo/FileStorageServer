@@ -49,7 +49,7 @@ send_request(int conn_fd, request_code type, const char *resource_path, size_t b
         return -1;
     }
 
-    int result;
+    int result = 0;
     if (write(conn_fd, (void*)&type, sizeof(response_code)) == -1) return -1;
     if (write(conn_fd, (void*)resource_path, sizeof(char) * MAX_PATH) == -1) return -1;
     if (write(conn_fd, (void*)&body_size, sizeof(size_t)) == -1) return -1;
@@ -57,7 +57,7 @@ send_request(int conn_fd, request_code type, const char *resource_path, size_t b
     if (body_size != 0) {
         if (write(conn_fd, body, body_size) == -1) return -1;
     }
-    return 0;
+    return result;
 }
 
 request_t*
@@ -142,7 +142,7 @@ send_response(int conn_fd, response_code status, const char *status_phrase, char
         return -1;
     }
 
-    int result;
+    int result = 0;
     if (write(conn_fd, (void*)&status, sizeof(response_code)) == -1) return -1;
     if (write(conn_fd, (void*)status_phrase, sizeof(char) * MAX_PATH) == -1) return -1;
     if (write(conn_fd, (void*)file_path, sizeof(char) * MAX_PATH) == -1) return -1;
@@ -151,7 +151,7 @@ send_response(int conn_fd, response_code status, const char *status_phrase, char
     if (body_size != 0) {
         if (write(conn_fd, body, body_size) == -1) return -1;
     }
-    return 0;
+    return result;
 }
 
 response_t*

@@ -64,9 +64,10 @@ main(int argc, char const *argv[])
    int fd_max = -1;
 
    /* Initialize log file */
-   // log_init("/Users/jacopoceravolo/Desktop/storage-server/logs/server.log");
-   log_init(NULL);
-   //set_log_level(LOG_DEBUG);
+   log_init("/Users/jacopoceravolo/Desktop/storage-server/logs/server.log");
+   // log_init(NULL);
+   // set_log_level(LOG_DEBUG);
+
    /* Install signal handler */
    int *signal_pipe = calloc(2, sizeof(int));
    if ( signal_pipe == NULL ) {

@@ -99,6 +99,6 @@ void
 free_file(void *e);
 
 void
-print_file(file_t *f, FILE *stream);
+print_file(void *e, FILE *stream);
 
 #endif

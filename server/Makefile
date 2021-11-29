@@ -1,33 +1,50 @@
-CC := gcc
+# General
+CC			:= gcc
+LD			:= gcc
+RM			:= rm -rf
 
-ORIGIN = $(realpath ../)
+# Directories
+ifndef ORIGIN
+ORIGIN		:= $(realpath ../)
+endif
 
-CFLAGS += -g -Wall -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -Wno-incompatible-pointer-types \
-			-Wno-int-conversion -Wno-int-to-void-pointer-cast -Wno-unused-variable # -D DEBUG
-INCLUDES = -I $(ORIGIN)
+ifndef LIBS
+LIBS		:= $(ORIGIN)/libs
+endif
 
-TARGETS = server
+# Source, Objects and Target
+SOURCES			:= $(shell find . -type f -name '*.c')
+OBJECTS			:= $(patsubst %.c,%.o,$(SOURCES))
+TARGET			:= server
 
-.PHONY = all clean cleanall debug build
+# Compiler Flags
+CFLAGS			:= -std=c99 -Wall -g 
+INCLUDES		:= -I $(ORIGIN)
 
-%.o: %.c %.h
-	$(CC) $(INCLUDES) $(CFLAGS) -c $< -o $@ 
+LINK_LIBS		:= -Wl,-rpath,$(LIBS) -L $(LIBS)
+L_PROTOCOL 		:= -lprotocol
+L_LOGGER		:= -llogger
+L_HASHMAP		:= -lhash_map
+L_LINKED_LIST	:= -llinked_list
+L_CONC_QUEUE	:= -lconcurrent_queue
+LINK_ALL		:= $(L_PROTOCOL) $(L_LOGGER) $(L_HASHMAP) $(L_LINKED_LIST) $(L_CONC_QUEUE)
 
-all: $(TARGETS)
+# General rule for objects
+%.o: %.c 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -MP -o $@ $<
 
-server: server.c storage.o worker.o request_handlers.o signal_handler.o
-	$(CC) $(INCLUDES) $(CFLAGS) -o $@ $^ -Wl,-rpath,$(ORIGIN)/libs -L $(ORIGIN)/libs -lprotocol -lconcurrent_queue -llinked_list -lhash_map -lpthread -llogger
+# Rule for executable
+$(TARGET): $(OBJECTS)
+	$(LD) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LINK_LIBS) $(LINK_ALL)
+
+# Build Rules
+.PHONY: clean cleanall
+.DEFAULT_GOAL := all
+
+all: $(TARGET)
 
 clean:
-	rm -rf server
-
-debug: CFLAGS += -g -DDEBUG=1
-debug:
-	@make all
-
-build: CFLAGS += -O3 -DBUILD=1
-build:
-	@make all
+	$(RM) $(OBJECTS) 
 
 cleanall:
-	rm -rf server *.o *.dSYM
+	$(RM) $(OBJECTS) $(TARGET)

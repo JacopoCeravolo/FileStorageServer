@@ -1,35 +1,60 @@
-CC := gcc
+# General
+CC			:= gcc
+LD			:= gcc
+RM			:= rm -rf
 
-ORIGIN = $(realpath ../)
+# Directories
+ifndef ORIGIN
+ORIGIN		:= $(realpath ../)
+endif
 
-CFLAGS += -Wall -g -Wno-pointer-to-int-cast -Wno-unused-variable
-INCLUDES = -I $(ORIGIN)
+ifndef LIBS
+LIBS		:= $(ORIGIN)/libs
+endif
 
-TARGETS = libconcurrent_queue.so libhash_map.so liblinked_list.so libprotocol.so liblogger.so
+# Targets
+LOGGER 			:= liblogger.so
+LINKED_LIST 	:= liblinked_list.so
+PROTOCOL 		:= libprotocol.so
+HASH_MAP 		:= libhash_map.so
+CONCURRENT_QUEUE = libconcurrent_queue.so
+
+TARGETS 		:= $(LIBS)/$(LOGGER) $(LIBS)/$(LINKED_LIST) $(LIBS)/$(PROTOCOL) \
+					$(LIBS)/$(HASH_MAP) $(LIBS)/$(CONCURRENT_QUEUE)
+
+# Compiler Flags
+CFLAGS			:= -std=c99 -Wall -Werror -g
+INCLUDES		= -I $(ORIGIN)
 
 .PHONY = all clean cleanall 
 
+# General rule for objects
 %.o: %.c %.h
-	$(CC) $(INCLUDES) $(CFLAGS) -c $< -fPIC -o $@ 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -MP -fPIC -o $@ $< 
+
+.PHONY: clean cleanall 
+.DEFAULT_GOAL := all
 
 all: $(TARGETS)
 
+$(LIBS)/$(LOGGER): logger.o 
+	$(CC) -shared -o $@ $^
+	
+$(LIBS)/$(PROTOCOL): protocol.o 
+	$(CC) -shared -o $@ $^
+
+$(LIBS)/$(LINKED_LIST): linked_list.o 
+	$(CC) -shared -o $@ $^
+
+$(LIBS)/$(HASH_MAP): hash_map.o 
+	$(CC) -shared -o $@ $^
+
+$(LIBS)/$(CONCURRENT_QUEUE): concurrent_queue.o linked_list.o 
+	$(CC) -shared -o $@ $^
+
 clean:
-	rm -rf *.o
+	$(RM) *.o
+
 cleanall:
-	rm -rf $(ORIGIN)/libs/*.so *.o
+	$(RM) *.o $(TARGETS)
 
-libprotocol.so: protocol.o 
-	$(CC) -shared -o $(ORIGIN)/libs/$@ $^
-
-libhash_map.so: hash_map.o 
-	$(CC) -shared -o $(ORIGIN)/libs/$@ $^
-
-liblinked_list.so: linked_list.o 
-	$(CC) -shared -o $(ORIGIN)/libs/$@ $^
-
-liblogger.so: logger.o 
-	$(CC) -shared -o $(ORIGIN)/libs/$@ $^
-
-libconcurrent_queue.so: concurrent_queue.o linked_list.o 
-	$(CC) -shared -o $(ORIGIN)/libs/$@ $^

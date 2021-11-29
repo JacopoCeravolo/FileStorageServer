@@ -28,7 +28,7 @@ extern bool VERBOSE;
 extern char socket_name[MAX_PATH];
 
 int
-parse_options(int argc,  char * const argv[], const char *options_string, list_t *parsed_options);
+parse_options(int argc, char const *argv[], const char *options_string, list_t *parsed_options);
 
 
 static void

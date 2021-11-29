@@ -47,14 +47,10 @@ int main(int argc, char const *argv[])
         log_warning("some options have not been parsed correctly\n");
     }
 
-    if (socket_name != NULL) {
-        log_info("socket name: %s\n", socket_name);
-    }
-
-    
 
     if (openConnection(DEFAULT_SOCKET_PATH, 0, (struct timespec){0,0}) != 0) {
         perror("openConnection() failed");
+        return -1;
     }
 
     while (!list_is_empty(request_list)) {
@@ -67,8 +63,7 @@ int main(int argc, char const *argv[])
                 char *token = strtok(request->arguments, ",");
                 while (token) {
 
-                    int flags;
-                    SET_FLAG(flags, O_CREATE|O_LOCK);
+                
                     if (openFile(token, O_CREATE|O_LOCK) != 0) {
                         perror("openFile() failed");
                     }
@@ -91,8 +86,7 @@ int main(int argc, char const *argv[])
                 char *token = strtok(request->arguments, ",");
                 while (token) {
                    
-                    int flags;
-                    SET_FLAG(flags, O_NOFLAG);
+                   
                     if (openFile(token, O_NOFLAG) != 0) {
                         perror("openFile() failed");
                     }

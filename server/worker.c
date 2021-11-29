@@ -17,14 +17,12 @@ worker_thread(void* args)
 
    int pipe_fd = ((worker_arg_t*)args)->pipe_fd;
    int worker_id = ((worker_arg_t*)args)->worker_id;
-   long *exit_signal = ((worker_arg_t*)args)->exit_signal;
    concurrent_queue_t *requests = ((worker_arg_t*)args)->requests;
    char worker_name[32];
    sprintf(worker_name, "WORKER %d", worker_id);
 
    free(args);
 
-    int error;
     do {
 
         if (worker_exit_signal == 1) { break; continue;}

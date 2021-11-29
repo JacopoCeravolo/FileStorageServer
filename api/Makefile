@@ -1,21 +1,46 @@
-CC := gcc
+# General
+CC			:= gcc
+LD			:= gcc
+RM			:= rm -rf
 
-ORIGIN = $(realpath ../)
+# Directories
+ifndef ORIGIN
+ORIGIN		:= $(realpath ../)
+endif
 
-INCLUDES = -I $(ORIGIN)
-CFLAGS += -Wall -g -Wno-pointer-to-int-cast -Wno-unused-variable -fPIC $(INCLUDES)
+ifndef LIBS
+LIBS		:= $(ORIGIN)/libs
+endif
+
+# Source, Objects and Target
+SOURCES			:= $(shell find . -type f -name '*.c')
+OBJECTS			:= $(patsubst %.c,%.o,$(SOURCES))
+API 			:= libfilestorage_api.so
+TARGET			:= $(LIBS)/$(API)
+
+# Compiler Flags
+CFLAGS			:= -std=c99 -Wall -Werror -g
+INCLUDES		:= -I $(ORIGIN)
+
+LINK_LIBS		:= -Wl,-rpath,$(LIBS) -L $(LIBS)
+L_PROTOCOL 		:= -lprotocol
 
 
-TARGET = libfileserver_api.so 
-OBJECTS = open_connection.o close_connection.o open_file.o write_file.o \
-			read_file.o close_file.o remove_file.o lock_file.o \
-			unlock_file.o read_n_files.o
+# General rule for objects
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -MP -fPIC -o $@ $<
 
-%.o: %.c %.h
-	$(CC) $(INCLUDES) $(CFLAGS) -c $<  -o $@ 
+# Rule for target
+$(LIBS)/$(API): $(OBJECTS)
+	$(CC) -shared -o $@ $^ $(LINK_LIBS) $(L_PROTOCOL)
 
-libfileserver_api.so: $(OBJECTS) 
-	$(CC) -shared -o $(ORIGIN)/libs/$@ $^ -Wl,-rpath,$(ORIGIN)/libs -L $(ORIGIN)/libs -lprotocol
+.PHONY: clean cleanall 
+.DEFAULT_GOAL := all
+
+all: $(TARGET)
+
+clean:
+	$(RM) $(OBJECTS) 
 
 cleanall:
-	rm -rf *.o $(ORIGIN)/libs/$(TARGET)
+	$(RM) $(OBJECTS) $(TARGET)
