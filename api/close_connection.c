@@ -5,8 +5,8 @@
 int 
 closeConnection(const char* sockname)
 {
-    printf("> [CLIENT] closing connection\n");
-
+    int result;
+    
     send_request(socket_fd, CLOSE_CONNECTION, "", 0, NULL);
     
     close(socket_fd);

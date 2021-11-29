@@ -31,7 +31,7 @@ server_mode_t        server_status;
 storage_t            *storage;
 concurrent_queue_t   *requests_queue;
 
-/* FILE *storage_file; */
+FILE *storage_file;
 
 pthread_t            *worker_tids;
 pthread_t            *sig_handler_tid;
@@ -64,8 +64,9 @@ main(int argc, char const *argv[])
    int fd_max = -1;
 
    /* Initialize log file */
+   // log_init("/Users/jacopoceravolo/Desktop/storage-server/logs/server.log");
    log_init(NULL);
-
+   //set_log_level(LOG_DEBUG);
    /* Install signal handler */
    int *signal_pipe = calloc(2, sizeof(int));
    if ( signal_pipe == NULL ) {
@@ -92,6 +93,14 @@ main(int argc, char const *argv[])
    requests_queue = concurrent_queue_create(int_compare, NULL, print_int); // ugly af
    if ( requests_queue == NULL ) {
       log_fatal("Could not initialize request queue\n");
+      free(signal_pipe);
+      return -1;
+   }
+
+   /* Initialize connected clients hashtable */
+   connected_clients = hash_map_create(MAX_BACKLOG * 2, int_hash, int_compare, NULL, list_destroy);
+   if ( connected_clients == NULL ) {
+      log_fatal("Could not initialize connected clients hashtable\n");
       free(signal_pipe);
       return -1;
    }
@@ -177,7 +186,7 @@ main(int argc, char const *argv[])
 
    
    /* Opens storage_file */
-   /* storage_file = fopen("/Users/jacopoceravolo/Desktop/FileStorageServer/logs/storage.txt", "w+"); */
+   storage_file = fopen("/Users/jacopoceravolo/Desktop/storage-server/logs/storage.txt", "w+");
 
 
    /* Start accepting requests */
@@ -206,10 +215,6 @@ main(int argc, char const *argv[])
             if ( socket_fd == fd_max ) {
                fd_max--;
             }
-            close(socket_fd);
-
-
-            log_info("Server mode is %s\n", (server_status == SHUTDOWN) ? "SHUTDOWN" : "SHUTDOWN_NOW");
             continue;
       }
 
@@ -261,9 +266,7 @@ main(int argc, char const *argv[])
 			         if( new_fd > fd_max ) fd_max = new_fd;
 			   	}
 			   }
-		   }
-
-         
+		   } 
       }
    }
 
@@ -278,15 +281,19 @@ main(int argc, char const *argv[])
 _server_exit2:
    close(socket_fd);
    unlink(server_config.socket_path);
+   free(sig_handler_tid);
    free(worker_tids);
    close(mw_pipe[0]);
    close(mw_pipe[1]);
 _server_exit1:
    close(signal_pipe[0]); 
-   close(signal_pipe[1]);
    free(signal_pipe);
+   storage_dump(storage, storage_file);
    storage_destroy(storage);
-   // concurrent_queue_destroy(request_queue);
+   hash_map_destroy(connected_clients);
+   fclose(storage_file);
+   close_log();
+   // concurrent_queue_destroy(request_queue); // leads to SIGSEV
    
    return ret;
 }
@@ -323,6 +330,10 @@ shutdown_all_threads()
    int res;
 
    worker_exit_signal = 1;
+
+   if ( (res = pthread_join(*sig_handler_tid, NULL)) != 0 ) {
+         log_error("Could not join signal handler thread\n");
+   } 
 
    /* This all should be moved to a separate pipe between master and workers */
    for (int i = 0; i < server_config.no_of_workers; i++) {

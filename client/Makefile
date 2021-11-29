@@ -2,7 +2,7 @@ CC := gcc
 
 ORIGIN = $(realpath ../)
 
-CFLAGS += -Wall -g -Wno-pointer-to-int-cast -Wno-unused-variable -D PRINT=1 #-D DEBUG
+CFLAGS += -Wall -g -D PRINT=1 #-D DEBUG
 INCLUDES = -I $(ORIGIN)
 
 TARGETS = client client1 client2 
@@ -15,7 +15,7 @@ TARGETS = client client1 client2
 all: $(TARGETS)
 
 client: client.c option_parser.o
-	$(CC) $(INCLUDES) $(CFLAGS) $(FLAGS) -o $@  $^ -Wl,-rpath,$(ORIGIN)/libs -L $(ORIGIN)/libs -llinked_list -llogger -lfileserver_api
+	$(CC) $(INCLUDES) $(CFLAGS) $(FLAGS) -o $@  $^ -Wl,-rpath,$(ORIGIN)/libs -L $(ORIGIN)/libs -llinked_list -llogger -lfileserver_api 
 
 client1: client1.c
 	$(CC) $(INCLUDES) $(CFLAGS) $(FLAGS) $< -o $@ -Wl,-rpath,$(ORIGIN)/libs -L $(ORIGIN)/libs -lprotocol -llogger

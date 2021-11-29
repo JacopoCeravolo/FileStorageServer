@@ -50,7 +50,7 @@ worker_thread(void* args)
                 int status = 0;
                 status = open_connection_handler(client_fd);
                 send_response(client_fd, status, status_message[status], "", 0, NULL);
-                log_info("client %d connection opened\n", client_fd);
+                // log_info("client %d connection opened\n", client_fd);
                 break;
             }
     
@@ -58,7 +58,7 @@ worker_thread(void* args)
                 int status = 0;
                 status = close_connection_handler(client_fd);
                 if (status != 0) log_error("an error occurred when closing client %d connection\n", client_fd);
-                log_info("client %d connection closed\n", client_fd);
+                // log_info("client %d connection closed\n", client_fd);
                 close(client_fd);
                 client_fd = -1;
                 break;

@@ -14,10 +14,9 @@
 #define ONE_EIGHTH      ((int) (BITS_IN_int / 8))
 #define HIGH_BITS       ( ~((unsigned int)(~0) >> ONE_EIGHTH ))
 
-#define NO_FLAG     (0 << 0)
-#define O_CREATE    (1 << 0)
-#define O_LOCK      (1 << 1)
-#define O_READ      (1 << 2)
+#define O_NOFLAG    0x1
+#define O_CREATE    0x2
+#define O_LOCK      0x4
 
 #define SET_FLAG(n, f) ((n) |= (f)) 
 #define CLR_FLAG(n, f) ((n) &= ~(f)) 

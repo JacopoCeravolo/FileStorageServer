@@ -5,10 +5,13 @@
 #define  EXTERN  extern
 #endif
 
+#include "utils/linked_list.h"
+#include "utils/hash_map.h"
 #include "utils/concurrent_queue.h"
 #include "utils/protocol.h"
 #include "utils/utilities.h"
 #include "utils/logger.h"
+
 #include "server/storage.h"
 
 
@@ -28,6 +31,7 @@ EXTERN server_config_t          server_config;
 EXTERN server_mode_t            server_status;
 EXTERN storage_t                *storage;
 EXTERN concurrent_queue_t       *request_queue;
+EXTERN hash_map_t               *connected_clients;
 EXTERN volatile long            worker_exit_signal;
 
 #endif

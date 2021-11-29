@@ -13,6 +13,8 @@ sig_handler_thread(void *arg) {
     sigset_t *set = ((sig_handler_arg_t*)arg)->set;
     int *signal_pipe = ((sig_handler_arg_t*)arg)->signal_pipe;
 
+    free(arg);
+
     while(1) {
 
 	    int sig_num;
@@ -31,6 +33,7 @@ sig_handler_thread(void *arg) {
 
                 close(signal_pipe[1]); 
                 signal_pipe[1] = -1;
+                free(set);
                 return NULL;
 
 	        case SIGHUP:
@@ -39,6 +42,7 @@ sig_handler_thread(void *arg) {
 
                 close(signal_pipe[1]); 
                 signal_pipe[1] = -1;
+                free(set);
                 return NULL;
 
 	        default:  ; 
@@ -89,7 +93,7 @@ install_signal_handler(int *signal_pipe, pthread_t *sig_handler_id)
     handler_args->signal_pipe = signal_pipe;
 
     if( pthread_create(sig_handler_id, NULL, &sig_handler_thread, (void*)handler_args) != 0 ) return -1;
-    if( pthread_detach(sig_handler_id) != 0 ) return -1;
+    /* if( pthread_detach(sig_handler_id) != 0 ) return -1; */
 
     return 0;
 }

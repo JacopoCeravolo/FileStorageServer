@@ -224,20 +224,30 @@ int main(int argc, char const *argv[])
 
         open_file(socket_fd, "file1", flags);
         write_file(socket_fd, "file1");
-        close_file(socket_fd, "file1");
 
+        sleep(2);
 
         open_file(socket_fd, "file2", flags);
         write_file(socket_fd, "file2");
-        unlock_file(socket_fd, "file2");
-        read_file(socket_fd, "file2");
-        lock_file(socket_fd, "file2");
-        remove_file(socket_fd, "file2");
-        
 
-        // close_file(socket_fd, "file2");
+        sleep(2);
 
-        
+        open_file(socket_fd, "file3", flags);
+        write_file(socket_fd, "file3");
+
+        sleep(2);
+
+        close_file(socket_fd, "file1");
+
+        sleep(2);
+
+        close_file(socket_fd, "file2");
+
+        sleep(2);
+
+        close_file(socket_fd, "file3");
+
+        sleep(2);
 
         close_connection(socket_fd);
 

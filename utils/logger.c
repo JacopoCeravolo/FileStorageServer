@@ -62,7 +62,7 @@ logerror(const char *file, const int line, const char* format, ...)
         va_list args;
         va_start (args, format);
         fprintf(fp, "%s ", get_timestamp(tmp));
-        fprintf(fp, "%s:%d: [ error ] ", file, line);
+        fprintf(fp, "[ error ] ");
         vfprintf (fp, format, args);
         va_end (args);
         fflush(fp);

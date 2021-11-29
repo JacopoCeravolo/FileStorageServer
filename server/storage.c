@@ -131,7 +131,7 @@ storage_FIFO_replace(storage_t *storage, int how_many, size_t required_size, lis
     while ( (storage->no_of_files + how_many > storage->max_files) ||
             (storage->current_size + required_size > storage->max_size) ) {
         
-        list_remove_head(storage->basic_fifo, &removed_file_path);
+        removed_file_path = (char*)list_remove_head(storage->basic_fifo);
         removed_file = storage_remove_file(storage, removed_file_path);
         list_insert_tail(replaced_files, removed_file);
         files_removed++;
@@ -183,7 +183,7 @@ free_file(void *e)
 {
     file_t *f = (file_t*)e;
     log_debug("deallocating file (%s)\n", f->path);
-    free(f->contents);
+    if (f->contents) free(f->contents);
     list_destroy(f->waiting_on_lock);
     free(f);
 }

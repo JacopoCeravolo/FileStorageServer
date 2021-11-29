@@ -82,8 +82,8 @@ list_insert_at_index(list_t *list, void* to_insert, int index);
  * Return 0 on success, -1 on failure.
  * errno is set.
  */
-int
-list_remove_head(list_t *list, void** to_return);
+void*
+list_remove_head(list_t *list);
 
 int
 list_remove_element(list_t *list, void* elem);
@@ -102,7 +102,7 @@ list_is_empty(list_t *list);
  * errno is set.
  */
 int
-list_index_of(list_t *list, void* elem);
+list_find(list_t *list, void* elem);
 
 /**
  * Applies fun to all the elements in the list.

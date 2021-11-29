@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
 
 #include "api/fileserver_api.h"
@@ -50,14 +51,15 @@ int main(int argc, char const *argv[])
         log_info("socket name: %s\n", socket_name);
     }
 
-    struct timespec t;
+    
 
-    openConnection(DEFAULT_SOCKET_PATH, 0, t);
+    if (openConnection(DEFAULT_SOCKET_PATH, 0, (struct timespec){0,0}) != 0) {
+        perror("openConnection() failed");
+    }
 
     while (!list_is_empty(request_list)) {
 
-        option_t *request;
-        list_remove_head(request_list, (void*)&request);
+        option_t *request = (option_t*) list_remove_head(request_list);
 
         switch (request->type) {
             
@@ -67,11 +69,18 @@ int main(int argc, char const *argv[])
 
                     int flags;
                     SET_FLAG(flags, O_CREATE|O_LOCK);
-                    openFile(token, flags);
-                    writeFile(token, NULL);
-                    closeFile(token);
+                    if (openFile(token, O_CREATE|O_LOCK) != 0) {
+                        perror("openFile() failed");
+                    }
+                    if (writeFile(token, NULL) != 0) {
+                        perror("writeFile() failed");
+                    } 
+                    /* if (closeFile(token) != 0) {
+                        perror("closeFile() failed");
+                    } */
 
                     token = strtok(NULL, ",");
+                    sleep(1);
                 }
                 fprintf(stdout, "\n");
                 break;
@@ -82,7 +91,19 @@ int main(int argc, char const *argv[])
                 char *token = strtok(request->arguments, ",");
                 while (token) {
                    
-                    
+                    int flags;
+                    SET_FLAG(flags, O_NOFLAG);
+                    if (openFile(token, O_NOFLAG) != 0) {
+                        perror("openFile() failed");
+                    }
+                    void* buf;
+                    size_t size;
+                    if (readFile(token, &buf, &size) != 0) {
+                        perror("readFile() failed");
+                    } else {
+                        printf("*** %s ***\n", token);
+                        printf("\n%s\n\n\n", (char*)buf);
+                    }
                     token = strtok(NULL, ",");
                 }
                 fprintf(stdout, "\n");
@@ -102,7 +123,7 @@ int main(int argc, char const *argv[])
                 char *token = strtok(request->arguments, ",");
                 while (token) {
                     
-                    openFile(token, NO_FLAG);
+                    openFile(token, O_NOFLAG);
                     lockFile(token);
                     // closeFile(token);
 
@@ -117,7 +138,7 @@ int main(int argc, char const *argv[])
                 char *token = strtok(request->arguments, ",");
                 while (token) {
                     
-                    openFile(token, NO_FLAG);
+                    openFile(token, O_NOFLAG);
                     unlockFile(token);
                     closeFile(token);
 
@@ -132,9 +153,9 @@ int main(int argc, char const *argv[])
                 char *token = strtok(request->arguments, ",");
                 while (token) {
                     
-                    openFile(token, NO_FLAG);
+                    openFile(token, O_NOFLAG);
                     removeFile(token);
-                    closeFile(token);
+                    // closeFile(token);
 
                     token = strtok(NULL, ",");
                 }
@@ -144,7 +165,6 @@ int main(int argc, char const *argv[])
         }
 
         free(request);
-
     }
 
 
