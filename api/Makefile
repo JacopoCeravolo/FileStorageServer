@@ -19,7 +19,7 @@ API 			:= libfilestorage_api.so
 TARGET			:= $(LIBS)/$(API)
 
 # Compiler Flags
-CFLAGS			:= -std=c99 -Wall -Werror -g
+CFLAGS			:= -std=c99 -Wall -g
 INCLUDES		:= -I $(ORIGIN)
 
 LINK_LIBS		:= -Wl,-rpath,$(LIBS) -L $(LIBS)
@@ -28,7 +28,7 @@ L_PROTOCOL 		:= -lprotocol
 
 # General rule for objects
 %.o: %.c
-	$(CC) $(CFLAGS) $(INCLUDES) -c -MP -fPIC -o $@ $<
+	$(CC) $(CFLAGS) $(INCLUDES) -c -fPIC -o $@ $<
 
 # Rule for target
 $(LIBS)/$(API): $(OBJECTS)

@@ -85,6 +85,9 @@ list_insert_at_index(list_t *list, void* to_insert, int index);
 void*
 list_remove_head(list_t *list);
 
+void*
+list_remove_tail(list_t *list);
+
 int
 list_remove_element(list_t *list, void* elem);
 
@@ -111,6 +114,9 @@ list_find(list_t *list, void* elem);
 void
 list_map(list_t *list, void fun(void*));
 
+int
+list_length(list_t *list);
+
 /**
  * Prints the list according to the type specific
  * print function to the file pointed by stream.
@@ -118,6 +124,7 @@ list_map(list_t *list, void fun(void*));
  */
 void
 list_dump(list_t *list, FILE *stream);
+
 
 
 #endif

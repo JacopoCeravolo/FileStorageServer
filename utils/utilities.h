@@ -3,9 +3,12 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include <pthread.h>
+
 
 /********************** Constant Macros  **********************/
 
@@ -121,6 +124,48 @@ string_hash(void* key)
     return (hash_value);
 }
 
+/* msleep(): Sleep for the requested number of milliseconds. */
+static inline int msleep(long msec)
+{
+    struct timespec ts;
+    int res;
+
+    if (msec < 0)
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    ts.tv_sec = msec / 1000;
+    ts.tv_nsec = (msec % 1000) * 1000000;
+
+    do {
+        res = nanosleep(&ts, &ts);
+    } while (res && errno == EINTR);
+
+    return res;
+}
+
+
+#define LOCK_RETURN(mtx, ret) { \
+            if(pthread_mutex_lock(mtx) != 0) { \
+                fprintf(stderr, "pthread_mutex_lock failed: %s", strerror(errno)); return ret; }}
+
+#define UNLOCK_RETURN(mtx, ret) { \
+            if(pthread_mutex_unlock(mtx) != 0) { \
+                fprintf(stderr,"pthread_mutex_unlock failed: %s", strerror(errno)); return ret; }}
+
+#define COND_WAIT_RETURN(cond, mtx, ret) { \
+            if(pthread_cond_wait(cond, mtx) != 0) { \
+                fprintf(stderr,"pthread_cond_wait failed: %s", strerror(errno)); return ret; }}
+
+#define COND_SIGNAL_RETURN(cond, ret) { \
+            if(pthread_cond_signal(cond) != 0) { \
+                fprintf(stderr,"pthread_cond_signal failed: %s", strerror(errno)); return ret; }}
+
+#define COND_BROADCAST_RETURN(cond, ret) { \
+            if(pthread_cond_broadcast(cond) != 0) { \
+                fprintf(stderr,"pthread_cond_broadcast failed: %s", strerror(errno)); return ret; }}
 
 
 #endif

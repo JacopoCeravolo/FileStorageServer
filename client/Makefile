@@ -31,7 +31,7 @@ LINK_ALL		:= $(L_FILESERVER) $(L_PROTOCOL) $(L_LOGGER) $(L_LINKED_LIST)
 
 # General rule for objects
 %.o: %.c 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -MP -o $@ $<
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
 
 # Rule for executable
 $(TARGET): $(OBJECTS)

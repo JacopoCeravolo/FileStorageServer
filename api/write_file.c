@@ -49,6 +49,11 @@ writeFile(const char* pathname, const char* dirname){
 
     fclose(file_ptr);
 
+    if (openFile(pathname, O_CREATE|O_LOCK) != 0) {
+        perror("openFile() failed");
+        return -1;
+    }
+
     int result;
     errno = 0;
     

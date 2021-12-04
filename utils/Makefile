@@ -23,14 +23,14 @@ TARGETS 		:= $(LIBS)/$(LOGGER) $(LIBS)/$(LINKED_LIST) $(LIBS)/$(PROTOCOL) \
 					$(LIBS)/$(HASH_MAP) $(LIBS)/$(CONCURRENT_QUEUE)
 
 # Compiler Flags
-CFLAGS			:= -std=c99 -Wall -Werror -g
+CFLAGS			:= -std=c99 -Wall -g
 INCLUDES		= -I $(ORIGIN)
 
 .PHONY = all clean cleanall 
 
 # General rule for objects
 %.o: %.c %.h
-	$(CC) $(CFLAGS) $(INCLUDES) -c -MP -fPIC -o $@ $< 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -fPIC -o $@ $< 
 
 .PHONY: clean cleanall 
 .DEFAULT_GOAL := all

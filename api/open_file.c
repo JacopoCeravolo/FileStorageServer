@@ -54,6 +54,8 @@ openFile(const char* pathname, int flags)
             break;
         }
     }
+
+    // printf("SERVER: %s\n", status_message[response->status]);
     
     if (response) free_response(response);
     return result;

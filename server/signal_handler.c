@@ -93,7 +93,7 @@ install_signal_handler(int *signal_pipe, pthread_t *sig_handler_id)
     handler_args->signal_pipe = signal_pipe;
 
     if( pthread_create(sig_handler_id, NULL, &sig_handler_thread, (void*)handler_args) != 0 ) return -1;
-    /* if( pthread_detach(sig_handler_id) != 0 ) return -1; */
+
 
     return 0;
 }

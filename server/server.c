@@ -17,8 +17,9 @@
 #define EXTERN
 
 #include "server/server_config.h"
-#include "server/worker.h"
+#include "server/lock_manager.h"
 #include "server/signal_handler.h"
+#include "server/worker.h"
 
 #define N_THREADS    1
 #define MAX_SIZE     128000000
@@ -30,19 +31,16 @@ server_config_t      server_config;
 server_mode_t        server_status;
 storage_t            *storage;
 concurrent_queue_t   *requests_queue;
+hash_map_t           *connected_clients;
+hash_map_t           *waiting_on_lock;
 
 FILE *storage_file;
 
 pthread_t            *worker_tids;
 pthread_t            *sig_handler_tid;
+pthread_t            *lock_handler_tid;
 
 volatile long        worker_exit_signal;
-
-void
-cleanup()
-{
-   unlink(DEFAULT_SOCKET_PATH);
-}
 
 int
 start_worker_threads(int *mw_pipe);
@@ -64,9 +62,9 @@ main(int argc, char const *argv[])
    int fd_max = -1;
 
    /* Initialize log file */
-   log_init("/Users/jacopoceravolo/Desktop/storage-server/logs/server.log");
-   // log_init(NULL);
-   // set_log_level(LOG_DEBUG);
+   // log_init("/Users/jacopoceravolo/Desktop/storage-server/logs/server.log");
+   log_init(NULL);
+   set_log_level(LOG_INFO);
 
    /* Install signal handler */
    int *signal_pipe = calloc(2, sizeof(int));
@@ -113,6 +111,28 @@ main(int argc, char const *argv[])
       ret = -1;
       goto _server_exit1;
    }
+
+   /* Starts lock manager */
+   /* int lock_manager_pipe[2];
+   if ( pipe(lock_manager_pipe) != 0 ) {
+      log_fatal("Could not create lock manager pipe\n");
+      ret = -1;
+      goto _server_exit1;
+   }
+
+   if ( lock_manager_pipe[0] > fd_max ) {
+      fd_max = lock_manager_pipe[0];
+   }
+
+   lock_handler_tid = calloc(1, sizeof(pthread_t));
+
+   if ( setup_lock_manager(lock_manager_pipe, lock_handler_tid) != 0 ) {
+      log_fatal("Could not setup lock manager\n");
+      ret = -1;
+      free(lock_handler_tid);
+      goto _server_exit1;
+   } */
+
 
    /* Creates and starts workers */
    int mw_pipe[2];
@@ -280,6 +300,7 @@ main(int argc, char const *argv[])
    
 
 _server_exit2:
+   storage_dump(storage, storage_file);
    close(socket_fd);
    unlink(server_config.socket_path);
    free(sig_handler_tid);
@@ -289,7 +310,6 @@ _server_exit2:
 _server_exit1:
    close(signal_pipe[0]); 
    free(signal_pipe);
-   storage_dump(storage, storage_file);
    storage_destroy(storage);
    hash_map_destroy(connected_clients);
    fclose(storage_file);

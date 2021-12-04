@@ -118,6 +118,7 @@ hash_map_insert(hash_map_t *hmap, void* key, void* value)
         entry->value = value;
     }
 
+    hmap->n_entries++;
     return 0;
 }
 
@@ -159,6 +160,7 @@ hash_map_remove(hash_map_t *hmap, void *key)
     hmap->free_key(entry->key);
     hmap->free_value(entry->value);
     free(entry);
+    hmap->n_entries--;
     return 0;
 }
 
@@ -184,6 +186,16 @@ hash_map_get(hash_map_t *hmap, void* key)
 
     return NULL;
 }
+
+hash_map_entry_t*
+hash_map_get_entry(hash_map_t *hmap, int index)
+{
+    if ( index < 0 || index > hmap->n_buckets) return NULL;
+
+    hash_map_entry_t *entry = hmap->buckets[index];
+    return entry;
+}
+
 
 
 /**

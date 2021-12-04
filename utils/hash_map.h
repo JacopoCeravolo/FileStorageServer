@@ -4,6 +4,9 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#define HASH_MAP_GET_NEXT(key, value) \
+            do { (key) = }
+
 
 typedef struct _hash_map_entry_t {
 
@@ -49,8 +52,17 @@ hash_map_remove(hash_map_t *hmap, void *key);
 void*
 hash_map_get(hash_map_t *hmap, void* key);
 
+hash_map_entry_t*
+hash_map_get_entry(hash_map_t *hmap, int index);
+
+
 void
 hash_map_dump(hash_map_t *hmap, FILE *stream, void (*print_key)(void*, FILE*), void (*print_value)(void*, FILE*));
 
+#define hashmap_foreach(hmap, index, entry, key, value)                                             \
+            for (index = 0; index < hmap->n_buckets; index++)                                       \
+                for (entry = hmap->buckets[i];                                                      \
+                    (entry != NULL) && ((key=entry->key)!= NULL) && ((data=entry->data)!= NULL);    \
+                    entry = entry->next)                                                            
 
 #endif

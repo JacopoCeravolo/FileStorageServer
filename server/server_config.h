@@ -28,10 +28,17 @@ typedef struct {
 
 
 EXTERN server_config_t          server_config;
+
 EXTERN server_mode_t            server_status;
+
 EXTERN storage_t                *storage;
+
 EXTERN concurrent_queue_t       *request_queue;
+
 EXTERN hash_map_t               *connected_clients;
+EXTERN pthread_mutex_t          conncted_clients_mtx;
+EXTERN pthread_cond_t           connected_clients_cond;
+
 EXTERN volatile long            worker_exit_signal;
 
 #endif

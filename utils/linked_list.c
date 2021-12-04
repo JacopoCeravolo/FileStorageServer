@@ -40,6 +40,7 @@ list_destroy(list_t *list)
         list->free_fun(tmp->data);
         free(tmp);
     }
+    list->length = 0;
     free(list);
 }
 
@@ -161,6 +162,35 @@ list_remove_head(list_t *list)
     return to_return;
 }
 
+void*
+list_remove_tail(list_t *list)
+{
+    if (list == NULL || list_is_empty(list)) {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    node_t *prev = NULL, *curr = list->head;
+    while (curr->next != NULL) {
+        prev = curr;
+        curr = curr->next;
+    }
+
+    void* to_return = (curr->data);
+
+    node_t *tmp = curr;
+    if (list->length == 1) { // There's only one element
+        list->head = list->tail = NULL;
+    } else {
+        prev->next = NULL;
+        list->tail = prev;
+    }
+
+    free(tmp);
+    list->length--;
+    return to_return;
+}
+
 int 
 list_remove_element(list_t *list, void* elem)
 {
@@ -218,6 +248,12 @@ list_find(list_t *list, void* elem)
 
     errno = ENOENT;
     return -1;
+}
+
+int
+list_length(list_t *list)
+{
+    return list->length;
 }
 
 void

@@ -2,32 +2,31 @@
 #define STORAGE_H
 
 #include <errno.h>
+#include <pthread.h>
 
 #include "utils/hash_map.h"
 #include "utils/linked_list.h"
 #include "utils/utilities.h"
 
-#define E_NOTFOUND      (-11)
-#define E_NOPERM        (-12)
-#define E_TOOBIG        (-13)
-#define E_EXISTS        (-14)
-#define E_EXPELLED      (-15)
-
 
 typedef struct _file_t {
 
-    /* File flags */
-    int     flags;
-    /* Client who has the lock */
-    int     locked_by;
     /* Unique file path */
     char    path[MAX_PATH];
+    /* File flags */
+    int     flags;
     /* File size in bytes */
     size_t  size;
     /* Pointer to file contents */
     void*   contents;   
+    /* Client who has the lock */
+    int     locked_by;
     /* List of client waiting for the lock */
     list_t  *waiting_on_lock;
+    /* Read/write mutex */
+    pthread_mutex_t access;
+    /* Condition variable */
+    pthread_cond_t available;
     
 
 } file_t;

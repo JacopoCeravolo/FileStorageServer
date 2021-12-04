@@ -192,8 +192,8 @@ void
 print_file(void *e, FILE *stream)
 {
     file_t *f = (file_t*)e;
-    fprintf(stream,
-    " %lu (bytes)\n", f->size);
+    fprintf(stream, " %lu (bytes)\n", f->size);
+    fprintf(" locked by (%d)\n", f->locked_by);
     fprintf(stream, "\n------------------------------------------------------\n");
     fprintf(stream, "Clients waiting for lock: ");
     list_dump(f->waiting_on_lock, stream);

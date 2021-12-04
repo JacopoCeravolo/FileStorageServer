@@ -2,7 +2,7 @@
 #define LOGGER_H
 
 #include <stdio.h>
-#include "utilities.h"
+#include "utils/utilities.h"
 
 typedef enum {
     LOG_FATAL   = 0,
@@ -31,6 +31,7 @@ void logdebug(const char *file, const int line, const char *fmt, ...);
 void flush_log();
 void close_log();
 
+/* Wrappers */
 #define log_fatal(fmt, args...) logfatal(__FILE__, __LINE__, fmt, ##args); 
 #define log_error(fmt, args...) logerror(__FILE__, __LINE__, fmt, ##args); 
 #define log_info(fmt, args...) loginfo(fmt, ##args); 

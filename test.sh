@@ -1,9 +1,13 @@
 #!/bin/bash
-for i in {0..5}
-do
-    client/client1  &> logs/client$i.txt &
-    echo "Started client $i"
-done
+client/client -W client/data/file1 &> logs/client1.txt & 
+echo "Started client 1"
+sleep 3
+client/client -t 10 -l client/data/file1 -u client/data/file1 &> logs/client2.txt & 
+echo "Started client 2"
+sleep 2
+client/client -t 10 -l client/data/file1 -u client/data/file1  &> logs/client3.txt &
+echo "Started client 3"
+
 
 # client/client -W client/file1,client/file2 &> logs/client1.txt &
 # echo "Started client 1"
