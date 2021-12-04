@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include "utils/utilities.h"
 
+
 typedef enum {
     LOG_FATAL   = 0,
     LOG_ERROR   = 1,

@@ -12,11 +12,13 @@ removeFile(const char* pathname)
         errno = ENOTCONN;
         return -1;
     }
+
+    if (openFile(pathname, O_LOCK) != 0) return -1;
     
     int result;
     errno = 0;
 
-    if ( send_request(socket_fd, REMOVE_FILE, pathname, 0, NULL) != 0 ) return -1;
+    if ( send_request(socket_fd, REMOVE_FILE, strlen(pathname) + 1, pathname, 0, NULL) != 0 ) return -1;
 
     response_t *response = recv_response(socket_fd);
     if ( response == NULL) return -1;

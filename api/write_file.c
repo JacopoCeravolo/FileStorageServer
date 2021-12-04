@@ -57,7 +57,7 @@ writeFile(const char* pathname, const char* dirname){
     int result;
     errno = 0;
     
-    if ( send_request(socket_fd, WRITE_FILE, pathname, file_size, file_data) != 0) return -1;
+    if ( send_request(socket_fd, WRITE_FILE, strlen(pathname) + 1, pathname, file_size, file_data) != 0) return -1;
 
     response_t *response = recv_response(socket_fd);
     if ( response == NULL ) return -1;

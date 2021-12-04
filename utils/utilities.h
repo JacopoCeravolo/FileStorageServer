@@ -30,7 +30,7 @@
 #define MAX_NAME    64
 #define MAX_BUFFER  2048
 
-#define DEFAULT_SOCKET_PATH "/tmp/filestorage.sk"
+#define DEFAULT_SOCKET_PATH "/tmp/newfilestorage.sk"
 
 
 /********************** Function Macros  **********************/

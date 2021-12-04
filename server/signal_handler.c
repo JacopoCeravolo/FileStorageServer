@@ -30,6 +30,7 @@ sig_handler_thread(void *arg) {
 	        case SIGQUIT: 
                 log_info("Received immediate shutdown signal\n");
                 server_status = SHUTDOWN_NOW;
+                shutdown_now = 1;
 
                 close(signal_pipe[1]); 
                 signal_pipe[1] = -1;
@@ -39,6 +40,7 @@ sig_handler_thread(void *arg) {
 	        case SIGHUP:
 	            log_info("Received gracefull shutdown signal\n");
                 server_status = SHUTDOWN;
+                accept_connection = 0;
 
                 close(signal_pipe[1]); 
                 signal_pipe[1] = -1;

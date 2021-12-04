@@ -18,7 +18,7 @@ OBJECTS			:= $(patsubst %.c,%.o,$(SOURCES))
 TARGET			:= server
 
 # Compiler Flags
-CFLAGS			:= -std=c99 -Wall -g 
+CFLAGS			:= -Wall -g -D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE
 INCLUDES		:= -I $(ORIGIN)
 
 LINK_LIBS		:= -Wl,-rpath,$(LIBS) -L $(LIBS)
@@ -27,7 +27,8 @@ L_LOGGER		:= -llogger
 L_HASHMAP		:= -lhash_map
 L_LINKED_LIST	:= -llinked_list
 L_CONC_QUEUE	:= -lconcurrent_queue
-LINK_ALL		:= $(L_PROTOCOL) $(L_LOGGER) $(L_HASHMAP) $(L_LINKED_LIST) $(L_CONC_QUEUE)
+L_PTHREAD		:= -lpthread
+LINK_ALL		:= $(L_PROTOCOL) $(L_LOGGER) $(L_HASHMAP) $(L_LINKED_LIST) $(L_CONC_QUEUE) $(L_PTHREAD)
 
 # General rule for objects
 %.o: %.c 

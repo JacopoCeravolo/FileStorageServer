@@ -16,7 +16,7 @@ closeFile(const char* pathname)
     int result;
     errno = 0;
 
-    if ( send_request(socket_fd, CLOSE_FILE, pathname, 0, NULL) != 0 ) return -1;
+    if ( send_request(socket_fd, CLOSE_FILE, strlen(pathname) + 1, pathname, 0, NULL) != 0 ) return -1;
 
     response_t *response = recv_response(socket_fd);
     if ( response == NULL) return -1;

@@ -10,39 +10,8 @@
 
 /************** Request Handling Functions **************/
 
-
-request_t*
-new_request(request_code type, char *resource_path, size_t body_size, void* body)
-{
-    request_t *request;
-    request = (request_t*)calloc(1, sizeof(request_t));
-    if (request == NULL) {
-        errno = ENOMEM;
-        return NULL;
-    }
-
-    request->type = type;
-    strncpy(request->resource_path, resource_path, MAX_PATH);
-
-    if (body_size != 0) {
-        request->body_size = body_size;
-        request->body = calloc(1, body_size);
-        if (request->body == NULL) {
-            free(request);
-            errno = ENOMEM;
-            return NULL;
-        }
-        memcpy(request->body, body, body_size);
-    } else {
-        request->body_size = 0;
-        request->body = NULL;
-    }
-
-    return request;
-}
-
 int
-send_request(int conn_fd, request_code type, const char *resource_path, size_t body_size, void* body)
+send_request(int conn_fd, request_code type, size_t path_len, const char *resource_path, size_t body_size, void* body)
 {
     if (conn_fd < 0) {
         errno = EINVAL;
@@ -50,13 +19,26 @@ send_request(int conn_fd, request_code type, const char *resource_path, size_t b
     }
 
     int result = 0;
+    
+    // Writes type
     if (write(conn_fd, (void*)&type, sizeof(response_code)) == -1) return -1;
-    if (write(conn_fd, (void*)resource_path, sizeof(char) * MAX_PATH) == -1) return -1;
+
+    // Writes file path length
+    if (write(conn_fd, (void*)&path_len, sizeof(size_t)) == -1) return -1;
+
+    // Writes file path
+    if (path_len != 0) {
+        if (write(conn_fd, resource_path, sizeof(char) * path_len) == -1) return -1;
+    }
+
+    // Writes body size
     if (write(conn_fd, (void*)&body_size, sizeof(size_t)) == -1) return -1;
 
+    // Writes body
     if (body_size != 0) {
         if (write(conn_fd, body, body_size) == -1) return -1;
     }
+
     return result;
 }
 
@@ -75,10 +57,29 @@ recv_request(int conn_fd)
         return NULL;
     }
 
+    // Reads type
     if (read(conn_fd, (void*)&request->type, sizeof(response_code)) == -1) return NULL;
-    if (read(conn_fd, (void*)request->resource_path, sizeof(char) * MAX_PATH) == -1) return NULL;           
+    
+    // Read file path length
+    if (read(conn_fd, (void*)&request->path_len, sizeof(size_t)) == -1) return NULL;
+    
+    // Allocates space for file path
+    if (request->path_len != 0) {
+        request->file_path = calloc(1, request->path_len);
+        if (request->file_path == NULL) {
+            free(request);
+            errno = ENOMEM;
+            return NULL;
+        }
+
+        // Reads file path
+        if (read(conn_fd, (void*)request->file_path, sizeof(char) * request->path_len) == -1) return NULL; 
+    }
+
+    // Reads body size      
     if (read(conn_fd, (void*)&request->body_size, sizeof(size_t)) == -1) return NULL;
 
+    // Allocates space for body
     if (request->body_size != 0) {
         request->body = calloc(1, request->body_size);
         if (request->body == NULL) {
@@ -87,6 +88,7 @@ recv_request(int conn_fd)
             return NULL;
         }
 
+        // Reads body
         if (read(conn_fd, request->body, request->body_size) == -1) return NULL;
     }
 
@@ -97,42 +99,12 @@ void
 free_request(request_t *request)
 {
     if (request->body) free(request->body);
+    if (request->file_path) free(request->file_path);
     if (request) free(request);
 }
 
 
 /************** Response Handling Functions **************/
-
-
-response_t*
-new_response(response_code status, char *status_phrase, size_t body_size, void* body)
-{
-    response_t *response;
-    response = (response_t*)calloc(1, sizeof(response_t));
-    if (response == NULL) {
-        errno = ENOMEM;
-        return NULL;
-    }
-
-    response->status = status;
-    strncpy(response->status_phrase, status_phrase, MAX_PATH);
-
-    if (body_size != 0) {
-        response->body_size = body_size;
-        response->body = calloc(1, body_size);
-        if (response->body == NULL) {
-            free(response);
-            errno = ENOMEM;
-            return NULL;
-        }
-        memcpy(response->body, body, body_size);
-    } else {
-        response->body_size = 0;
-        response->body = NULL;
-    }
-
-    return response;
-}
 
 int
 send_response(int conn_fd, response_code status, const char *status_phrase, char *file_path, size_t body_size, void* body)

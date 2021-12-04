@@ -5,6 +5,8 @@
 #define  EXTERN  extern
 #endif
 
+
+
 #include "utils/linked_list.h"
 #include "utils/hash_map.h"
 #include "utils/concurrent_queue.h"
@@ -13,7 +15,10 @@
 #include "utils/logger.h"
 
 #include "server/storage.h"
-
+#include <sys/types.h>
+#include <unistd.h>
+#include <time.h>
+#include <signal.h>
 
 typedef enum {
     OPEN,
@@ -36,9 +41,8 @@ EXTERN storage_t                *storage;
 EXTERN concurrent_queue_t       *request_queue;
 
 EXTERN hash_map_t               *connected_clients;
-EXTERN pthread_mutex_t          conncted_clients_mtx;
-EXTERN pthread_cond_t           connected_clients_cond;
 
-EXTERN volatile long            worker_exit_signal;
+EXTERN volatile sig_atomic_t    accept_connection;
+EXTERN volatile sig_atomic_t    shutdown_now;
 
 #endif

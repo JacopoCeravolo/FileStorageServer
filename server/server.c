@@ -17,7 +17,7 @@
 #define EXTERN
 
 #include "server/server_config.h"
-#include "server/lock_manager.h"
+// #include "server/lock_manager.h"
 #include "server/signal_handler.h"
 #include "server/worker.h"
 
@@ -40,7 +40,8 @@ pthread_t            *worker_tids;
 pthread_t            *sig_handler_tid;
 pthread_t            *lock_handler_tid;
 
-volatile long        worker_exit_signal;
+volatile sig_atomic_t    accept_connection;
+volatile sig_atomic_t    shutdown_now;
 
 int
 start_worker_threads(int *mw_pipe);
@@ -51,7 +52,10 @@ shutdown_all_threads();
 int
 main(int argc, char const *argv[])
 {
+   /* Init */
    int ret = 0;
+   accept_connection = 1;
+   shutdown_now = 0;
 
    /* Configuration of the server */
    server_config.no_of_workers = 1;
@@ -113,7 +117,7 @@ main(int argc, char const *argv[])
    }
 
    /* Starts lock manager */
-   /* int lock_manager_pipe[2];
+   int lock_manager_pipe[2];
    if ( pipe(lock_manager_pipe) != 0 ) {
       log_fatal("Could not create lock manager pipe\n");
       ret = -1;
@@ -131,7 +135,7 @@ main(int argc, char const *argv[])
       ret = -1;
       free(lock_handler_tid);
       goto _server_exit1;
-   } */
+   }
 
 
    /* Creates and starts workers */
@@ -152,8 +156,6 @@ main(int argc, char const *argv[])
       ret = -1;
       goto _server_exit1;
    }
-
-   worker_exit_signal = 0;
 
    if ( start_worker_threads(mw_pipe) != 0 ) {
       log_fatal("Could not start worker threads\n");
@@ -215,7 +217,7 @@ main(int argc, char const *argv[])
 
    fprintf(stdout, "****** SERVER STARTED ******\n");
 
-   while (server_status != SHUTDOWN_NOW) {
+   while (shutdown_now == 0) {
       
       rdset = set;
 
@@ -246,7 +248,7 @@ main(int argc, char const *argv[])
             int client_fd;
 
 		      if ( (fd == socket_fd) && FD_ISSET(socket_fd, &set) 
-                  && server_status != SHUTDOWN ) { // new client
+                  && accept_connection == 1 ) { // new client
                
                if ( (client_fd = accept(socket_fd, (struct sockaddr*)NULL, NULL)) < 0) {
                   log_fatal("Could not accept new client connection\n");
@@ -304,6 +306,7 @@ _server_exit2:
    close(socket_fd);
    unlink(server_config.socket_path);
    free(sig_handler_tid);
+   free(lock_handler_tid);
    free(worker_tids);
    close(mw_pipe[0]);
    close(mw_pipe[1]);
@@ -331,7 +334,6 @@ start_worker_threads(int *mw_pipe)
          return -1;
       }
 
-      worker_args->exit_signal = (long)&worker_exit_signal;
       worker_args->worker_id = i;
       worker_args->pipe_fd = mw_pipe[1];
       worker_args->requests = requests_queue;
@@ -350,9 +352,11 @@ shutdown_all_threads()
 {
    int res;
 
-   worker_exit_signal = 1;
-
    if ( (res = pthread_join(*sig_handler_tid, NULL)) != 0 ) {
+         log_error("Could not join signal handler thread\n");
+   } 
+
+   if ( (res = pthread_join(*lock_handler_tid, NULL)) != 0 ) {
          log_error("Could not join signal handler thread\n");
    } 
 

@@ -44,7 +44,7 @@ int openConnection(const char *sockname, int msec, const struct timespec abstime
     }
     if (result < 0) return -1;
 
-    if ( send_request(socket_fd, OPEN_CONNECTION, "", 0, NULL) != 0 ) return -1;
+    if ( send_request(socket_fd, OPEN_CONNECTION, 0, NULL, 0, NULL) != 0 ) return -1;
 
     response_t *handshake = recv_response(socket_fd);
     if (handshake == NULL) return -1;

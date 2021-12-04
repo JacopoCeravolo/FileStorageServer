@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <getopt.h>
 
 #include "api/fileserver_api.h"
 #include "utils/linked_list.h"
@@ -41,8 +42,8 @@ int main(int argc, char * const argv[])
         strcpy(socket_path, DEFAULT_SOCKET_PATH);
     }
 
-    if (openConnection(socket_path, 0, (struct timespec){0,0}) != 0) {
-        fprintf(stderr, "openConnection() failed\n");
+    if (openConnection(DEFAULT_SOCKET_PATH, 0, (struct timespec){0,0}) != 0) {
+        api_perror("openConnection(%s) failed", DEFAULT_SOCKET_PATH);
         list_destroy(action_list);
         exit(EXIT_FAILURE);
     }
@@ -51,9 +52,12 @@ int main(int argc, char * const argv[])
 
         action_t *current_action = (action_t*) list_remove_head(action_list);
     
-        print_action(current_action, stdout);
+        // print_action(current_action, stdout);
 
         execute_action(current_action);
+
+        // move this to execute action
+        if (current_action->wait_time != 0) msleep(current_action->wait_time);
 
         free_action(current_action);
     }
@@ -250,12 +254,10 @@ execute_action(action_t *action)
             
             while (file_path != NULL) {
                 
-                if (openFile(file_path, O_CREATE|O_LOCK) != 0) {
-                    fprintf(stderr, "openFile(%s) failed\n", file_path);
-                }
-
                 if (writeFile(file_path, dirname) != 0) {
-                    fprintf(stderr, "writeFile(%s, %s) failed\n", file_path, dirname);
+                    api_perror("writeFile(%s, %s) failed", file_path, dirname);
+                } else {
+                    api_perror("writeFile(%s, %s)", file_path, dirname);
                 }
 
                 file_path = strtok(NULL, ",");
@@ -286,7 +288,9 @@ execute_action(action_t *action)
                 size_t buffer_size;
                 
                 if (readFile(file_path, &read_buffer, &buffer_size) != 0) {
-                    fprintf(stderr, "readFile(%s) failed\n", file_path);
+                    api_perror("readFile(%s) failed", file_path);
+                } else {
+                    api_perror("readFile(%s)", file_path);
                 }
 
                 if (dirname != NULL) {
@@ -314,7 +318,9 @@ execute_action(action_t *action)
             while (file_path != NULL) {
                 
                 if (lockFile(file_path) != 0) {
-                    fprintf(stderr, "lockFile(%s) failed\n", file_path);
+                    api_perror("lockFile(%s) failed", file_path);
+                } else {
+                    api_perror("lockFile(%s)", file_path);
                 }
 
                 file_path = strtok(NULL, ",");
@@ -332,7 +338,9 @@ execute_action(action_t *action)
             while (file_path != NULL) {
                 
                 if (unlockFile(file_path) != 0) {
-                    fprintf(stderr, "unlockFile(%s) failed\n", file_path);
+                    api_perror("unlockFile(%s) failed", file_path);
+                } else {
+                    api_perror("unlockFile(%s)", file_path);
                 }
 
                 file_path = strtok(NULL, ",");
@@ -350,7 +358,9 @@ execute_action(action_t *action)
             while (file_path != NULL) {
                 
                 if (removeFile(file_path) != 0) {
-                    fprintf(stderr, "removeFile(%s) failed\n", file_path);
+                    api_perror("removeFile(%s) failed", file_path);
+                } else {
+                    api_perror("removeFile(%s)", file_path);
                 }
 
                 file_path = strtok(NULL, ",");

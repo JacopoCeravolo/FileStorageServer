@@ -52,8 +52,10 @@ typedef struct _request_t {
 
     /* Request identifier */
     request_code    type;
+    /* Path length */
+    size_t          path_len;
     /* File on which the request is performed */
-    char            resource_path[MAX_PATH];
+    char            *file_path;
     /* Size of the request body */
     size_t          body_size;
     /* Body of the request (Nullable field) */
@@ -100,20 +102,12 @@ static char status_message[10][128] = {
 
 /************** Request Handling Functions **************/
 
-
-/**
- * Creates a new requests, returns the request on success, NULL on failure,
- * errno is set.
- */
-request_t*
-new_request(request_code type, char *resource_path, size_t body_size, void* body);
-
 /**
  * Sends a request on socket associated with conn_fd, returns 0 on success,
  * -1 on failure, errno is set.
  */
 int
-send_request(int conn_fd, request_code type, const char *resource_path, size_t body_size, void* body);
+send_request(int conn_fd, request_code type, size_t path_len, const char *resource_path, size_t body_size, void* body);
 
 /**
  * Receives a request on socket associated with conn_fd, return the request

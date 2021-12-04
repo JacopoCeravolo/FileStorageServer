@@ -1,15 +1,26 @@
 #ifndef FILESERVER_API_H
 #define FILESERVER_API_H
 
+
+
 #include <time.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <stdarg.h>
 
 #include "utils/protocol.h"
+#include "utils/linked_list.h"
 
 int socket_fd;
+list_t *opened_files;
+static char *error_buffer;
+
+#define api_perror(fmt, args...) { \
+            int err = errno; fprintf(stderr, fmt , ## args); \
+            fprintf(stderr, ": %s\n", strerror(err)); } // also print error_buffer
+
 
 /**
  * \brief Tries to open a connection to the socket file specified in the path variable socketname, 
