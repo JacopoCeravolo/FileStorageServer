@@ -7,11 +7,34 @@
 #include "protocol.h"
 #include "utilities.h"
 
+/** 
+ * Messages corresponding to a
+ * certain response status
+ */
+static char status_message[10][128] = {
+    "Operation successfull",
+    "Connection accepted",
+    "Internal server error",
+    "Bad request",
+    "Entity not found",
+    "Unauthorized access",
+    "Missing message body",
+    "File exceeds maximum space",
+    "Some files were expelled",
+    "File already exists"
+};
+
+const char*
+get_status_message(response_code code)
+{
+    if (code < 0 || code > 9) return NULL;
+    return status_message[code];
+}
 
 /************** Request Handling Functions **************/
 
 int
-send_request(int conn_fd, request_code type, size_t path_len, const char *resource_path, size_t body_size, void* body)
+send_request(long conn_fd, request_code type, size_t path_len, const char *resource_path, size_t body_size, void* body)
 {
     if (conn_fd < 0) {
         errno = EINVAL;
@@ -43,7 +66,7 @@ send_request(int conn_fd, request_code type, size_t path_len, const char *resour
 }
 
 request_t*
-recv_request(int conn_fd)
+recv_request(long conn_fd)
 {   
     if (conn_fd < 0) {
         errno = EINVAL;
@@ -107,7 +130,7 @@ free_request(request_t *request)
 /************** Response Handling Functions **************/
 
 int
-send_response(int conn_fd, response_code status, const char *status_phrase, char *file_path, size_t body_size, void* body)
+send_response(long conn_fd, response_code status, const char *status_phrase, char *file_path, size_t body_size, void* body)
 {
     if (conn_fd < 0) {
         errno = EINVAL;
@@ -127,7 +150,7 @@ send_response(int conn_fd, response_code status, const char *status_phrase, char
 }
 
 response_t*
-recv_response(int conn_fd)
+recv_response(long conn_fd)
 {
     if (conn_fd < 0) {
         errno = EINVAL;

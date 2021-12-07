@@ -12,21 +12,23 @@
 typedef struct _file_t {
 
     /* Unique file path */
-    char    path[MAX_PATH];
+    char                path[MAX_PATH];
     /* File flags */
-    int     flags;
+    int                 flags;
     /* File size in bytes */
-    size_t  size;
+    size_t              size;
     /* Pointer to file contents */
-    void*   contents;   
+    void*               contents;   
     /* Client who has the lock */
-    int     locked_by;
+    int                 locked_by;
+    /* Number of readers */
+    int                 n_readers;
     /* List of client waiting for the lock */
-    list_t  *waiting_on_lock;
+    list_t              *waiting_on_lock;
     /* Read/write mutex */
-    pthread_mutex_t access;
+    pthread_mutex_t     access;
     /* Condition variable */
-    pthread_cond_t available;
+    pthread_cond_t      available;
     
 
 } file_t;
@@ -53,36 +55,26 @@ typedef struct _storage_t {
 
 /********************** Main Storage Functions  **********************/
 
-
-int
-storage_add1_file(storage_t *storage, file_t *file);
-
 storage_t*
 storage_create(size_t max_size, size_t max_files);
 
 int
 storage_destroy(storage_t *storage);
 
-int 
-storage_add_client(storage_t *storage, int client_id);
-
-int 
-storage_remove_client(storage_t *storage, int client_id);
-
-int 
-storage_open_file(storage_t *storage, int client_id, char *file_name, int flags);
+file_t*
+storage_create_file(char *file_name);
 
 int
-storage_close_file(storage_t *storage, int client_id, char *file_name);
+storage_add_file(storage_t *storage, file_t *file);
 
 int
-storage_add_file(storage_t *storage, int client_id, char *file_name, size_t size, void* contents, list_t *expelled_files);
+storage_update_file(storage_t *storage, file_t *file);
 
 file_t*
 storage_remove_file(storage_t *storage, char *file_name);
 
 file_t*
-storage_get_file(storage_t *storage, int client_id, char *file_name);
+storage_get_file(storage_t *storage, char *file_name);
 
 int
 storage_FIFO_replace(storage_t *storage, int how_many, size_t required_size, list_t *replaced_files);

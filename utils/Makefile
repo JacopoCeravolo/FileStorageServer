@@ -23,7 +23,7 @@ TARGETS 		:= $(LIBS)/$(LOGGER) $(LIBS)/$(LINKED_LIST) $(LIBS)/$(PROTOCOL) \
 					$(LIBS)/$(HASH_MAP) $(LIBS)/$(CONCURRENT_QUEUE)
 
 # Compiler Flags
-CFLAGS			:= -Wall -g -D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE
+CFLAGS			:= -std=c99 -Wall -g -D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE
 INCLUDES		= -I $(ORIGIN)
 
 .PHONY = all clean cleanall 

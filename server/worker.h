@@ -10,7 +10,7 @@ typedef struct _worker_arg_t {
    int worker_id;
 } worker_arg_t;
 
-void 
+void*
 worker_thread(void* args);
 
 int

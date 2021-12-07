@@ -13,10 +13,6 @@ typedef enum {
     LOG_DEBUG   = 4,
 } loglevel;
 
-static loglevel log_level;
-static char log_path[MAX_PATH];
-static FILE* fp;
-
 /* Configuration */
 void log_init(const char* path);
 void set_log_level(loglevel level);

@@ -13,13 +13,13 @@ LIBS		:= $(ORIGIN)/libs
 endif
 
 # Source, Objects and Target
-SOURCES			:= $(shell find . -type f -name '*.c')
-OBJECTS			:= $(patsubst %.c,%.o,$(SOURCES))
+SOURCES			:= fileserver_api.c
+OBJECTS			:= fileserver_api.o
 API 			:= libfilestorage_api.so
 TARGET			:= $(LIBS)/$(API)
 
 # Compiler Flags
-CFLAGS			:= -Wall -g -D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE
+CFLAGS			:= -std=c99 -Wall -g -D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE
 INCLUDES		:= -I $(ORIGIN)
 
 LINK_LIBS		:= -Wl,-rpath,$(LIBS) -L $(LIBS)

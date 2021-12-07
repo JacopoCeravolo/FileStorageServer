@@ -82,23 +82,8 @@ typedef struct _response_t {
 } response_t;
 
 
-/** 
- * Messages corresponding to a
- * certain response status
- */
-static char status_message[10][128] = {
-    "Operation successfull",
-    "Connection accepted",
-    "Internal server error",
-    "Bad request",
-    "Entity not found",
-    "Unauthorized access",
-    "Missing message body",
-    "File exceeds maximum space",
-    "Some files were expelled",
-    "File already exists"
-};
-
+const char*
+get_status_message(response_code code);
 
 /************** Request Handling Functions **************/
 
@@ -107,14 +92,14 @@ static char status_message[10][128] = {
  * -1 on failure, errno is set.
  */
 int
-send_request(int conn_fd, request_code type, size_t path_len, const char *resource_path, size_t body_size, void* body);
+send_request(long conn_fd, request_code type, size_t path_len, const char *resource_path, size_t body_size, void* body);
 
 /**
  * Receives a request on socket associated with conn_fd, return the request
  * on success, NULL on failure, errno is set.
  */
 request_t*
-recv_request(int conn_fd);
+recv_request(long conn_fd);
 
 /**
  * Deallocates a requests and all of its components
@@ -138,14 +123,14 @@ new_response(response_code status, char *status_phrase, size_t body_size, void* 
  * -1 on failure, errno is set.
  */
 int
-send_response(int conn_fd, response_code status, const char *status_phrase, char *file_path, size_t body_size, void* body);
+send_response(long conn_fd, response_code status, const char *status_phrase, char *file_path, size_t body_size, void* body);
 
 /**
  * Receives a response on socket associated with conn_fd, return the response
  * on success, NULL on failure, errno is set.
  */
 response_t*
-recv_response(int conn_fd);
+recv_response(long conn_fd);
 
 /**
  * Deallocates a response and all of its components

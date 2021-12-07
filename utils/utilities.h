@@ -147,23 +147,23 @@ static inline int msleep(long msec)
 }
 
 
-#define LOCK_RETURN(mtx, ret) { \
+#define lock_return(mtx, ret) { \
             if(pthread_mutex_lock(mtx) != 0) { \
                 fprintf(stderr, "pthread_mutex_lock failed: %s", strerror(errno)); return ret; }}
 
-#define UNLOCK_RETURN(mtx, ret) { \
+#define unlock_return(mtx, ret) { \
             if(pthread_mutex_unlock(mtx) != 0) { \
                 fprintf(stderr,"pthread_mutex_unlock failed: %s", strerror(errno)); return ret; }}
 
-#define COND_WAIT_RETURN(cond, mtx, ret) { \
+#define cond_wait_return(cond, mtx, ret) { \
             if(pthread_cond_wait(cond, mtx) != 0) { \
                 fprintf(stderr,"pthread_cond_wait failed: %s", strerror(errno)); return ret; }}
 
-#define COND_SIGNAL_RETURN(cond, ret) { \
+#define cond_signal_return(cond, ret) { \
             if(pthread_cond_signal(cond) != 0) { \
                 fprintf(stderr,"pthread_cond_signal failed: %s", strerror(errno)); return ret; }}
 
-#define COND_BROADCAST_RETURN(cond, ret) { \
+#define cond_broadcast_return(cond, ret) { \
             if(pthread_cond_broadcast(cond) != 0) { \
                 fprintf(stderr,"pthread_cond_broadcast failed: %s", strerror(errno)); return ret; }}
 

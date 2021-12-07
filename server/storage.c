@@ -4,14 +4,6 @@
 #include "utils/utilities.h"
 #include "utils/logger.h"
 
-/**
- * \brief Initializes the storage unit with maximum capacity and maximum number of files.
- * 
- * \param max_size: total maximum capacity
- * \param max_files: total number of files
- * 
- * \return the new storage unit on success, NULL on failure. Errno is set.
- */
 storage_t*
 storage_create(size_t max_size, size_t max_files)
 {
@@ -33,18 +25,18 @@ storage_create(size_t max_size, size_t max_files)
         return NULL;
     }
 
-    storage->opened_files = hash_map_create(500, int_hash, int_compare, NULL, list_destroy);
+    /* storage->opened_files = hash_map_create(500, int_hash, int_compare, NULL, list_destroy);
     if (storage->opened_files == NULL) {
         hash_map_destroy(storage->files);
         free(storage);
         errno = ENOMEM;
         return NULL;
-    }
+    } */
 
     storage->basic_fifo = list_create(string_compare, NULL, string_print);
     if (storage->basic_fifo == NULL) {
         hash_map_destroy(storage->files);
-        hash_map_destroy(storage->opened_files);
+        // hash_map_destroy(storage->opened_files);
         free(storage);
         errno = ENOMEM;
         return NULL;
@@ -53,21 +45,13 @@ storage_create(size_t max_size, size_t max_files)
     return storage;
 }
 
-
-/** 
- * \brief Deallocates the storage and its components
- * 
- * \param storage: the storage unit to destory
- * 
- * \return 0 on success, -1 on failure. Errno is set.
- */
 int
 storage_destroy(storage_t *storage)
 {
     log_debug("deallocating file table\n");
     if (storage->files) hash_map_destroy(storage->files);
     log_debug("deallocating client table\n");
-    if (storage->opened_files) hash_map_destroy(storage->opened_files);
+    // if (storage->opened_files) hash_map_destroy(storage->opened_files);
     log_debug("deallocating FIFO queue\n");
     if (storage->basic_fifo) list_destroy(storage->basic_fifo);
     log_debug("deallocating storage unit\n");
@@ -75,15 +59,7 @@ storage_destroy(storage_t *storage)
     return 0;
 }
 
-/**
- * \brief Removes file associated with \param file_name from storage unit
- * 
- * \param storage: the storage unit
- * \param file_name: file to be removed
- * 
- * \return 0 on success, -1 on failure. Errno is set.
- */
-file_t*
+/* file_t*
 storage_remove_file(storage_t *storage, char *file_name)
 {
     file_t *to_remove = (file_t*)hash_map_get(storage->files, file_name);
@@ -98,25 +74,64 @@ storage_remove_file(storage_t *storage, char *file_name)
     storage->current_size = storage->current_size - to_remove->size;
     return to_remove;
 }
-
-
-/** 
- * \brief Search the storage unit for the file associated with \param file_name
- * 
- * \param storage: the storage unit
- * \param file_name: requested file's name
- * 
- * \return file associated with \param file_name on success, NULL on failure. Errno is set.
  */
 file_t*
-storage_get_file(storage_t *storage, int client_id, char *file_name)
+storage_create_file(char *file_name)
+{  
+    file_t *new_file = calloc(1, sizeof(file_t));
+    if (new_file == NULL) {
+        errno = ENOMEM;
+        return NULL;
+    }
+    strcpy(new_file->path, file_name);
+    new_file->size = 0;
+    new_file->locked_by = -1;
+    SET_FLAG(new_file->flags, O_CREATE);
+    new_file->waiting_on_lock = list_create(int_compare, NULL, NULL);
+    if ((pthread_mutex_init(&(new_file->access), NULL)) != 0 ||
+        (pthread_cond_init(&(new_file->available), NULL) != 0)) {
+        return NULL;
+    }
+
+    return new_file;
+}
+
+int
+storage_add_file(storage_t *storage, file_t *file)
+{
+    hash_map_insert(storage->files, file->path, file);
+    list_insert_tail(storage->basic_fifo, file->path);
+    storage->no_of_files++;
+}
+
+int
+storage_update_file(storage_t *storage, file_t *file)
+{
+    hash_map_insert(storage->files, file->path, file);
+}
+
+file_t*
+storage_remove_file(storage_t *storage, char *file_name)
+{
+    file_t *to_remove = (file_t*)hash_map_get(storage->files, file_name);
+    storage->no_of_files--;
+    storage->current_size = storage->current_size - to_remove->size;
+    list_remove_element(storage->basic_fifo, to_remove->path);
+    hash_map_remove(storage->files, to_remove->path);
+    return to_remove;
+}
+
+file_t*
+storage_get_file(storage_t *storage, char *file_name)
 {
     if (storage == NULL || file_name == NULL) {
         errno = EINVAL;
         return NULL;
     }
 
-    return (file_t*)hash_map_get(storage->files, (void*)file_name);
+    file_t *file = (file_t*)hash_map_get(storage->files, (void*)file_name);
+    if (file == NULL) return NULL;
+    return file;
 }
 
 int
@@ -143,12 +158,6 @@ storage_FIFO_replace(storage_t *storage, int how_many, size_t required_size, lis
 }
 
 
-/**
- * \brief Prints the storage unit components to the file pointed by \param stream
- * 
- * \param storage: the storage unit
- * \param stream: file pointer 
- */
 void
 storage_dump(storage_t *storage, FILE *stream)
 {
@@ -158,11 +167,6 @@ storage_dump(storage_t *storage, FILE *stream)
 
     fprintf(stream, "\n**********************\n");
     fprintf(stream, "NO OF FILES: %lu", storage->no_of_files);
-    fprintf(stream, "\n**********************\n");
-
-    fprintf(stream, "\n**********************\n");
-    fprintf(stream, "OPENED FILES MAP\n");
-    hash_map_dump(storage->opened_files, stream, print_int, list_dump);
     fprintf(stream, "\n**********************\n");
 
     fprintf(stream, "\n**********************\n");
@@ -192,13 +196,10 @@ void
 print_file(void *e, FILE *stream)
 {
     file_t *f = (file_t*)e;
-    fprintf(stream, " %lu (bytes)\n", f->size);
-    fprintf(" locked by (%d)\n", f->locked_by);
-    fprintf(stream, "\n------------------------------------------------------\n");
+    fprintf(stream, " %lu (bytes)", f->size);
+    fprintf(stream, " locked by (%d)\n", f->locked_by);
     fprintf(stream, "Clients waiting for lock: ");
     list_dump(f->waiting_on_lock, stream);
     fprintf(stream, "\n");
-    /* fprintf(stream,
-    "%lu (bytes)\n\n%s", f->size, (char*)f->contents); */
     fprintf(stream, "\n------------------------------------------------------\n\n");
 }

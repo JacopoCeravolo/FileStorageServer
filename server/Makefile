@@ -18,7 +18,7 @@ OBJECTS			:= $(patsubst %.c,%.o,$(SOURCES))
 TARGET			:= server
 
 # Compiler Flags
-CFLAGS			:= -Wall -g -D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE
+CFLAGS			:= -std=c99 -Wall -g -D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE
 INCLUDES		:= -I $(ORIGIN)
 
 LINK_LIBS		:= -Wl,-rpath,$(LIBS) -L $(LIBS)

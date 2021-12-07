@@ -11,8 +11,7 @@ lock_manager_thread(void* args)
         while (curr != NULL) {
 
 
-
-            file_t *file = (file_t*)hash_map_get(storage->files, curr->data);
+            file_t *file = storage_get_file(storage, (char*)curr->data);
             if (file == NULL) {
                 // writes to pipe
                 curr = curr->next;
@@ -25,6 +24,7 @@ lock_manager_thread(void* args)
                     log_error("Dequeued invalid file descriptor\n");
                     break;
                 }
+            
                 int client_fd = (int)tmp;
 
                 log_debug("[LOCK MANAGER] updating file [%s] lock with client (%d)\n", file->path, client_fd);
@@ -34,11 +34,12 @@ lock_manager_thread(void* args)
                 hash_map_insert(storage->files, file->path, file);
 
                 log_info("[LOCK MANAGER] replying to client (%d)\n", client_fd);
-                send_response(client_fd, SUCCESS, status_message[SUCCESS], file->path, 0, NULL);
+                send_response(client_fd, SUCCESS, get_status_message(SUCCESS), file->path, 0, NULL);
             }
             curr = curr->next;
         }
     }
+    return NULL;
 }
 
 int 

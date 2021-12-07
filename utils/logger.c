@@ -6,6 +6,10 @@
 
 #include "logger.h"
 
+static loglevel log_level;
+static char log_path[MAX_PATH];
+static FILE* fp;
+
 static char* 
 get_timestamp(char* buf) {
     int bytes;

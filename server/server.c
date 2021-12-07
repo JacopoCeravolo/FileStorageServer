@@ -17,7 +17,7 @@
 #define EXTERN
 
 #include "server/server_config.h"
-// #include "server/lock_manager.h"
+#include "server/lock_manager.h"
 #include "server/signal_handler.h"
 #include "server/worker.h"
 
@@ -31,8 +31,6 @@ server_config_t      server_config;
 server_mode_t        server_status;
 storage_t            *storage;
 concurrent_queue_t   *requests_queue;
-hash_map_t           *connected_clients;
-hash_map_t           *waiting_on_lock;
 
 FILE *storage_file;
 
@@ -66,9 +64,9 @@ main(int argc, char const *argv[])
    int fd_max = -1;
 
    /* Initialize log file */
-   // log_init("/Users/jacopoceravolo/Desktop/storage-server/logs/server.log");
+   //log_init("../logs/server.log");
    log_init(NULL);
-   set_log_level(LOG_INFO);
+   set_log_level(LOG_DEBUG);
 
    /* Install signal handler */
    int *signal_pipe = calloc(2, sizeof(int));
@@ -96,14 +94,6 @@ main(int argc, char const *argv[])
    requests_queue = concurrent_queue_create(int_compare, NULL, print_int); // ugly af
    if ( requests_queue == NULL ) {
       log_fatal("Could not initialize request queue\n");
-      free(signal_pipe);
-      return -1;
-   }
-
-   /* Initialize connected clients hashtable */
-   connected_clients = hash_map_create(MAX_BACKLOG * 2, int_hash, int_compare, NULL, list_destroy);
-   if ( connected_clients == NULL ) {
-      log_fatal("Could not initialize connected clients hashtable\n");
       free(signal_pipe);
       return -1;
    }
@@ -165,7 +155,7 @@ main(int argc, char const *argv[])
    }
    
    /* Opening the socket */
-   int socket_fd, res;
+   long socket_fd;
    struct sockaddr_un serveraddr;
 
    unlink(server_config.socket_path);
@@ -209,7 +199,7 @@ main(int argc, char const *argv[])
 
    
    /* Opens storage_file */
-   storage_file = fopen("/Users/jacopoceravolo/Desktop/storage-server/logs/storage.txt", "w+");
+   storage_file = fopen("../logs/storage.txt", "w+");
 
 
    /* Start accepting requests */
@@ -245,7 +235,7 @@ main(int argc, char const *argv[])
 
          if ( FD_ISSET(fd, &rdset) && (fd != mw_pipe[0]) ) {
 
-            int client_fd;
+            long client_fd;
 
 		      if ( (fd == socket_fd) && FD_ISSET(socket_fd, &set) 
                   && accept_connection == 1 ) { // new client
@@ -261,9 +251,10 @@ main(int argc, char const *argv[])
 
             } else { // new request from already connected client
 
-               void *tmp_fd = (void*)fd;
-         
-               if ( concurrent_queue_put(requests_queue, tmp_fd) != 0 ) {
+               int *tmp_fd = malloc(sizeof(int));
+               *tmp_fd = fd;
+      
+               if ( concurrent_queue_put(requests_queue, (void*)tmp_fd) != 0 ) {
                   log_error("Could not enqueue new client request\n");
                }
 
@@ -314,7 +305,6 @@ _server_exit1:
    close(signal_pipe[0]); 
    free(signal_pipe);
    storage_destroy(storage);
-   hash_map_destroy(connected_clients);
    fclose(storage_file);
    close_log();
    // concurrent_queue_destroy(request_queue); // leads to SIGSEV
@@ -363,10 +353,10 @@ shutdown_all_threads()
    /* This all should be moved to a separate pipe between master and workers */
    for (int i = 0; i < server_config.no_of_workers; i++) {
       
-      int terminate = -1;
-      void *signal_worker = (void*)terminate;
+      int *terminate = malloc(sizeof(int));
+      *terminate = -1;
       
-      if ( concurrent_queue_put(requests_queue, signal_worker) != 0 ) {
+      if ( concurrent_queue_put(requests_queue, (void*)terminate) != 0 ) {
          log_error("Could not send thread termination signal\n");
       }
    }

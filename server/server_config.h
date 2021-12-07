@@ -40,8 +40,6 @@ EXTERN storage_t                *storage;
 
 EXTERN concurrent_queue_t       *request_queue;
 
-EXTERN hash_map_t               *connected_clients;
-
 EXTERN volatile sig_atomic_t    accept_connection;
 EXTERN volatile sig_atomic_t    shutdown_now;
 

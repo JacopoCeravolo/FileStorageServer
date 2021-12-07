@@ -6,9 +6,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#define HASH_MAP_GET_NEXT(key, value) \
-            do { (key) = }
-
 
 typedef struct _hash_map_entry_t {
 
