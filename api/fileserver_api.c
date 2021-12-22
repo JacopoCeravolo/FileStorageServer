@@ -5,14 +5,30 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <stdarg.h>
+#include "unistd.h"
 
 #include "utils/protocol.h"
 #include "utils/linked_list.h"
 #include "utils/hash_map.h"
+#include "utils/utilities.h"
 
 long socket_fd  = -1;
 list_t *opened_files;
 hash_map_t *opened_map;
+
+
+int
+write_file_in_directory(char *dirname, char *filename, size_t size, void* contents)
+{
+    char *real_path = realpath(dirname, NULL);
+    strcat(real_path, "/");
+    strcat(real_path, filename);
+    FILE *fp = fopen(real_path, "wb");
+
+    fwrite(contents, 1, size, fp);
+    // use real_path
+    free(real_path);    
+}
 
 // static char *error_buffer;
 
@@ -210,7 +226,7 @@ readFile(const char* pathname, void** buf, size_t* size)
     // Checks if file has already been opened
     if (list_find(opened_files, pathname) == -1) {
 
-        printf("readFile(): list_find failed, opening file\n");
+        //printf("readFile(): list_find failed, opening file\n");
         // File is not opened, perform openFile request
         if (openFile(pathname, O_NOFLAG) != 0) return -1;
     }
@@ -275,7 +291,65 @@ readFile(const char* pathname, void** buf, size_t* size)
 int 
 readNFiles(int N, const char* dirname)
 {
-    return 0;
+    if ( N < 0 ) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    int result;
+    errno = 0;
+
+    if ( send_request(socket_fd, READ_N_FILES, 0, "", sizeof(int), (void*)&N) != 0 ) return -1;
+
+    response_t *response = recv_response(socket_fd);
+    if ( response == NULL ) return -1;
+
+    switch (response->status) {
+
+        case SUCCESS: {
+
+            if (dirname != NULL) {
+                if (mkdir_p(dirname) == -1) {
+                    result = -1;
+                    break;
+                }
+            }
+
+            int how_many = *(int*)response->body;
+
+            while ( (how_many--) > 0) {
+                response_t *r1 = recv_response(socket_fd);
+                if (r1 == NULL) break;
+
+                // printf("RECEIVED: file [%s] of size %lu\n", r1->file_path, r1->body_size);
+
+                if (dirname != NULL) {
+                    if (write_file_in_directory(dirname, r1->file_path, r1->body_size, r1->body) != 0) {
+                        perror("write_file_in_directory");
+                    }
+                }
+
+                free_response(r1);
+            }
+            result = 0;
+            break;
+        }
+
+        case INTERNAL_ERROR: {
+            errno = ECONNABORTED;
+            result = -1;
+            break;
+        }
+
+        default: {
+            errno = EPROTONOSUPPORT;
+            result = -1;
+            break;
+        }
+    }
+
+    if (response) free_response(response);
+    return result;
 }
 
 int
@@ -300,14 +374,24 @@ writeFile(const char* pathname, const char* dirname)
         return -1;
     }
 
-    fseek(file_ptr, 0, SEEK_END);
+    struct stat st;
+    size_t file_size;
+    if(stat(pathname, &st) == 0){
+        file_size = st.st_size;
+    } else {
+        fclose(file_ptr);
+        errno = EIO;
+        return -1;
+    }
+
+    /* fseek(file_ptr, 0, SEEK_END);
     size_t file_size = ftell(file_ptr);
     fseek(file_ptr, 0, SEEK_SET);
     if ( file_size == -1 ) {
         fclose(file_ptr);
         errno = EIO;
         return -1;
-    }
+    } */
         
     void* file_data;
     file_data = malloc(file_size);
@@ -331,7 +415,7 @@ writeFile(const char* pathname, const char* dirname)
     // Checks if file has already been opened
     if (list_find(opened_files, pathname) == -1) {
 
-        printf("writeFile(): list_find failed, opening file\n");
+        //printf("writeFile(): list_find failed, opening file\n");
         // File is not opened, perform openFile request
         if (openFile(pathname, O_CREATE|O_LOCK) != 0) return -1;
     }
@@ -347,6 +431,33 @@ writeFile(const char* pathname, const char* dirname)
     switch ( response->status ) {
 
         case SUCCESS: {
+            result = 0;
+            break;
+        }
+
+        case FILES_EXPELLED: {
+            int how_many = *(int*)response->body;
+            
+
+            while ( (how_many--) > 0) {
+
+                response_t *r1 = recv_response(socket_fd);
+                if (r1 == NULL) {
+                    //printf("response is null\n");
+                    break;
+                }
+
+                if (r1->status != FILES_EXPELLED) {
+                    free_response(r1);
+                    errno = EPROTONOSUPPORT;
+                    break;
+                }
+
+                //printf("EXPELLED: received [%s] of size %lu\n", r1->file_path, r1->body_size);
+
+                free_response(r1);
+            }
+            // do something with files;
             result = 0;
             break;
         }
@@ -415,7 +526,7 @@ lockFile(const char* pathname)
     // Checks if file has already been opened
     if (list_find(opened_files, pathname) == -1) {
 
-        printf("lockFile(): list_find failed, opening file\n");
+        //printf("lockFile(): list_find failed, opening file\n");
         // File is not opened, perform openFile request
         if (openFile(pathname, O_NOFLAG) != 0) return -1;
     }
@@ -484,7 +595,7 @@ unlockFile(const char* pathname)
     // Checks if file has already been opened
     if (list_find(opened_files, pathname) == -1) {
         // File is not opened, failing
-        printf("unlockFile(): list_find failed\n");
+        //printf("unlockFile(): list_find failed\n");
         return -1;
     }
 
@@ -551,7 +662,7 @@ removeFile(const char* pathname)
 
     // Checks if file has already been opened
     if (list_find(opened_files, pathname) == -1) {
-        printf("removeFile(): list_find failed, opening file\n");
+        //printf("removeFile(): list_find failed, opening file\n");
         // File is not opened, perform openFile request
         if (openFile(pathname, O_LOCK) != 0) return -1;
     }
@@ -585,6 +696,7 @@ removeFile(const char* pathname)
         }
 
         case SUCCESS: {
+            list_remove_element(opened_files, pathname);
             result = 0;
             break;
         }
@@ -616,7 +728,7 @@ closeFile(const char* pathname)
     
     /* // Checks if file has already been opened
     if (list_find(opened_files, pathname) == -1) {
-        printf("closeFile(): list_find failed\n");
+        //printf("closeFile(): list_find failed\n");
         // File is not opened, perform openFile request
         return -1;
     } */
@@ -624,7 +736,9 @@ closeFile(const char* pathname)
     int result;
     errno = 0;
 
-    if ( send_request(socket_fd, CLOSE_FILE, strlen(pathname) + 1, pathname, 0, NULL) != 0 ) return -1;
+    size_t path_len = strlen(pathname) + 1;
+
+    if ( send_request(socket_fd, CLOSE_FILE, path_len, pathname, 0, NULL) != 0 ) return -1;
 
     response_t *response = recv_response(socket_fd);
     if ( response == NULL) return -1;

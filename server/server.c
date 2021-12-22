@@ -21,9 +21,9 @@
 #include "server/signal_handler.h"
 #include "server/worker.h"
 
-#define N_THREADS    1
-#define MAX_SIZE     128000000
-#define MAX_FILES    1000
+#define N_THREADS    5
+#define MAX_SIZE     23901900
+#define MAX_FILES    3
 #define MAX_BACKLOG  200
 
 
@@ -56,7 +56,7 @@ main(int argc, char const *argv[])
    shutdown_now = 0;
 
    /* Configuration of the server */
-   server_config.no_of_workers = 1;
+   server_config.no_of_workers = N_THREADS;
    strcpy(server_config.socket_path, DEFAULT_SOCKET_PATH);
    server_status = OPEN;
 
@@ -66,7 +66,7 @@ main(int argc, char const *argv[])
    /* Initialize log file */
    //log_init("../logs/server.log");
    log_init(NULL);
-   set_log_level(LOG_DEBUG);
+   set_log_level(LOG_INFO);
 
    /* Install signal handler */
    int *signal_pipe = calloc(2, sizeof(int));

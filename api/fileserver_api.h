@@ -137,4 +137,7 @@ closeFile(const char* pathname);
 int 
 removeFile(const char* pathname);
 
+int
+write_file_in_directory(char *dirname, char *filename, size_t size, void* contents);
+
 #endif

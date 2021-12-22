@@ -121,9 +121,12 @@ recv_request(long conn_fd)
 void
 free_request(request_t *request)
 {
-    if (request->body) free(request->body);
-    if (request->file_path) free(request->file_path);
-    if (request) free(request);
+    if (request != NULL) {
+        if (request->body) free(request->body);
+        if (request->file_path) free(request->file_path);
+        free(request);
+    }
+    
 }
 
 
@@ -187,11 +190,9 @@ recv_response(long conn_fd)
 void
 free_response(response_t *response)
 {
-    if (response->body) {
-        
-        free(response->body); }
-    if (response) {
+    if (response != NULL) {
+        if (response->body) free(response->body);
         free(response);
-         }
+    }
 }
 

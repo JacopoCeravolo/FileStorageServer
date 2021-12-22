@@ -3,18 +3,21 @@
 void*
 lock_manager_thread(void* args)
 {
-    while (shutdown_now == 0) {
+    /* while (shutdown_now == 0) {
 
         // should read in pipe for termination signal
 
         node_t *curr = storage->basic_fifo->head;
+       
         while (curr != NULL) {
 
+            lock_return(&(storage->access), INTERNAL_ERROR);
 
             file_t *file = storage_get_file(storage, (char*)curr->data);
             if (file == NULL) {
                 // writes to pipe
                 curr = curr->next;
+                unlock_return(&(storage->access), INTERNAL_ERROR);
                 break;
             }
 
@@ -22,6 +25,7 @@ lock_manager_thread(void* args)
                 void *tmp = list_remove_head(file->waiting_on_lock);
                 if ( tmp == NULL ) {
                     log_error("Dequeued invalid file descriptor\n");
+                    unlock_return(&(storage->access), INTERNAL_ERROR);
                     break;
                 }
             
@@ -33,13 +37,15 @@ lock_manager_thread(void* args)
                 file->locked_by = client_fd;
                 hash_map_insert(storage->files, file->path, file);
 
+                unlock_return(&(storage->access), INTERNAL_ERROR);
+
                 log_info("[LOCK MANAGER] replying to client (%d)\n", client_fd);
                 send_response(client_fd, SUCCESS, get_status_message(SUCCESS), file->path, 0, NULL);
             }
             curr = curr->next;
         }
-    }
-    return NULL;
+    } */
+    // return NULL;
 }
 
 int 

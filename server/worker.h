@@ -20,7 +20,7 @@ int
 close_connection_handler(int client_fd);
 
 int
-open_file_handler(int client_fd, request_t *request, list_t *expelled_files);
+open_file_handler(int client_fd, request_t *request);
 
 int
 close_file_handler(int client_fd, request_t *request);
@@ -30,6 +30,9 @@ write_file_handler(int client_fd, request_t *request, list_t *expelled_files);
 
 int
 read_file_handler(int client_fd, request_t *request, void** read_buffer, size_t *size);
+
+int
+read_n_files_handler(int client_fd, request_t *request, list_t *files_list);
 
 int
 remove_file_handler(int client_fd, request_t *request);

@@ -24,6 +24,7 @@ INCLUDES		:= -I $(ORIGIN)
 
 LINK_LIBS		:= -Wl,-rpath,$(LIBS) -L $(LIBS)
 L_PROTOCOL 		:= -lprotocol
+L_LINKEDLIST	:= -llinked_list
 
 
 # General rule for objects
@@ -32,7 +33,7 @@ L_PROTOCOL 		:= -lprotocol
 
 # Rule for target
 $(LIBS)/$(API): $(OBJECTS)
-	$(CC) -shared -o $@ $^ $(LINK_LIBS) $(L_PROTOCOL)
+	$(CC) -shared -o $@ $^ $(LINK_LIBS) $(L_PROTOCOL) $(L_LINKEDLIST)
 
 .PHONY: clean cleanall 
 .DEFAULT_GOAL := all

@@ -49,6 +49,11 @@ typedef struct _storage_t {
     hash_map_t *opened_files;
     /* Very basic FIFO policy */
     list_t *basic_fifo;
+    /* Read/write mutex */
+    pthread_mutex_t     access;
+    /* Condition variable */
+    pthread_cond_t      available;
+
 
 } storage_t;
 

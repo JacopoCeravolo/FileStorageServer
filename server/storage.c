@@ -42,6 +42,11 @@ storage_create(size_t max_size, size_t max_files)
         return NULL;
     }
 
+    if ((pthread_mutex_init(&(storage->access), NULL)) != 0 ||
+        (pthread_cond_init(&(storage->available), NULL) != 0)) {
+        return NULL;
+    }
+
     return storage;
 }
 
@@ -53,7 +58,7 @@ storage_destroy(storage_t *storage)
     log_debug("deallocating client table\n");
     // if (storage->opened_files) hash_map_destroy(storage->opened_files);
     log_debug("deallocating FIFO queue\n");
-    if (storage->basic_fifo) list_destroy(storage->basic_fifo);
+    // if (storage->basic_fifo) list_destroy(storage->basic_fifo);
     log_debug("deallocating storage unit\n");
     if (storage) free(storage);
     return 0;
@@ -140,17 +145,28 @@ storage_FIFO_replace(storage_t *storage, int how_many, size_t required_size, lis
     /* This all should be in a separate function */
 
     char   *removed_file_path;
-    file_t *removed_file;
+    file_t *to_remove;
     int files_removed = 0;
 
-    while ( (storage->no_of_files + how_many > storage->max_files) ||
-            (storage->current_size + required_size > storage->max_size) ) {
+    while ( storage->current_size + required_size > storage->max_size ) {
         
         removed_file_path = (char*)list_remove_head(storage->basic_fifo);
-        removed_file = storage_remove_file(storage, removed_file_path);
-        list_insert_tail(replaced_files, removed_file);
+        to_remove = storage_get_file(storage, removed_file_path);
+
+        // if (CHK_FLAG(to_remove->flags, O_CREATE)) continue;
+
+        file_t *copy = calloc(1, sizeof(file_t));
+        strcpy(copy->path, to_remove->path);
+        copy->size = to_remove->size;
+        copy->contents = malloc(copy->size);
+        memcpy(copy->contents, to_remove->contents, copy->size);
+
+        storage->current_size = storage->current_size - to_remove->size;
+        storage->no_of_files--;
+        hash_map_remove(storage->files, to_remove->path);
+
+        list_insert_tail(replaced_files, copy);
         files_removed++;
-        log_debug("file [%s] was deleted during creation\n", removed_file_path);
     }
 
     return files_removed;
@@ -188,7 +204,7 @@ free_file(void *e)
     file_t *f = (file_t*)e;
     log_debug("deallocating file (%s)\n", f->path);
     if (f->contents) free(f->contents);
-    list_destroy(f->waiting_on_lock);
+    // list_destroy(f->waiting_on_lock);
     free(f);
 }
 
@@ -199,7 +215,7 @@ print_file(void *e, FILE *stream)
     fprintf(stream, " %lu (bytes)", f->size);
     fprintf(stream, " locked by (%d)\n", f->locked_by);
     fprintf(stream, "Clients waiting for lock: ");
-    list_dump(f->waiting_on_lock, stream);
+    // list_dump(f->waiting_on_lock, stream);
     fprintf(stream, "\n");
     fprintf(stream, "\n------------------------------------------------------\n\n");
 }

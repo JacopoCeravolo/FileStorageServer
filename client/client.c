@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <dirent.h>
 
 #include "api/fileserver_api.h"
 #include "utils/linked_list.h"
@@ -13,10 +14,57 @@
 bool VERBOSE;
 char *socket_path = NULL;
 
+int 
+get_files_from_directory(char *source_dir, int *how_many, list_t *files_list){
+	
+    DIR *dir;
+	struct dirent *file;
+	char *relative_pathname;
+	char *absolute_pathname;
+	
+	dir = opendir(source_dir);
+	if( dir == NULL ) return -1;
+	
+	errno = 0;
+
+	while( (file = readdir(dir)) != NULL && *how_many != 0){
+		
+		if(strcmp(file->d_name, ".") == 0 || strcmp(file->d_name, "..") == 0){
+			continue;
+        }
+       
+        relative_pathname = calloc(strlen(source_dir) + strlen(file->d_name) + 2, sizeof(char));
+        if( relative_pathname == NULL ) return -1;
+        strcat(relative_pathname,source_dir);
+        strcat(relative_pathname,"/");
+        strcat(relative_pathname,file->d_name);
+        
+        if( file->d_type != DT_DIR ){ 
+        
+        	absolute_pathname = realpath(relative_pathname, NULL);
+        	if( absolute_pathname == NULL ) return -1;
+        	
+        	if( list_insert_tail(files_list, absolute_pathname) != 0 ){
+        		return -1;
+        	}
+        	if( *how_many != -1 ) *how_many -= 1;
+        }
+        else{ 
+        	if( get_files_from_directory(relative_pathname, how_many, files_list) == -1 ) return -1;
+        }
+        free(relative_pathname);
+	}
+	if( errno != 0 ) return -1;
+	
+	free(dir);
+	return 0;
+}
+
+
 int main(int argc, char * const argv[])
 {
     if (argc < 2) {
-        fprintf(stderr, "Client program requires at least one argument, rerun with -h for usage\n");
+        fprintf(stderr, "client program requires at least one argument, rerun with -h for usage\n");
         exit(EXIT_FAILURE);
     }
 
@@ -55,9 +103,6 @@ int main(int argc, char * const argv[])
         // print_action(current_action, stdout);
 
         execute_action(current_action);
-
-        // move this to execute action
-        if (current_action->wait_time != 0) msleep(current_action->wait_time);
 
         free_action(current_action);
     }
@@ -98,7 +143,7 @@ parse_options_in_list(int n_options, char * const option_vector[], list_t *actio
 
             case 'p': {
                 if (VERBOSE) { fprintf(stderr, "printing already enabled\n"); }
-                else { printf("printing enabled\n"); VERBOSE = true; }
+                else { VERBOSE = true; }
                 break;
             }
 
@@ -255,19 +300,47 @@ execute_action(action_t *action)
             while (file_path != NULL) {
                 
                 if (writeFile(file_path, dirname) != 0) {
-                    api_perror("writeFile(%s, %s) failed", file_path, dirname);
+                    if (VERBOSE) api_perror("writeFile(%s, %s) failed", file_path, dirname);
                 } else {
-                    api_perror("writeFile(%s, %s)", file_path, dirname);
+                    if (VERBOSE) api_perror("writeFile(%s, %s)", file_path, dirname);
                 }
 
                 file_path = strtok(NULL, ",");
                 // get absolute path and verify
+
+                if (action->wait_time != 0) msleep(action->wait_time);
             }
 
             break;
         }
 
         case WRITE_DIR: {
+            
+            char *dirname = strtok(action->arguments, ",");
+            char *tmp = strtok(NULL, " ");
+            int how_many = atoi(tmp);
+
+            list_t *files_list = list_create(string_compare, free, NULL);
+
+            if (get_files_from_directory(dirname, &how_many, files_list) != 0) break;
+
+            if (list_length(files_list) != how_many) {
+                printf("error when reading files from directory\n");
+            }
+
+            while (!list_is_empty(files_list)) {
+                char *path = (char*)list_remove_head(files_list);
+
+                if (writeFile(path, action->directory) != 0) {
+                    if (VERBOSE) api_perror("writeFile(%s, %s) failed", path, action->directory);
+                } else {
+                    if (VERBOSE) api_perror("writeFile(%s, %s)", path, action->directory);
+                }
+
+                if (action->wait_time != 0) msleep(action->wait_time);
+            }
+
+            list_destroy(files_list);
             break;
         }
 
@@ -277,6 +350,7 @@ execute_action(action_t *action)
             if (action->directory != NULL) { // must be change to full path
                 dirname = malloc(strlen(action->directory) + 1);
                 strcpy(dirname, action->directory);
+                if (mkdir_p(dirname) == -1) {free(dirname); dirname = NULL;}
             }
             
             char *file_path = strtok(action->arguments, ",");
@@ -288,25 +362,35 @@ execute_action(action_t *action)
                 size_t buffer_size;
                 
                 if (readFile(file_path, &read_buffer, &buffer_size) != 0) {
-                    api_perror("readFile(%s) failed", file_path);
+                    if (VERBOSE) api_perror("readFile(%s, %s) failed", file_path, dirname);
                 } else {
-                    api_perror("readFile(%s)", file_path);
+                    if (VERBOSE) api_perror("readFile(%s, %s)", file_path, dirname);
                 }
 
                 if (dirname != NULL) {
-                    read_file_in_directory(file_path, dirname, read_buffer, buffer_size);
+                    write_file_in_directory(dirname, file_path, buffer_size, read_buffer);
                 }
 
                 free(read_buffer);
 
                 file_path = strtok(NULL, ",");
                 // get absolute path and verify
+
+                if (action->wait_time != 0) msleep(action->wait_time);
             }
 
             break;
         }
 
         case READ_N: {
+
+            int N = atoi(action->arguments);
+
+            if (readNFiles(N, action->directory) != 0) {
+                if (VERBOSE) api_perror("readNFiles(%d, %s) failed", N, action->directory);
+            } else {
+                if (VERBOSE) api_perror("readNFiles(%d, %s)", N, action->directory);
+            }
             break;
         }
 
@@ -318,13 +402,15 @@ execute_action(action_t *action)
             while (file_path != NULL) {
                 
                 if (lockFile(file_path) != 0) {
-                    api_perror("lockFile(%s) failed", file_path);
+                    if (VERBOSE) api_perror("lockFile(%s) failed", file_path);
                 } else {
-                    api_perror("lockFile(%s)", file_path);
+                    if (VERBOSE) api_perror("lockFile(%s)", file_path);
                 }
 
                 file_path = strtok(NULL, ",");
                 // get absolute path and verify
+
+                if (action->wait_time != 0) msleep(action->wait_time);
             }
 
             break;
@@ -338,13 +424,15 @@ execute_action(action_t *action)
             while (file_path != NULL) {
                 
                 if (unlockFile(file_path) != 0) {
-                    api_perror("unlockFile(%s) failed", file_path);
+                    if (VERBOSE) api_perror("unlockFile(%s) failed", file_path);
                 } else {
-                    api_perror("unlockFile(%s)", file_path);
+                    if (VERBOSE) api_perror("unlockFile(%s)", file_path);
                 }
 
                 file_path = strtok(NULL, ",");
                 // get absolute path and verify
+
+                if (action->wait_time != 0) msleep(action->wait_time);
             }
 
             break;
@@ -358,20 +446,20 @@ execute_action(action_t *action)
             while (file_path != NULL) {
                 
                 if (removeFile(file_path) != 0) {
-                    api_perror("removeFile(%s) failed", file_path);
+                    if (VERBOSE) api_perror("removeFile(%s) failed", file_path);
                 } else {
-                    api_perror("removeFile(%s)", file_path);
+                    if (VERBOSE) api_perror("removeFile(%s)", file_path);
                 }
 
                 file_path = strtok(NULL, ",");
                 // get absolute path and verify
+
+                if (action->wait_time != 0) msleep(action->wait_time);
             }
 
             break;
         }
     }
-
-    if (action->wait_time != 0) msleep(action->wait_time);
 }
 
 int
@@ -390,15 +478,15 @@ print_help_msg()
                                         "    -p                        Enables printing of infomation for each operation in the format:\n" \
                                         "                              OPT_TYPE      FILE      RESULT      N_BYTES\n" \
                                         "    -f sockname               Specifes the name of AF_UNIX socket to connect to\n" \
-                                        "    -w dirname[,n=n_files]    Sends the contents of directory dirname to File Storage Server.\n" \
+                                        "    -w dirname[,n_files]      Sends the contents of directory dirname to File Storage Server.\n" \
                                         "                              All subdirectories are visited recursively sending up to n_files.\n" \
-                                        "                              If n=0 or n is unspecifed, all contents are sent to File Storage Server\n" \
+                                        "                              If n_files=0 or n_files is unspecifed, all contents are sent to File Storage Server\n" \
                                         "    -W file1[,file2...]       Sends files specifed as arguments separated by commas to File Storage Server\n" \
                                         "    -D dirname                Specifies the directory dirname where to write files expelled by File Storage Server\n" \
                                         "                              in case of capacity misses. Option -D should be coupled with -w or -W, otherwise an error\n" \
                                         "                              message is print and all expelled files are trashed. If not specified all expelled files are trashed\n" \
                                         "    -r file1[,file2...]       Reads files specifed as arguments separated by commas from File Storage Server\n" \
-                                        "    -R [n=n_files]            Reads n_files files from File Storage Server. If n=0 or unspecified reads all files in File Storage Server\n" \
+                                        "    -R [n_files]              Reads n_files files from File Storage Server. If n=0 or unspecified reads all files in File Storage Server\n" \
                                         "    -d dirname                Specifies the directory dirname where to write files read from File Strage Server.\n" \
                                         "                              Option -d should be coupled with -r or -R, otherwise an error message is print and read files are not saved\n" \
                                         "    -t time                   Times in milleseconds to wait in between requests to File Storage Server\n" \
