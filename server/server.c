@@ -21,10 +21,10 @@
 #include "server/signal_handler.h"
 #include "server/worker.h"
 
-#define N_THREADS    5
-#define MAX_SIZE     23901900
-#define MAX_FILES    3
-#define MAX_BACKLOG  200
+#define N_THREADS    8
+#define MAX_SIZE     32000000
+#define MAX_FILES    100
+#define MAX_BACKLOG  2000000000
 
 
 server_config_t      server_config;
@@ -64,19 +64,19 @@ main(int argc, char const *argv[])
    int fd_max = -1;
 
    /* Initialize log file */
-   //log_init("../logs/server.log");
-   log_init(NULL);
+   log_init("../logs/server.log");
+   // log_init(NULL);
    set_log_level(LOG_INFO);
 
    /* Install signal handler */
    int *signal_pipe = calloc(2, sizeof(int));
    if ( signal_pipe == NULL ) {
-      log_fatal("Could not allocate signal handler pipe\n");
+      log_fatal("Could not allocate signal handler pipe: %s\n", strerror(errno));
       return -1; 
    }
 
    if ( pipe(signal_pipe) == -1 ) {
-	   log_fatal("Could not create signal handler pipe\n");
+	   log_fatal("Could not create signal handler pipe: %s\n", strerror(errno));
       free(signal_pipe);
       return -1;
    }
@@ -85,7 +85,7 @@ main(int argc, char const *argv[])
    sig_handler_tid = calloc(1, sizeof(pthread_t));
    
    if ( install_signal_handler(signal_pipe, sig_handler_tid) != 0 ) {
-      log_fatal("Could not install signal handler\n");
+      log_fatal("Could not install signal handler: %s\n", strerror(errno));
       free(signal_pipe);
       return -1;
    }
@@ -93,7 +93,7 @@ main(int argc, char const *argv[])
    /* Initialize request queue */
    requests_queue = concurrent_queue_create(int_compare, NULL, print_int); // ugly af
    if ( requests_queue == NULL ) {
-      log_fatal("Could not initialize request queue\n");
+      log_fatal("Could not initialize request queue: %s\n", strerror(errno));
       free(signal_pipe);
       return -1;
    }
@@ -109,7 +109,7 @@ main(int argc, char const *argv[])
    /* Starts lock manager */
    int lock_manager_pipe[2];
    if ( pipe(lock_manager_pipe) != 0 ) {
-      log_fatal("Could not create lock manager pipe\n");
+      log_fatal("Could not create lock manager pipe: %s\n", strerror(errno));
       ret = -1;
       goto _server_exit1;
    }
@@ -121,7 +121,7 @@ main(int argc, char const *argv[])
    lock_handler_tid = calloc(1, sizeof(pthread_t));
 
    if ( setup_lock_manager(lock_manager_pipe, lock_handler_tid) != 0 ) {
-      log_fatal("Could not setup lock manager\n");
+      log_fatal("Could not setup lock manager: %s\n", strerror(errno));
       ret = -1;
       free(lock_handler_tid);
       goto _server_exit1;
@@ -132,7 +132,7 @@ main(int argc, char const *argv[])
    int mw_pipe[2];
 
    if ( pipe(mw_pipe) != 0 ) {
-      log_fatal("Could not create master - worker pipe\n");
+      log_fatal("Could not create master - worker pipe: %s\n", strerror(errno));
       ret = -1;
       goto _server_exit1;
    }
@@ -148,7 +148,7 @@ main(int argc, char const *argv[])
    }
 
    if ( start_worker_threads(mw_pipe) != 0 ) {
-      log_fatal("Could not start worker threads\n");
+      log_fatal("Could not start worker threads: %s\n", strerror(errno));
       free(worker_tids);
       ret = -1;
       goto _server_exit1;
@@ -161,7 +161,7 @@ main(int argc, char const *argv[])
    unlink(server_config.socket_path);
 
    if ( (socket_fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-      log_fatal("Cloud not initialize socket\n");
+      log_fatal("Cloud not initialize socket: %s\n", strerror(errno));
       ret = -1;
       goto _server_exit2;
 
@@ -174,13 +174,13 @@ main(int argc, char const *argv[])
    strcpy(serveraddr.sun_path, server_config.socket_path);
 
    if ( bind(socket_fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) != 0 ) {
-      log_fatal("Cloud not bind socket\n");
+      log_fatal("Cloud not bind socket: %s\n", strerror(errno));
       ret = -1;
       goto _server_exit2;
    }
 
    if ( listen(socket_fd, MAX_BACKLOG) != 0 ) {
-      log_fatal("Cloud not listen on socket\n");
+      log_fatal("Cloud not listen on socket: %s\n", strerror(errno));
       ret = -1;
       goto _server_exit2;
    }
@@ -199,20 +199,20 @@ main(int argc, char const *argv[])
 
    
    /* Opens storage_file */
-   storage_file = fopen("../logs/storage.txt", "w+");
+   // storage_file = fopen("../logs/storage.txt", "w+");
 
 
    /* Start accepting requests */
 
 
-   fprintf(stdout, "****** SERVER STARTED ******\n");
+   // fprintf(stdout, "****** SERVER STARTED ******\n");
 
    while (shutdown_now == 0) {
       
       rdset = set;
 
       if ( select(fd_max + 1, &rdset, NULL, NULL, NULL) == -1 && errno != EINTR) {
-	         log_fatal("Fatal error when selecting file descriptor\n");
+	         log_fatal("Fatal error when selecting file descriptor: %s\n", strerror(errno));
             ret = -1;
 	         goto _server_exit2;
 	   }
@@ -241,7 +241,7 @@ main(int argc, char const *argv[])
                   && accept_connection == 1 ) { // new client
                
                if ( (client_fd = accept(socket_fd, (struct sockaddr*)NULL, NULL)) < 0) {
-                  log_fatal("Could not accept new client connection\n");
+                  log_fatal("Could not accept new client connection: %s\n", strerror(errno));
                   continue;
                }
 
@@ -270,7 +270,7 @@ main(int argc, char const *argv[])
             int new_fd;
 
 			   if( (read(mw_pipe[0], &new_fd, sizeof(int))) == -1 ) {
-			   	log_fatal("Could not read on master - worker pipe\n");
+			   	log_fatal("Could not read on master - worker pipe: %s\n", strerror(errno));
 			   	continue; // Should probably fail
 			   } else {
                
@@ -284,7 +284,7 @@ main(int argc, char const *argv[])
       }
    }
 
-   fprintf(stdout, "****** SERVER CLOSING ******\n");
+   // fprintf(stdout, "****** SERVER CLOSING ******\n");
 
    /* Joining threads */
    if ( shutdown_all_threads() != 0 ) {
@@ -293,7 +293,7 @@ main(int argc, char const *argv[])
    
 
 _server_exit2:
-   storage_dump(storage, storage_file);
+   // storage_dump(storage, storage_file);
    close(socket_fd);
    unlink(server_config.socket_path);
    free(sig_handler_tid);
@@ -305,7 +305,7 @@ _server_exit1:
    close(signal_pipe[0]); 
    free(signal_pipe);
    storage_destroy(storage);
-   fclose(storage_file);
+   // fclose(storage_file);
    close_log();
    // concurrent_queue_destroy(request_queue); // leads to SIGSEV
    

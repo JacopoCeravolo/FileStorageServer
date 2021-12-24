@@ -15,7 +15,18 @@
 long socket_fd  = -1;
 list_t *opened_files;
 hash_map_t *opened_map;
+char result_buffer[2048];
 
+void
+set_result_buffer(char *opt_type, char *filename, size_t n_bytes, char *result)
+{
+    sprintf(result_buffer, "%-10s %-65s %-10lu %-20s", opt_type, filename, n_bytes, result);
+}
+void
+print_result()
+{
+    printf("%s\n", result_buffer);
+}
 
 int
 write_file_in_directory(char *dirname, char *filename, size_t size, void* contents)
@@ -137,7 +148,8 @@ closeConnection(const char* sockname)
         pathname = (char*)list_remove_head(opened_files);
         if (pathname == NULL) perror("list_remove_head()");
 
-        if (closeFile(pathname) != 0) perror("closeFile()");
+        if (closeFile(pathname) != 0) { // perror("closeFile()"); 
+        }
     }
     
     send_request(socket_fd, CLOSE_CONNECTION, 0, NULL, 0, NULL);
@@ -205,6 +217,7 @@ openFile(const char* pathname, int flags)
             break;
         }
     }
+    
     
     if (response) free_response(response);
     return result;
@@ -283,7 +296,9 @@ readFile(const char* pathname, void** buf, size_t* size)
             break;
         }
     }
-    
+
+    set_result_buffer("readFile", response->file_path, response->body_size, response->status_phrase);
+
     if (response) free_response(response);
     return result;
 }
@@ -318,18 +333,18 @@ readNFiles(int N, const char* dirname)
             int how_many = *(int*)response->body;
 
             while ( (how_many--) > 0) {
-                response_t *r1 = recv_response(socket_fd);
-                if (r1 == NULL) break;
+                response_t *received_file = recv_response(socket_fd);
+                if (received_file == NULL) break;
 
-                // printf("RECEIVED: file [%s] of size %lu\n", r1->file_path, r1->body_size);
+                // printf("RECEIVED: file [%s] of size %lu\n", received_file->file_path, received_file->body_size);
 
                 if (dirname != NULL) {
-                    if (write_file_in_directory(dirname, r1->file_path, r1->body_size, r1->body) != 0) {
+                    if (write_file_in_directory(dirname, received_file->file_path, received_file->body_size, received_file->body) != 0) {
                         perror("write_file_in_directory");
                     }
                 }
 
-                free_response(r1);
+                free_response(received_file);
             }
             result = 0;
             break;
@@ -436,28 +451,47 @@ writeFile(const char* pathname, const char* dirname)
         }
 
         case FILES_EXPELLED: {
+
+            if (dirname != NULL) {
+                if (mkdir_p(dirname) == -1) {
+                    result = -1;
+                    break;
+                }
+            }
+
             int how_many = *(int*)response->body;
             
 
             while ( (how_many--) > 0) {
 
-                response_t *r1 = recv_response(socket_fd);
-                if (r1 == NULL) {
+                response_t *received_file = recv_response(socket_fd);
+                if (received_file == NULL) {
                     //printf("response is null\n");
                     break;
                 }
 
-                if (r1->status != FILES_EXPELLED) {
-                    free_response(r1);
+                if (received_file->status != FILES_EXPELLED) {
+                    free_response(received_file);
                     errno = EPROTONOSUPPORT;
                     break;
                 }
 
-                //printf("EXPELLED: received [%s] of size %lu\n", r1->file_path, r1->body_size);
+                //printf("EXPELLED: received [%s] of size %lu\n", received_file->file_path, received_file->body_size);
 
-                free_response(r1);
+                write_file_in_directory(dirname, received_file->file_path, received_file->body_size, received_file->body);
+                list_remove_element(opened_files, received_file->file_path);
+
+                free_response(received_file);
             }
-            // do something with files;
+
+            // Receiving final response
+            response_t *final_response = recv_response(socket_fd);
+
+            if (final_response->status != SUCCESS) {
+                result = -1;
+                break;
+            }
+    
             result = 0;
             break;
         }
@@ -498,6 +532,8 @@ writeFile(const char* pathname, const char* dirname)
             break;
         }
     }
+
+    set_result_buffer("writeFile", response->file_path, file_size, response->status_phrase);
     
     if (response) free_response(response);
     if (file_data) free(file_data);
@@ -570,6 +606,8 @@ lockFile(const char* pathname)
             break;
         }
     }
+
+    set_result_buffer("lockFile", response->file_path, response->body_size, response->status_phrase);
     
     if (response) free_response(response);
 
@@ -641,6 +679,8 @@ unlockFile(const char* pathname)
             break;
         }
     }
+
+    set_result_buffer("unlockFile", response->file_path, response->body_size, response->status_phrase);
     
     if (response) free_response(response);
 
@@ -707,6 +747,8 @@ removeFile(const char* pathname)
             break;
         }
     }
+
+    set_result_buffer("removeFile", response->file_path, response->body_size, response->status_phrase);
     
     if (response) free_response(response);
 

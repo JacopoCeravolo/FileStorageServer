@@ -96,6 +96,10 @@ int main(int argc, char * const argv[])
         exit(EXIT_FAILURE);
     }
 
+    if (VERBOSE) {
+        printf("%-10s %-65s %-10s %-20s\n", "OPT_TYPE", "FILE", "N_BYTES", "RESULT");
+    }
+
     while (!list_is_empty(action_list)) {
 
         action_t *current_action = (action_t*) list_remove_head(action_list);
@@ -296,16 +300,24 @@ execute_action(action_t *action)
             
             char *file_path = strtok(action->arguments, ",");
             // get absolute path and verify
+            char *absolute_path = realpath(file_path, NULL);
+
             
             while (file_path != NULL) {
                 
-                if (writeFile(file_path, dirname) != 0) {
-                    if (VERBOSE) api_perror("writeFile(%s, %s) failed", file_path, dirname);
+                if (writeFile(absolute_path, action->directory) != 0) {
+                    if (VERBOSE) api_perror("writeFile(%s, %s) failed", absolute_path, dirname);
                 } else {
-                    if (VERBOSE) api_perror("writeFile(%s, %s)", file_path, dirname);
+                    if (VERBOSE) {
+                        print_result();
+                    }
                 }
 
+                free(absolute_path);
+                absolute_path = NULL;
+
                 file_path = strtok(NULL, ",");
+                if (file_path != NULL) absolute_path = realpath(file_path, NULL);
                 // get absolute path and verify
 
                 if (action->wait_time != 0) msleep(action->wait_time);
@@ -334,7 +346,9 @@ execute_action(action_t *action)
                 if (writeFile(path, action->directory) != 0) {
                     if (VERBOSE) api_perror("writeFile(%s, %s) failed", path, action->directory);
                 } else {
-                    if (VERBOSE) api_perror("writeFile(%s, %s)", path, action->directory);
+                    if (VERBOSE) {
+                        print_result();
+                    }
                 }
 
                 if (action->wait_time != 0) msleep(action->wait_time);
@@ -364,7 +378,9 @@ execute_action(action_t *action)
                 if (readFile(file_path, &read_buffer, &buffer_size) != 0) {
                     if (VERBOSE) api_perror("readFile(%s, %s) failed", file_path, dirname);
                 } else {
-                    if (VERBOSE) api_perror("readFile(%s, %s)", file_path, dirname);
+                    if (VERBOSE) {
+                        print_result();
+                    }
                 }
 
                 if (dirname != NULL) {
@@ -404,7 +420,9 @@ execute_action(action_t *action)
                 if (lockFile(file_path) != 0) {
                     if (VERBOSE) api_perror("lockFile(%s) failed", file_path);
                 } else {
-                    if (VERBOSE) api_perror("lockFile(%s)", file_path);
+                    if (VERBOSE) {
+                        print_result();
+                    }
                 }
 
                 file_path = strtok(NULL, ",");
@@ -426,7 +444,9 @@ execute_action(action_t *action)
                 if (unlockFile(file_path) != 0) {
                     if (VERBOSE) api_perror("unlockFile(%s) failed", file_path);
                 } else {
-                    if (VERBOSE) api_perror("unlockFile(%s)", file_path);
+                    if (VERBOSE) {
+                        print_result();
+                    }
                 }
 
                 file_path = strtok(NULL, ",");
@@ -448,7 +468,9 @@ execute_action(action_t *action)
                 if (removeFile(file_path) != 0) {
                     if (VERBOSE) api_perror("removeFile(%s) failed", file_path);
                 } else {
-                    if (VERBOSE) api_perror("removeFile(%s)", file_path);
+                    if (VERBOSE) {
+                        print_result();
+                    }
                 }
 
                 file_path = strtok(NULL, ",");

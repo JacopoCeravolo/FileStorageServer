@@ -2,6 +2,7 @@
 CC			:= gcc
 LD			:= gcc
 RM			:= rm -rf
+AR 			:= ar rvs
 
 # Directories
 ifndef ORIGIN
@@ -13,13 +14,12 @@ LIBS		:= $(ORIGIN)/libs
 endif
 
 # Targets
-LOGGER 			:= liblogger.so
-LINKED_LIST 	:= liblinked_list.so
-PROTOCOL 		:= libprotocol.so
-HASH_MAP 		:= libhash_map.so
-CONCURRENT_QUEUE = libconcurrent_queue.so
+LINKED_LIST 	:= liblinked_list.a
+PROTOCOL 		:= libprotocol.a
+HASH_MAP 		:= libhash_map.a
+CONCURRENT_QUEUE = libconcurrent_queue.a
 
-TARGETS 		:= $(LIBS)/$(LOGGER) $(LIBS)/$(LINKED_LIST) $(LIBS)/$(PROTOCOL) \
+TARGETS 		:= $(LIBS)/$(LINKED_LIST) $(LIBS)/$(PROTOCOL) \
 					$(LIBS)/$(HASH_MAP) $(LIBS)/$(CONCURRENT_QUEUE)
 
 # Compiler Flags
@@ -30,27 +30,24 @@ INCLUDES		= -I $(ORIGIN)
 
 # General rule for objects
 %.o: %.c %.h
-	$(CC) $(CFLAGS) $(INCLUDES) -c -fPIC -o $@ $< 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $< 
 
 .PHONY: clean cleanall 
 .DEFAULT_GOAL := all
 
 all: $(TARGETS)
-
-$(LIBS)/$(LOGGER): logger.o 
-	$(CC) -shared -o $@ $^
 	
 $(LIBS)/$(PROTOCOL): protocol.o 
-	$(CC) -shared -o $@ $^
+	$(AR) -o $@ $^
 
 $(LIBS)/$(LINKED_LIST): linked_list.o 
-	$(CC) -shared -o $@ $^
+	$(AR) -o $@ $^
 
 $(LIBS)/$(HASH_MAP): hash_map.o 
-	$(CC) -shared -o $@ $^
+	$(AR) -o $@ $^
 
 $(LIBS)/$(CONCURRENT_QUEUE): concurrent_queue.o linked_list.o 
-	$(CC) -shared -o $@ $^
+	$(AR) -o $@ $^
 
 clean:
 	$(RM) *.o

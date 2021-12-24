@@ -2,12 +2,13 @@
 #define FILESERVER_API_H
 
 #include <time.h>
+#include <stdbool.h>
 
 #define api_perror(fmt, args...) { \
             int err = errno; fprintf(stderr, fmt , ## args); \
             fprintf(stderr, ": %s\n", strerror(err)); } // also print error_buffer
 
-
+void print_result();
 /**
  * \brief Tries to open a connection to the socket file specified in the path variable socketname, 
  *        if the connection is not accepted immediatly tries again for msec millisecond until abstime

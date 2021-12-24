@@ -12,6 +12,9 @@ API		= $(ORIGIN)/api
 SERVER 	= $(ORIGIN)/server
 UTILS 	= $(ORIGIN)/utils
 LOGS 	= $(ORIGIN)/logs
+TEST1 	= $(ORIGIN)/test1
+TEST2 	= $(ORIGIN)/test2
+TEST3 	= $(ORIGIN)/test3
 
 # Printing
 RED		= \033[1m\033[31m
@@ -28,13 +31,13 @@ export MAKEFLAGS
 		server cleanserver 	\
 		api cleanapi 		\
 		utils cleanutils	\
-		cleanall 			\	
+		cleanall 			\
+		test1 test2 test3	
 		
 .DEFAULT_GOAL := all
 
 # Default Goal
 all:
-	@echo "${BOLD}Building application... ${RESET}"
 	@echo "${BOLD}Building utilities... ${RESET}"
 	@make utils
 	@echo "${GREEN}Utilities built ${RESET}"
@@ -88,3 +91,12 @@ cleanall:
 	@echo "${BOLD}Directories cleaned${RESET}"
 
 
+SERVER_EXEC = $(SERVER)/server
+CLIENT_EXEC = $(CLIENT)/client
+
+
+test1:
+	@make all
+	@mv $(SERVER_EXEC) $(TEST1)
+	@mv $(CLIENT_EXEC) $(TEST1)
+	@cd $(TEST1) && ./test1.sh

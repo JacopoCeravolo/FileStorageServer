@@ -72,8 +72,10 @@ typedef struct _response_t {
     response_code   status;
     /* Response status phrase */
     char            status_phrase[MAX_PATH]; // change size to MAX_STRING (?)
-    /* File on which the operation was performed */
-    char            file_path[MAX_PATH];
+    /* Path length */
+    size_t          path_len;
+    /* File on which the request is performed */
+    char            *file_path;
     /* Size of the response body */
     size_t          body_size;
     /* Body of the response (Nullable field) */
@@ -123,7 +125,7 @@ new_response(response_code status, char *status_phrase, size_t body_size, void* 
  * -1 on failure, errno is set.
  */
 int
-send_response(long conn_fd, response_code status, const char *status_phrase, char *file_path, size_t body_size, void* body);
+send_response(long conn_fd, response_code status, const char *status_phrase, size_t path_len, char *file_path, size_t body_size, void* body);
 
 /**
  * Receives a response on socket associated with conn_fd, return the response

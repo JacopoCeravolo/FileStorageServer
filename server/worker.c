@@ -16,8 +16,6 @@ worker_thread(void* args)
    int pipe_fd = ((worker_arg_t*)args)->pipe_fd;
    int worker_id = ((worker_arg_t*)args)->worker_id;
    concurrent_queue_t *requests = ((worker_arg_t*)args)->requests;
-   char worker_name[32];
-   sprintf(worker_name, "[WORKER %d]", worker_id);
 
    free(args);
 
@@ -49,7 +47,7 @@ worker_thread(void* args)
                 int status = 0;
                 // status = open_connection_handler(client_fd);
                 if (shutdown_now) status = INTERNAL_ERROR;
-                send_response(client_fd, status, get_status_message(status), "", 0, NULL);
+                send_response(client_fd, status, get_status_message(status), 0, "", 0, NULL);
                 log_info("(WORKER %d) [OPEN CONNECTION]: %s\n", worker_id, get_status_message(status));
                 break;
             }
@@ -67,14 +65,14 @@ worker_thread(void* args)
             
             case OPEN_FILE: {
                 int status = open_file_handler(client_fd, request);
-                send_response(client_fd, status, get_status_message(status), "", 0, NULL);
+                send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, 0, NULL);
                 log_info("(WORKER %d) [OPEN FILE]: %s\n", worker_id, get_status_message(status));
                 break;
             }
             
             case CLOSE_FILE: {
                 int status = close_file_handler(client_fd, request);
-                send_response(client_fd, status, get_status_message(status), "", 0, NULL);
+                send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, 0, NULL);
                 log_info("(WORKER %d) [CLOSE FILE]: %s\n", worker_id, get_status_message(status));
                 break;
             }
@@ -82,7 +80,8 @@ worker_thread(void* args)
             case WRITE_FILE: {
                 list_t *expelled_files = list_create(NULL, free_file, NULL);
                 int status = write_file_handler(client_fd, request, expelled_files);
-                if (status == FILES_EXPELLED) {
+                send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, 0, NULL);
+                /* if (status == FILES_EXPELLED) {
                     int how_many = list_length(expelled_files);
                     send_response(client_fd, status, get_status_message(status), "", sizeof(int), (void*)&how_many);
 
@@ -91,13 +90,13 @@ worker_thread(void* args)
                         file_t *to_send = (file_t*)list_remove_head(expelled_files);
 
                         send_response(client_fd, status, get_status_message(status), to_send->path, to_send->size, to_send->contents);
-
+                        log_info("[FIFO REPLACEMENT] file [%s] was expelled\n", to_send->path);
                         // free_file(to_send);
 
                     }
                 } else {
                     send_response(client_fd, status, get_status_message(status), "", 0, NULL);
-                }
+                } */
                 list_destroy(expelled_files);
                 log_info("(WORKER %d) [WRITE FILE]: %s\n", worker_id, get_status_message(status));
                 break;
@@ -110,7 +109,7 @@ worker_thread(void* args)
                 /* if (status == SUCCESS && ((buffer_size < 0) || (read_buffer == NULL))) {
                     send_response(client_fd, INTERNAL_ERROR, status_message[INTERNAL_ERROR], "", 0, NULL);
                 } */
-                send_response(client_fd, status, get_status_message(status), "", buffer_size, read_buffer);
+                send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, buffer_size, read_buffer);
                 log_info("(WORKER %d) [READ FILE]: %s\n", worker_id, get_status_message(status));
                 if (read_buffer) free(read_buffer);
                 break;
@@ -120,16 +119,16 @@ worker_thread(void* args)
                 list_t *files_list = list_create(NULL, free_file, NULL);
                 int status = read_n_files_handler(client_fd, request, files_list);
                 if (status != SUCCESS) {
-                    send_response(client_fd, status, get_status_message(status), "", 0, NULL);
+                    send_response(client_fd, status, get_status_message(status), 0, "", 0, NULL);
                 } else {
                     int how_many = list_length(files_list);
-                    send_response(client_fd, SUCCESS, get_status_message(SUCCESS), "", sizeof(int), (void*)&how_many);
+                    send_response(client_fd, SUCCESS, get_status_message(SUCCESS), 0, "", sizeof(int), (void*)&how_many);
 
                     while ((how_many--) > 0) {
 
                         file_t *to_send = (file_t*)list_remove_head(files_list);
 
-                        send_response(client_fd, SUCCESS, get_status_message(SUCCESS), to_send->path, to_send->size, to_send->contents);
+                        send_response(client_fd, SUCCESS, get_status_message(SUCCESS), strlen(to_send->path) + 1, to_send->path, to_send->size, to_send->contents);
 
                     }
                 }
@@ -140,21 +139,21 @@ worker_thread(void* args)
 
             case REMOVE_FILE: { 
                 int status = remove_file_handler(client_fd, request);
-                send_response(client_fd, status, get_status_message(status), "", 0, NULL);
+                send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, 0, NULL);
                 log_info("(WORKER %d) [REMOVE FILE]: %s\n", worker_id, get_status_message(status));
                 break;
             }
 
             case LOCK_FILE: {
                 int status = lock_file_handler(client_fd, request);
-                if (status != MISSING_BODY) send_response(client_fd, status, get_status_message(status), "", 0, NULL);
+                if (status != MISSING_BODY) send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, 0, NULL);
                 log_info("(WORKER %d) [LOCK FILE]: %s\n", worker_id, get_status_message(status));
                 break;
             }
 
             case UNLOCK_FILE: {
                 int status = unlock_file_handler(client_fd, request);
-                send_response(client_fd, status, get_status_message(status), "", 0, NULL);
+                send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, 0, NULL);
                 log_info("(WORKER %d) [UNLOCK FILE]: %s\n", worker_id, get_status_message(status));
                 break;
             }
@@ -291,6 +290,19 @@ open_file_handler(int client_fd, request_t *request)
         }
 
         // Makes space for the new file if necessary
+        if (storage->no_of_files + 1 > storage->max_files) {
+
+            char *to_remove_path = (char*)list_remove_head(storage->basic_fifo);
+
+            if (to_remove_path == NULL) {
+                unlock_return(&(storage->access), INTERNAL_ERROR);
+                return INTERNAL_ERROR;
+            }
+
+            storage_remove_file(storage, to_remove_path);
+
+            log_info("[FIFO REPLACEMENT] file expelled when adding [%s]\n", request->file_path);
+        }
         /* if (storage->no_of_files + 1 > storage->max_files) {
             
             char *to_remove_path = (char*)list_remove_head(storage->basic_fifo);
@@ -447,23 +459,35 @@ write_file_handler(int client_fd, request_t *request, list_t *expelled_files)
     memcpy(file->contents, request->body, file->size);
 
     /* Checks if a file should be expelled to make place for the new one */
-
-    /* if (storage->current_size + file->size > storage->max_size) {
-        
+    if (storage->current_size + file->size > storage->max_size) {
         log_debug("[WRITE FILE] about to expell some files\n");
 
         int how_many = storage_FIFO_replace(storage, 0, file->size, expelled_files);
+        
+        if ( how_many != list_length(expelled_files) ) {
+            unlock_return(&(storage->access), INTERNAL_ERROR);
+            return INTERNAL_ERROR;
+        }
 
-        status = FILES_EXPELLED;
-    } */
-    
+        send_response(client_fd, FILES_EXPELLED, get_status_message(FILES_EXPELLED), 0, "", sizeof(int), (void*)&how_many);
+
+        while ((how_many--) > 0) {
+
+            file_t *to_send = (file_t*)list_remove_head(expelled_files);
+
+            send_response(client_fd, FILES_EXPELLED, get_status_message(FILES_EXPELLED), strlen(to_send->path) + 1, to_send->path, to_send->size, to_send->contents);
+            log_info("[FIFO REPLACEMENT] file [%s] was expelled\n", to_send->path);
+            // free_file(to_send);
+        }
+    }
+
     storage_update_file(storage, file);
     storage->current_size += file->size;
 
     unlock_return(&(storage->access), INTERNAL_ERROR);
 
     log_debug("[WRITE FILE] file [%s] successfully written by client (%d)\n", request->file_path, client_fd);
-    return status;
+    return SUCCESS;
             
 }
 

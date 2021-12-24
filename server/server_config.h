@@ -12,7 +12,7 @@
 #include "utils/concurrent_queue.h"
 #include "utils/protocol.h"
 #include "utils/utilities.h"
-#include "utils/logger.h"
+#include "server/logger.h"
 
 #include "server/storage.h"
 #include <sys/types.h>

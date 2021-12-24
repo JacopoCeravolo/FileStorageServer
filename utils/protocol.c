@@ -133,7 +133,7 @@ free_request(request_t *request)
 /************** Response Handling Functions **************/
 
 int
-send_response(long conn_fd, response_code status, const char *status_phrase, char *file_path, size_t body_size, void* body)
+send_response(long conn_fd, response_code status, const char *status_phrase, size_t path_len, char *file_path, size_t body_size, void* body)
 {
     if (conn_fd < 0) {
         errno = EINVAL;
@@ -143,7 +143,14 @@ send_response(long conn_fd, response_code status, const char *status_phrase, cha
     int result = 0;
     if (write(conn_fd, (void*)&status, sizeof(response_code)) == -1) return -1;
     if (write(conn_fd, (void*)status_phrase, sizeof(char) * MAX_PATH) == -1) return -1;
-    if (write(conn_fd, (void*)file_path, sizeof(char) * MAX_PATH) == -1) return -1;
+    
+    // Writes file path length
+    if (write(conn_fd, (void*)&path_len, sizeof(size_t)) == -1) return -1;
+
+    // Writes file path
+    if (path_len != 0) {
+        if (write(conn_fd, file_path, sizeof(char) * path_len) == -1) return -1;
+    }
     if (write(conn_fd, (void*)&body_size, sizeof(size_t)) == -1) return -1;
 
     if (body_size != 0) {
@@ -170,7 +177,22 @@ recv_response(long conn_fd)
 
     if (read(conn_fd, (void*)&response->status, sizeof(response_code)) == -1) return NULL;
     if (read(conn_fd, (void*)response->status_phrase, sizeof(char) * MAX_PATH) == -1) return NULL;           
-    if (read(conn_fd, (void*)response->file_path, sizeof(char) * MAX_PATH) == -1) return NULL;
+    
+    // Read file path length
+    if (read(conn_fd, (void*)&response->path_len, sizeof(size_t)) == -1) return NULL;
+    
+    // Allocates space for file path
+    if (response->path_len != 0) {
+        response->file_path = calloc(1, response->path_len);
+        if (response->file_path == NULL) {
+            free(response);
+            errno = ENOMEM;
+            return NULL;
+        }
+
+        // Reads file path
+        if (read(conn_fd, (void*)response->file_path, sizeof(char) * response->path_len) == -1) return NULL; 
+    }
     if (read(conn_fd, (void*)&response->body_size, sizeof(size_t)) == -1) return NULL;
 
     if (response->body_size != 0) {

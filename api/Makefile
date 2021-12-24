@@ -2,6 +2,7 @@
 CC			:= gcc
 LD			:= gcc
 RM			:= rm -rf
+AR 			:= ar rvs
 
 # Directories
 ifndef ORIGIN
@@ -15,7 +16,7 @@ endif
 # Source, Objects and Target
 SOURCES			:= fileserver_api.c
 OBJECTS			:= fileserver_api.o
-API 			:= libfilestorage_api.so
+API 			:= libfileserver_api.a
 TARGET			:= $(LIBS)/$(API)
 
 # Compiler Flags
@@ -29,11 +30,11 @@ L_LINKEDLIST	:= -llinked_list
 
 # General rule for objects
 %.o: %.c
-	$(CC) $(CFLAGS) $(INCLUDES) -c -fPIC -o $@ $<
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
 
 # Rule for target
 $(LIBS)/$(API): $(OBJECTS)
-	$(CC) -shared -o $@ $^ $(LINK_LIBS) $(L_PROTOCOL) $(L_LINKEDLIST)
+	$(AR) $@ $^ 
 
 .PHONY: clean cleanall 
 .DEFAULT_GOAL := all

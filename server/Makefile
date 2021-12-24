@@ -21,14 +21,13 @@ TARGET			:= server
 CFLAGS			:= -std=c99 -Wall -g -D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE
 INCLUDES		:= -I $(ORIGIN)
 
-LINK_LIBS		:= -Wl,-rpath,$(LIBS) -L $(LIBS)
+LINK_LIBS		:= -L $(LIBS)
 L_PROTOCOL 		:= -lprotocol
-L_LOGGER		:= -llogger
 L_HASHMAP		:= -lhash_map
 L_LINKED_LIST	:= -llinked_list
 L_CONC_QUEUE	:= -lconcurrent_queue
 L_PTHREAD		:= -lpthread
-LINK_ALL		:= $(L_PROTOCOL) $(L_LOGGER) $(L_HASHMAP) $(L_LINKED_LIST) $(L_CONC_QUEUE) $(L_PTHREAD)
+LINK_ALL		:= $(L_PROTOCOL) $(L_HASHMAP) $(L_LINKED_LIST) $(L_CONC_QUEUE)
 
 # General rule for objects
 %.o: %.c 
@@ -36,7 +35,7 @@ LINK_ALL		:= $(L_PROTOCOL) $(L_LOGGER) $(L_HASHMAP) $(L_LINKED_LIST) $(L_CONC_QU
 
 # Rule for executable
 $(TARGET): $(OBJECTS)
-	$(LD) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LINK_LIBS) $(LINK_ALL)
+	$(LD) $(CFLAGS) $(INCLUDES) -o $@ $^ -lpthread $(LINK_LIBS) $(LINK_ALL)
 
 # Build Rules
 .PHONY: clean cleanall

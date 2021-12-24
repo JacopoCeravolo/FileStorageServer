@@ -2,7 +2,7 @@
 
 #include "server/storage.h"
 #include "utils/utilities.h"
-#include "utils/logger.h"
+#include "server/logger.h"
 
 storage_t*
 storage_create(size_t max_size, size_t max_files)

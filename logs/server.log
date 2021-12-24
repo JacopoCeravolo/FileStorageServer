@@ -1,0 +1,12 @@
+13:28:04.269 (WORKER 0) [OPEN CONNECTION]: Operation successfull
+13:28:04.321 (WORKER 0) [OPEN FILE]: Operation successfull
+13:28:04.325 (WORKER 2) [WRITE FILE]: Operation successfull
+13:28:04.602 (WORKER 3) [OPEN FILE]: Operation successfull
+13:28:04.603 (WORKER 4) [WRITE FILE]: Operation successfull
+13:28:04.880 (WORKER 5) [OPEN FILE]: Operation successfull
+13:28:04.881 (WORKER 6) [WRITE FILE]: Operation successfull
+13:28:05.160 (WORKER 7) [CLOSE FILE]: Operation successfull
+13:28:05.161 (WORKER 1) [CLOSE FILE]: Operation successfull
+13:28:05.163 (WORKER 0) [CLOSE FILE]: Operation successfull
+13:28:05.164 (WORKER 2) [CLOSE CONNECTION]: Operation successfull
+13:28:06.244 Received immediate shutdown signal

@@ -21,13 +21,12 @@ TARGET			:= client
 CFLAGS			:= -std=c99 -Wall -g -D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE 
 INCLUDES		:= -I $(ORIGIN)
 
-LINK_LIBS		:= -Wl,-rpath,$(LIBS) -L $(LIBS)
-L_FILESERVER	:= -lfilestorage_api
+LINK_LIBS		:= -L $(LIBS)
+L_FILESERVER	:= -lfileserver_api
 L_PROTOCOL 		:= -lprotocol
-L_LOGGER		:= -llogger
 L_HASHMAP		:= -lhash_map
 L_LINKED_LIST	:= -llinked_list
-LINK_ALL		:= $(L_FILESERVER) $(L_PROTOCOL) $(L_LOGGER) $(L_LINKED_LIST) 
+LINK_ALL		:= $(L_FILESERVER) $(L_PROTOCOL) $(L_LINKED_LIST) 
 
 # General rule for objects
 %.o: %.c 
