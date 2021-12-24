@@ -94,9 +94,16 @@ cleanall:
 SERVER_EXEC = $(SERVER)/server
 CLIENT_EXEC = $(CLIENT)/client
 
+tests: test1 test3
 
 test1:
 	@make all
 	@mv $(SERVER_EXEC) $(TEST1)
 	@mv $(CLIENT_EXEC) $(TEST1)
-	@cd $(TEST1) && ./test1.sh
+	@cd $(TEST1) && chmod +x ./test1.sh && ./test1.sh
+
+test3:
+	@make all
+	@mv $(SERVER_EXEC) $(TEST3)
+	@mv $(CLIENT_EXEC) $(TEST3)
+	@cd $(TEST3) && chmod +x ./test3.sh && ./test3.sh

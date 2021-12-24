@@ -306,14 +306,14 @@ execute_action(action_t *action)
             while (file_path != NULL) {
 
                 writeFile(absolute_path, action->directory);
-                print_result();
+                if (VERBOSE) print_result();
 
                 
                 /* if (writeFile(absolute_path, action->directory) != 0) {
                     if (VERBOSE) api_perror("writeFile(%s, %s) failed", absolute_path, dirname);
                 } else {
                     if (VERBOSE) {
-                        print_result();
+                        if (VERBOSE) print_result();
                     }
                 } */
 
@@ -348,13 +348,13 @@ execute_action(action_t *action)
                 char *path = (char*)list_remove_head(files_list);
 
                 writeFile(path, action->directory);
-                print_result();
+                if (VERBOSE) print_result();
 
                 /* if (writeFile(path, action->directory) != 0) {
                     if (VERBOSE) api_perror("writeFile(%s, %s) failed", path, action->directory);
                 } else {
                     if (VERBOSE) {
-                        print_result();
+                        if (VERBOSE) print_result();
                     }
                 } */
 
@@ -384,13 +384,13 @@ execute_action(action_t *action)
                 size_t buffer_size;
 
                 readFile(absolute_path, &read_buffer, &buffer_size);
-                print_result();
+                if (VERBOSE) print_result();
                 
                 /* if (readFile(file_path, &read_buffer, &buffer_size) != 0) {
                     if (VERBOSE) api_perror("readFile(%s, %s) failed", file_path, dirname);
                 } else {
                     if (VERBOSE) {
-                        print_result();
+                        if (VERBOSE) print_result();
                     }
                 } */
 
@@ -418,7 +418,7 @@ execute_action(action_t *action)
             int N = atoi(action->arguments);
 
             readNFiles(N, action->directory);
-            print_result();
+            if (VERBOSE) print_result();
 
             /* if (readNFiles(N, action->directory) != 0) {
                 if (VERBOSE) api_perror("readNFiles(%d, %s) failed", N, action->directory);
@@ -437,13 +437,13 @@ execute_action(action_t *action)
             while (file_path != NULL) {
                 
                 lockFile(absolute_path);
-                print_result();
+                if (VERBOSE) print_result();
 
                 /* if (lockFile(file_path) != 0) {
                     if (VERBOSE) api_perror("lockFile(%s) failed", file_path);
                 } else {
                     if (VERBOSE) {
-                        print_result();
+                        if (VERBOSE) print_result();
                     }
                 } */
 
@@ -469,13 +469,13 @@ execute_action(action_t *action)
             while (file_path != NULL) {
 
                 unlockFile(absolute_path);
-                print_result();
+                if (VERBOSE) print_result();
                 
                 /* if (unlockFile(file_path) != 0) {
                     if (VERBOSE) api_perror("unlockFile(%s) failed", file_path);
                 } else {
                     if (VERBOSE) {
-                        print_result();
+                        if (VERBOSE) print_result();
                     }
                 } */
 
@@ -501,13 +501,13 @@ execute_action(action_t *action)
             while (file_path != NULL) {
 
                 removeFile(absolute_path);
-                print_result();
+                if (VERBOSE) print_result();
                 
                 /* if (removeFile(file_path) != 0) {
                     if (VERBOSE) api_perror("removeFile(%s) failed", file_path);
                 } else {
                     if (VERBOSE) {
-                        print_result();
+                        if (VERBOSE) print_result();
                     }
                 } */
 
