@@ -22,6 +22,7 @@ set_result_buffer(char *opt_type, char *filename, size_t n_bytes, char *result)
 {
     sprintf(result_buffer, "%-10s %-65s %-10lu %-20s", opt_type, filename, n_bytes, result);
 }
+
 void
 print_result()
 {
@@ -217,6 +218,8 @@ openFile(const char* pathname, int flags)
             break;
         }
     }
+
+    set_result_buffer("openFile", response->file_path, response->body_size, response->status_phrase);
     
     
     if (response) free_response(response);
@@ -632,6 +635,8 @@ unlockFile(const char* pathname)
 
     // Checks if file has already been opened
     if (list_find(opened_files, pathname) == -1) {
+        errno = EPERM;
+        set_result_buffer("unlockFile", pathname, 0, strerror(errno));
         // File is not opened, failing
         //printf("unlockFile(): list_find failed\n");
         return -1;

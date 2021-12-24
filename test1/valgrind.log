@@ -1,36 +1,36 @@
-==1408== Memcheck, a memory error detector
-==1408== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
-==1408== Using Valgrind-3.13.0 and LibVEX; rerun with -h for copyright info
-==1408== Command: ./server
-==1408== 
-==1408== 
-==1408== HEAP SUMMARY:
-==1408==     in use at exit: 392 bytes in 9 blocks
-==1408==   total heap usage: 133 allocs, 124 frees, 27,870 bytes allocated
-==1408== 
-==1408== 96 (48 direct, 48 indirect) bytes in 1 blocks are definitely lost in loss record 3 of 5
-==1408==    at 0x4C31B25: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
-==1408==    by 0x10F00F: list_create (linked_list.c:17)
-==1408==    by 0x10B527: storage_create (storage.c:36)
-==1408==    by 0x10A1BE: main (server.c:102)
-==1408== 
-==1408== 144 bytes in 3 blocks are definitely lost in loss record 5 of 5
-==1408==    at 0x4C31B25: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
-==1408==    by 0x10F00F: list_create (linked_list.c:17)
-==1408==    by 0x10B6FD: storage_create_file (storage.c:95)
-==1408==    by 0x10C6CF: open_file_handler (worker.c:285)
-==1408==    by 0x10BF27: worker_thread (worker.c:67)
-==1408==    by 0x4E436DA: start_thread (pthread_create.c:463)
-==1408==    by 0x517CA3E: clone (clone.S:95)
-==1408== 
-==1408== LEAK SUMMARY:
-==1408==    definitely lost: 192 bytes in 4 blocks
-==1408==    indirectly lost: 48 bytes in 3 blocks
-==1408==      possibly lost: 0 bytes in 0 blocks
-==1408==    still reachable: 152 bytes in 2 blocks
-==1408==         suppressed: 0 bytes in 0 blocks
-==1408== Reachable blocks (those to which a pointer was found) are not shown.
-==1408== To see them, rerun with: --leak-check=full --show-leak-kinds=all
-==1408== 
-==1408== For counts of detected and suppressed errors, rerun with: -v
-==1408== ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 0 from 0)
+==2384== Memcheck, a memory error detector
+==2384== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==2384== Using Valgrind-3.13.0 and LibVEX; rerun with -h for copyright info
+==2384== Command: ./server
+==2384== 
+==2384== 
+==2384== HEAP SUMMARY:
+==2384==     in use at exit: 712 bytes in 15 blocks
+==2384==   total heap usage: 683 allocs, 668 frees, 365,579 bytes allocated
+==2384== 
+==2384== 80 (48 direct, 32 indirect) bytes in 1 blocks are definitely lost in loss record 3 of 5
+==2384==    at 0x4C31B25: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2384==    by 0x10F00F: list_create (linked_list.c:17)
+==2384==    by 0x10B527: storage_create (storage.c:36)
+==2384==    by 0x10A1BE: main (server.c:102)
+==2384== 
+==2384== 480 bytes in 10 blocks are definitely lost in loss record 5 of 5
+==2384==    at 0x4C31B25: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2384==    by 0x10F00F: list_create (linked_list.c:17)
+==2384==    by 0x10B6FD: storage_create_file (storage.c:95)
+==2384==    by 0x10C6CF: open_file_handler (worker.c:285)
+==2384==    by 0x10BF27: worker_thread (worker.c:67)
+==2384==    by 0x4E436DA: start_thread (pthread_create.c:463)
+==2384==    by 0x517CA3E: clone (clone.S:95)
+==2384== 
+==2384== LEAK SUMMARY:
+==2384==    definitely lost: 528 bytes in 11 blocks
+==2384==    indirectly lost: 32 bytes in 2 blocks
+==2384==      possibly lost: 0 bytes in 0 blocks
+==2384==    still reachable: 152 bytes in 2 blocks
+==2384==         suppressed: 0 bytes in 0 blocks
+==2384== Reachable blocks (those to which a pointer was found) are not shown.
+==2384== To see them, rerun with: --leak-check=full --show-leak-kinds=all
+==2384== 
+==2384== For counts of detected and suppressed errors, rerun with: -v
+==2384== ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 0 from 0)
