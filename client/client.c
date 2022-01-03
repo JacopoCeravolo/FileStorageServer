@@ -11,6 +11,8 @@
 #include "utils/linked_list.h"
 #include "utils/utilities.h"
 
+#define SOCKET_PATH "./socketname.sk"
+
 bool VERBOSE;
 char *socket_path = NULL;
 
@@ -86,12 +88,12 @@ int main(int argc, char * const argv[])
     }
 
     if (socket_path == NULL) {
-        socket_path = malloc(strlen(DEFAULT_SOCKET_PATH) + 1);
-        strcpy(socket_path, DEFAULT_SOCKET_PATH);
+        socket_path = malloc(strlen(SOCKET_PATH) + 1);
+        strcpy(socket_path, SOCKET_PATH);
     }
 
-    if (openConnection(DEFAULT_SOCKET_PATH, 0, (struct timespec){0,0}) != 0) {
-        api_perror("openConnection(%s) failed", DEFAULT_SOCKET_PATH);
+    if (openConnection(socket_path, 0, (struct timespec){0,0}) != 0) {
+        api_perror("openConnection(%s) failed", socket_path);
         list_destroy(action_list);
         exit(EXIT_FAILURE);
     }

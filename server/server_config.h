@@ -28,7 +28,10 @@ typedef enum {
 
 typedef struct {
     unsigned int no_of_workers;
-    char socket_path[MAX_PATH];
+    unsigned int max_size;
+    unsigned int max_files;
+    const char *socket_path;
+    const char *log_file;
 } server_config_t;
 
 

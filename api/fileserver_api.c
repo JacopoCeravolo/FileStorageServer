@@ -42,23 +42,6 @@ write_file_in_directory(char *dirname, char *filename, size_t size, void* conten
     free(real_path);    
 }
 
-// static char *error_buffer;
-
-/* typedef struct _file_with_flags {
-    char *pathname;
-    int flags;
-} file_with_flags;
- */
-/* bool
-file_compare(void *e1, void *e2)
-{
-    file_with_flags *f1, *f2;
-    f1 = (file_with_flags*)e1;
-    f2 = (file_with_flags*)e2;
-
-    return string_compare((void*)f1->pathname, (void*)f2->pathname);
-} */
-
 int 
 openConnection(const char *sockname, int msec, const struct timespec abstime)
 {
@@ -76,11 +59,12 @@ openConnection(const char *sockname, int msec, const struct timespec abstime)
     int result;
     struct sockaddr_un serveraddr;
 
-    socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (socket_fd < 0) return -1;
+    int tmp_socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (tmp_socket_fd < 0) return -1;
     memset(&serveraddr, 0, sizeof(serveraddr));
     serveraddr.sun_family = AF_UNIX;
     strcpy(serveraddr.sun_path, sockname);
+    socket_fd = tmp_socket_fd;
 
     struct timespec wait_time;
     wait_time.tv_sec = msec / 1000;

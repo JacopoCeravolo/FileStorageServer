@@ -48,25 +48,101 @@ int
 shutdown_all_threads();
 
 int
+parse_configuration_file(char *file_name)
+{
+   char *line = NULL;
+   size_t len = 0;
+   ssize_t read;
+   FILE *config_file = fopen(file_name, "r+");
+   if (config_file == NULL) return -1;
+
+   while ((read = getline(&line, &len, config_file)) != -1) {
+      // log_info("Retrieved line of length %zu :\n", read);
+      // log_info("%s", line);
+
+      char *parameter = strtok(line, "=");
+
+      if (strcmp(parameter, "N_WORKERS") == 0) {
+         char *tmp_str = strtok(NULL, " ");
+         int n_workers = atoi(tmp_str);
+         server_config.no_of_workers = n_workers;
+      }
+
+      if (strcmp(parameter, "MAX_SIZE") == 0) {
+         char *tmp_str = strtok(NULL, " ");
+         int max_size = atoi(tmp_str);
+         server_config.max_size = max_size;
+      }
+
+      if (strcmp(parameter, "MAX_FILES") == 0) {
+         char *tmp_str = strtok(NULL, " ");
+         int max_files = atoi(tmp_str);
+         server_config.max_files = max_files;
+      }
+
+      if (strcmp(parameter, "SOCKET_PATH") == 0) {
+         char *socket_path = strtok(NULL, " ");
+         // remove if present " " from socket path
+         server_config.socket_path = calloc(1, strlen(socket_path) + 1);
+         strcpy(server_config.socket_path, socket_path);
+      }
+
+      if (strcmp(parameter, "LOG_FILE") == 0) {
+         char *log_path = strtok(NULL, " ");
+         // remove if present " " from socket path
+         server_config.log_file = calloc(1, strlen(log_path) + 1);
+         strcpy(server_config.log_file, log_path);
+      }
+   }
+
+   free(line);
+   return 0;
+}
+
+int
 main(int argc, char const *argv[])
 {
+
+   if ( argc < 2 ) {
+      printf("error, need at least one argument\n");
+   }
+
+   // check validity of file
+   if (parse_configuration_file(argv[1]) != 0) {
+      fprintf(stderr, "Could not parse configuration file\n");
+      exit(EXIT_FAILURE);
+   }
+
+
    /* Init */
    int ret = 0;
    accept_connection = 1;
    shutdown_now = 0;
 
+   /* Initialize log file */
+   // log_init("../logs/server.log");
+   log_init(NULL);
+   set_log_level(LOG_INFO);
+
+
+
+   /* Read configuration file */
+   
+
    /* Configuration of the server */
-   server_config.no_of_workers = N_THREADS;
-   strcpy(server_config.socket_path, DEFAULT_SOCKET_PATH);
-   server_status = OPEN;
+   // server_config.no_of_workers = N_THREADS;
+   // server_config.max_size = MAX_SIZE;
+   // server_config.max_files = MAX_FILES;
+   // server_config.socket_path = calloc(1, strlen(DEFAULT_SOCKET_PATH) + 1);
+   // strcpy(server_config.socket_path, DEFAULT_SOCKET_PATH);
+   // server_status = OPEN;
+   log_info("workers: %d\n", server_config.no_of_workers);
+   log_info("max_size: %d\n", server_config.max_size);
+   log_info("max_files: %d\n", server_config.max_files);
+   log_info("socket_path: %s\n", server_config.socket_path);
 
    /* Max fd for select */
    int fd_max = -1;
-
-   /* Initialize log file */
-   log_init("../logs/server.log");
-   // log_init(NULL);
-   set_log_level(LOG_INFO);
 
    /* Install signal handler */
    int *signal_pipe = calloc(2, sizeof(int));
@@ -160,6 +236,8 @@ main(int argc, char const *argv[])
 
    unlink(server_config.socket_path);
 
+   log_debug("Opening socket file %s\n", server_config.socket_path);
+
    if ( (socket_fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
       log_fatal("Cloud not initialize socket: %s\n", strerror(errno));
       ret = -1;
@@ -199,7 +277,7 @@ main(int argc, char const *argv[])
 
    
    /* Opens storage_file */
-   // storage_file = fopen("../logs/storage.txt", "w+");
+   storage_file = fopen("../logs/storage.txt", "w+");
 
 
    /* Start accepting requests */
@@ -293,7 +371,7 @@ main(int argc, char const *argv[])
    
 
 _server_exit2:
-   // storage_dump(storage, storage_file);
+   storage_dump(storage, storage_file);
    close(socket_fd);
    unlink(server_config.socket_path);
    free(sig_handler_tid);

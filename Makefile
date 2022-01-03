@@ -98,8 +98,8 @@ tests: test1 test3
 
 test1:
 	@make all
-	@mv $(SERVER_EXEC) $(TEST1)
-	@mv $(CLIENT_EXEC) $(TEST1)
+	@cp $(SERVER_EXEC) $(TEST1)
+	@cp $(CLIENT_EXEC) $(TEST1)
 	@cd $(TEST1) && chmod +x ./test1.sh && ./test1.sh
 
 test3:
