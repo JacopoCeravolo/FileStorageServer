@@ -11,7 +11,7 @@
 #include "utils/linked_list.h"
 #include "utils/utilities.h"
 
-#define SOCKET_PATH "./socketname.sk"
+#define SOCKET_PATH "/tmp/LSO_socket.sk"
 
 bool VERBOSE;
 char *socket_path = NULL;
@@ -98,9 +98,9 @@ int main(int argc, char * const argv[])
         exit(EXIT_FAILURE);
     }
 
-    if (VERBOSE) {
-        printf("%-10s %-65s %-10s %-20s\n", "OPT_TYPE", "FILE", "N_BYTES", "RESULT");
-    }
+    // if (VERBOSE) {
+    //     printf("%-10s %-65s %-10s %-20s\n", "OPT_TYPE", "FILE", "N_BYTES", "RESULT");
+    // }
 
     while (!list_is_empty(action_list)) {
 
@@ -113,7 +113,7 @@ int main(int argc, char * const argv[])
         free_action(current_action);
     }
 
-    closeConnection(DEFAULT_SOCKET_PATH);
+    closeConnection(socket_path);
     list_destroy(action_list);
     return 0;
 }

@@ -55,10 +55,8 @@ storage_destroy(storage_t *storage)
 {
     log_debug("deallocating file table\n");
     if (storage->files) hash_map_destroy(storage->files);
-    log_debug("deallocating client table\n");
-    // if (storage->opened_files) hash_map_destroy(storage->opened_files);
     log_debug("deallocating FIFO queue\n");
-    // if (storage->basic_fifo) list_destroy(storage->basic_fifo);
+    list_destroy(storage->basic_fifo);
     log_debug("deallocating storage unit\n");
     if (storage) free(storage);
     return 0;
@@ -204,7 +202,7 @@ free_file(void *e)
     file_t *f = (file_t*)e;
     log_debug("deallocating file (%s)\n", f->path);
     if (f->contents) free(f->contents);
-    // list_destroy(f->waiting_on_lock);
+    list_destroy(f->waiting_on_lock);
     free(f);
 }
 

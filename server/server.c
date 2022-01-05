@@ -26,6 +26,8 @@
 #define MAX_FILES    100
 #define MAX_BACKLOG  2000000000
 
+#define SOCKET_PATH "/tmp/LSO_socket.sk"
+
 
 server_config_t      server_config;
 server_mode_t        server_status;
@@ -63,32 +65,32 @@ parse_configuration_file(char *file_name)
       char *parameter = strtok(line, "=");
 
       if (strcmp(parameter, "N_WORKERS") == 0) {
-         char *tmp_str = strtok(NULL, " ");
+         char *tmp_str = strtok(NULL, "\n");
          int n_workers = atoi(tmp_str);
          server_config.no_of_workers = n_workers;
       }
 
       if (strcmp(parameter, "MAX_SIZE") == 0) {
-         char *tmp_str = strtok(NULL, " ");
+         char *tmp_str = strtok(NULL, "\n");
          int max_size = atoi(tmp_str);
          server_config.max_size = max_size;
       }
 
       if (strcmp(parameter, "MAX_FILES") == 0) {
-         char *tmp_str = strtok(NULL, " ");
+         char *tmp_str = strtok(NULL, "\n");
          int max_files = atoi(tmp_str);
          server_config.max_files = max_files;
       }
 
       if (strcmp(parameter, "SOCKET_PATH") == 0) {
-         char *socket_path = strtok(NULL, " ");
+         char *socket_path = strtok(NULL, "\n");
          // remove if present " " from socket path
          server_config.socket_path = calloc(1, strlen(socket_path) + 1);
          strcpy(server_config.socket_path, socket_path);
       }
 
       if (strcmp(parameter, "LOG_FILE") == 0) {
-         char *log_path = strtok(NULL, " ");
+         char *log_path = strtok(NULL, "\n");
          // remove if present " " from socket path
          server_config.log_file = calloc(1, strlen(log_path) + 1);
          strcpy(server_config.log_file, log_path);
@@ -96,6 +98,7 @@ parse_configuration_file(char *file_name)
    }
 
    free(line);
+   fclose(config_file);
    return 0;
 }
 
@@ -120,8 +123,14 @@ main(int argc, char const *argv[])
    shutdown_now = 0;
 
    /* Initialize log file */
-   // log_init("../logs/server.log");
+   // if (server_config.log_file != NULL) {
+   //    log_init(server_config.log_file);
+   // } else {
+   //    log_init(NULL);
+   // }
+
    log_init(NULL);
+
    set_log_level(LOG_INFO);
 
 
@@ -136,10 +145,10 @@ main(int argc, char const *argv[])
    // server_config.socket_path = calloc(1, strlen(DEFAULT_SOCKET_PATH) + 1);
    // strcpy(server_config.socket_path, DEFAULT_SOCKET_PATH);
    // server_status = OPEN;
-   log_info("workers: %d\n", server_config.no_of_workers);
-   log_info("max_size: %d\n", server_config.max_size);
-   log_info("max_files: %d\n", server_config.max_files);
-   log_info("socket_path: %s\n", server_config.socket_path);
+   // log_info("workers: %d\n", server_config.no_of_workers);
+   // log_info("max_size: %d\n", server_config.max_size);
+   // log_info("max_files: %d\n", server_config.max_files);
+   // log_info("socket_path: %s\n", server_config.socket_path);
 
    /* Max fd for select */
    int fd_max = -1;
@@ -383,7 +392,9 @@ _server_exit1:
    close(signal_pipe[0]); 
    free(signal_pipe);
    storage_destroy(storage);
-   // fclose(storage_file);
+   fclose(storage_file);
+   free(server_config.log_file);
+   free(server_config.socket_path);
    close_log();
    // concurrent_queue_destroy(request_queue); // leads to SIGSEV
    

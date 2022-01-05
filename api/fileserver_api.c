@@ -149,11 +149,13 @@ openFile(const char* pathname, int flags)
 {
     if ( pathname == NULL ) {
         errno = EINVAL;
+        set_result_buffer("openFile", pathname, 0, strerror(errno));
         return -1;
     }
 
     if ( socket_fd == -1 ) {
         errno = ENOTCONN;
+        set_result_buffer("openFile", pathname, 0, strerror(errno));
         return -1;
     }
 
@@ -215,11 +217,13 @@ readFile(const char* pathname, void** buf, size_t* size)
 {
     if ( pathname == NULL ) {
         errno = EINVAL;
+        set_result_buffer("readFile", pathname, 0, strerror(errno));
         return -1;
     }
 
     if ( socket_fd == -1 ) {
         errno = ENOTCONN;
+        set_result_buffer("readFile", pathname, 0, strerror(errno));
         return -1;
     }
 
@@ -295,6 +299,7 @@ readNFiles(int N, const char* dirname)
 {
     if ( N < 0 ) {
         errno = EINVAL;
+        set_result_buffer("readNFiles", "", 0, strerror(errno));
         return -1;
     }
 
@@ -360,11 +365,13 @@ writeFile(const char* pathname, const char* dirname)
     
     if ( pathname == NULL ) {
         errno = EINVAL;
+        set_result_buffer("writeFile", pathname, 0, strerror(errno));
         return -1;
     }
 
     if ( socket_fd == -1 ) {
         errno = ENOTCONN;
+        set_result_buffer("writeFile", pathname, 0, strerror(errno));
         return -1;
     }
 
@@ -373,6 +380,7 @@ writeFile(const char* pathname, const char* dirname)
     file_ptr = fopen(pathname, "rb");
     if ( file_ptr == NULL ) {
         errno = EIO;
+        set_result_buffer("writeFile", pathname, 0, strerror(errno));
         return -1;
     }
 
@@ -383,6 +391,7 @@ writeFile(const char* pathname, const char* dirname)
     } else {
         fclose(file_ptr);
         errno = EIO;
+        set_result_buffer("writeFile", pathname, 0, strerror(errno));
         return -1;
     }
 
@@ -408,6 +417,7 @@ writeFile(const char* pathname, const char* dirname)
             fclose(file_ptr);
             if ( file_data != NULL ) free(file_data);
             errno = EIO;
+            set_result_buffer("writeFile", pathname, 0, strerror(errno));
             return -1;
         }
     }
@@ -538,11 +548,13 @@ lockFile(const char* pathname)
 {
     if ( pathname == NULL ) {
         errno = EINVAL;
+        set_result_buffer("lockFile", pathname, 0, strerror(errno));
         return -1;
     }
 
     if ( socket_fd == -1 ) {
         errno = ENOTCONN;
+        set_result_buffer("lockFile", pathname, 0, strerror(errno));
         return -1;
     }
     
@@ -606,11 +618,13 @@ unlockFile(const char* pathname)
 {
     if ( pathname == NULL ) {
         errno = EINVAL;
+        set_result_buffer("unlockFile", pathname, 0, strerror(errno));
         return -1;
     }
 
     if ( socket_fd == -1 ) {
         errno = ENOTCONN;
+        set_result_buffer("unlockFile", pathname, 0, strerror(errno));
         return -1;
     }
     
@@ -681,11 +695,13 @@ removeFile(const char* pathname)
 {
     if ( pathname == NULL ) {
         errno = EINVAL;
+        set_result_buffer("removeFile", pathname, 0, strerror(errno));
         return -1;
     }
 
     if ( socket_fd == -1 ) {
         errno = ENOTCONN;
+        set_result_buffer("removeFile", pathname, 0, strerror(errno));
         return -1;
     }
 
@@ -749,11 +765,13 @@ closeFile(const char* pathname)
 {
     if ( pathname == NULL ) {
         errno = EINVAL;
+        set_result_buffer("closeFile", pathname, 0, strerror(errno));
         return -1;
     }
 
     if ( socket_fd == -1 ) {
         errno = ENOTCONN;
+        set_result_buffer("closeFile", pathname, 0, strerror(errno));
         return -1;
     }
     
