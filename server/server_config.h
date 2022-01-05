@@ -41,7 +41,9 @@ EXTERN server_mode_t            server_status;
 
 EXTERN storage_t                *storage;
 
-EXTERN concurrent_queue_t       *request_queue;
+EXTERN list_t                   *request_queue;
+EXTERN pthread_mutex_t          request_queue_mtx;
+EXTERN pthread_cond_t           request_queue_full;
 
 EXTERN volatile sig_atomic_t    accept_connection;
 EXTERN volatile sig_atomic_t    shutdown_now;

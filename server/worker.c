@@ -15,7 +15,7 @@ worker_thread(void* args)
 
    int pipe_fd = ((worker_arg_t*)args)->pipe_fd;
    int worker_id = ((worker_arg_t*)args)->worker_id;
-   concurrent_queue_t *requests = ((worker_arg_t*)args)->requests;
+   // concurrent_queue_t *requests = ((worker_arg_t*)args)->requests;
 
    free(args);
 
@@ -23,7 +23,16 @@ worker_thread(void* args)
 
         if (shutdown_now == 1) { break; continue;}
   
-        int *ptr = (int*)concurrent_queue_get(requests);
+        lock_return((&request_queue_mtx), -1);
+
+        while (request_queue->length == 0) {
+            cond_wait_return((&request_queue_full), (&request_queue_mtx), -1);
+        }
+
+        int *ptr = (int*)list_remove_head(request_queue);
+
+        unlock_return(&(request_queue_mtx), -1);
+        
         int client_fd = *ptr;
         free(ptr);
         

@@ -32,7 +32,10 @@
 server_config_t      server_config;
 server_mode_t        server_status;
 storage_t            *storage;
-concurrent_queue_t   *requests_queue;
+
+list_t               *request_queue;
+pthread_mutex_t      request_queue_mtx = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t       request_queue_full = PTHREAD_COND_INITIALIZER;
 
 FILE *storage_file;
 
@@ -176,8 +179,8 @@ main(int argc, char const *argv[])
    }
 
    /* Initialize request queue */
-   requests_queue = concurrent_queue_create(int_compare, NULL, print_int); // ugly af
-   if ( requests_queue == NULL ) {
+   request_queue = list_create(int_compare, NULL, print_int); // ugly af
+   if ( request_queue == NULL ) {
       log_fatal("Could not initialize request queue: %s\n", strerror(errno));
       free(signal_pipe);
       return -1;
@@ -341,9 +344,14 @@ main(int argc, char const *argv[])
                int *tmp_fd = malloc(sizeof(int));
                *tmp_fd = fd;
       
-               if ( concurrent_queue_put(requests_queue, (void*)tmp_fd) != 0 ) {
+               lock_return((&request_queue_mtx), -1);
+               if ( list_insert_tail(request_queue, (void*)tmp_fd) != 0 ) {
                   log_error("Could not enqueue new client request\n");
                }
+
+               cond_signal_return(&(request_queue_full), -1);
+
+               unlock_return((&request_queue_mtx), -1);
 
                FD_CLR(fd, &set);
                if ( fd == fd_max ) {
@@ -396,7 +404,7 @@ _server_exit1:
    free(server_config.log_file);
    free(server_config.socket_path);
    close_log();
-   // concurrent_queue_destroy(request_queue); // leads to SIGSEV
+   list_destroy(request_queue); 
    
    return ret;
 }
@@ -415,7 +423,7 @@ start_worker_threads(int *mw_pipe)
 
       worker_args->worker_id = i;
       worker_args->pipe_fd = mw_pipe[1];
-      worker_args->requests = requests_queue;
+      // worker_args->requests = request_queue;
 
       if ( pthread_create(&worker_tids[i], NULL, worker_thread, (void*)worker_args ) != 0) {
          log_fatal("Could not create worker thread\n");
@@ -445,9 +453,14 @@ shutdown_all_threads()
       int *terminate = malloc(sizeof(int));
       *terminate = -1;
       
-      if ( concurrent_queue_put(requests_queue, (void*)terminate) != 0 ) {
+      lock_return((&request_queue_mtx), -1);
+      if ( list_insert_tail(request_queue, (void*)terminate) != 0 ) {
          log_error("Could not send thread termination signal\n");
       }
+
+      cond_signal_return((&request_queue_full), -1);
+
+      unlock_return((&request_queue_mtx), -1);
    }
 
    for (int i = 0; i < server_config.no_of_workers; i++) {
