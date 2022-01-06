@@ -16,6 +16,10 @@ TEST1 	= $(ORIGIN)/test1
 TEST2 	= $(ORIGIN)/test2
 TEST3 	= $(ORIGIN)/test3
 
+# Final executables
+SERVER_EXEC = $(SERVER)/server
+CLIENT_EXEC = $(CLIENT)/client
+
 # Printing
 RED		= \033[1m\033[31m
 GREEN	= \033[1m\033[32m
@@ -31,8 +35,10 @@ export MAKEFLAGS
 		server cleanserver 	\
 		api cleanapi 		\
 		utils cleanutils	\
-		cleanall 			\
-		test1 test2 test3	
+		test1 cleantest1	\
+		test2 cleantest2	\
+		test3 cleantest3	\	
+		cleanall 			
 		
 .DEFAULT_GOAL := all
 
@@ -64,22 +70,56 @@ api:
 utils:
 	$(MAKE) -C $(UTILS)
 
+
+tests: test1 test2 test3
+
+test1:
+	@make all
+	@cp $(SERVER_EXEC) $(TEST1)
+	@cp $(CLIENT_EXEC) $(TEST1)
+	@cd $(TEST1) && chmod +x ./test1.sh && ./test1.sh
+
+test2:
+	@make all
+	@cp $(SERVER_EXEC) $(TEST2)
+	@cp $(CLIENT_EXEC) $(TEST2)
+	@cd $(TEST2) && chmod +x ./test2.sh && ./test2.sh
+
+test3:
+	@make all
+	@mv $(SERVER_EXEC) $(TEST3)
+	@mv $(CLIENT_EXEC) $(TEST3)
+	@cd $(TEST3) && chmod +x ./test3.sh && ./test3.sh
+
+
 # Cleaning
 cleanclient:
 	@cd client && make cleanall
-	@echo "${GREEN}Client removed ${RESET}"
+	@echo "${GREEN}Client cleaned ${RESET}"
 
 cleanserver:
 	@cd server && make cleanall
-	@echo "${GREEN}Server removed ${RESET}"
+	@echo "${GREEN}Server cleaned ${RESET}"
 
 cleanapi:
 	@cd api && make cleanall
-	@echo "${GREEN}API removed ${RESET}"
+	@echo "${GREEN}API cleaned ${RESET}"
 
 cleanutils:
 	@cd utils && make cleanall
-	@echo "${GREEN}Utilites removed ${RESET}"
+	@echo "${GREEN}Utilites cleaned ${RESET}"
+
+cleantest1:
+	@cd $(TEST1) && rm -rf server client test1_config.txt *.log
+	@echo "${GREEN}Test 1 cleaned ${RESET}"
+
+cleantest2:
+	@cd $(TEST2) && rm -rf server client test2_config.txt *.log
+	@echo "${GREEN}Test 2 cleaned ${RESET}"
+
+cleantest3:
+	@cd $(TEST3) && rm -rf server client test3_config.txt *.log
+	@echo "${GREEN}Test 3 cleaned ${RESET}" 
 
 
 cleanall:
@@ -88,22 +128,8 @@ cleanall:
 	@make cleanapi
 	@make cleanclient
 	@make cleanserver 
+	@make cleantest1
+	@make cleantest2
+	@make cleantest3
 	@echo "${BOLD}Directories cleaned${RESET}"
 
-
-SERVER_EXEC = $(SERVER)/server
-CLIENT_EXEC = $(CLIENT)/client
-
-tests: test1 test3
-
-test1:
-	@make all
-	@cp $(SERVER_EXEC) $(TEST1)
-	@cp $(CLIENT_EXEC) $(TEST1)
-	@cd $(TEST1) && chmod +x ./test1.sh && ./test1.sh
-
-test3:
-	@make all
-	@mv $(SERVER_EXEC) $(TEST3)
-	@mv $(CLIENT_EXEC) $(TEST3)
-	@cd $(TEST3) && chmod +x ./test3.sh && ./test3.sh

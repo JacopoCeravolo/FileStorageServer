@@ -26,7 +26,7 @@ worker_thread(void* args)
         lock_return((&request_queue_mtx), -1);
 
         while (request_queue->length == 0) {
-            cond_wait_return((&request_queue_full), (&request_queue_mtx), -1);
+            cond_wait_return((&request_queue_notempty), (&request_queue_mtx), -1);
         }
 
         int *ptr = (int*)list_remove_head(request_queue);

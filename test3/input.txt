@@ -1,4 +1,0 @@
--W file2,file7,file4,file1,file5 -r file4,file3,file9,file1,file2
--W file3,file8,file3,file0,file4 -r file3,file4,file7,file2,file5
--W file4,file9,file2,file1,file3 -r file2,file5,file4,file0,file6
--W file5,file0,file1,file8,file2 -r file1,file6,file3,file2,file7

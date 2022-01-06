@@ -1,4 +1,4 @@
 N_WORKERS=4
 MAX_SIZE=32000000
 MAX_FILES=32
-SOCKET_PATH=/tmp/newLSO_socket.sk
+SOCKET_PATH=/tmp/LSO_socket.sk

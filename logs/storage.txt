@@ -1,0 +1,67 @@
+
+**********************
+CURRENT SIZE: 12372
+**********************
+
+**********************
+NO OF FILES: 10
+**********************
+
+**********************
+FIFO QUEUE
+/home/ubuntu/file-server/test2/data/file6 /home/ubuntu/file-server/test2/data/file7 /home/ubuntu/file-server/test2/data/file8 /home/ubuntu/file-server/test2/data/file9 /home/ubuntu/file-server/test2/data/file10 /home/ubuntu/file-server/test2/data/file11 /home/ubuntu/file-server/test2/data/file12 /home/ubuntu/file-server/test2/data/file13 /home/ubuntu/file-server/test2/data/file14 /home/ubuntu/file-server/test2/data/file15 
+
+**********************
+
+**** TABLE OF FILES ******
+
+/home/ubuntu/file-server/test2/data/file10  2196 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/ubuntu/file-server/test2/data/file11  2196 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/ubuntu/file-server/test2/data/file12  2196 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/ubuntu/file-server/test2/data/file13  599 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/ubuntu/file-server/test2/data/file14  599 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/ubuntu/file-server/test2/data/file15  599 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/ubuntu/file-server/test2/data/file6  597 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/ubuntu/file-server/test2/data/file7  597 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/ubuntu/file-server/test2/data/file8  597 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/ubuntu/file-server/test2/data/file9  2196 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+

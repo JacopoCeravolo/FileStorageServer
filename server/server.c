@@ -1,3 +1,4 @@
+#define EXTERN
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -14,37 +15,32 @@
 #include <fcntl.h>
 #include <pthread.h>
 
-#define EXTERN
-
 #include "server/server_config.h"
 #include "server/lock_manager.h"
 #include "server/signal_handler.h"
 #include "server/worker.h"
 
-#define N_THREADS    8
-#define MAX_SIZE     32000000
-#define MAX_FILES    100
+#define LOG_LVL      LOG_INFO
 #define MAX_BACKLOG  2000000000
 
-#define SOCKET_PATH "/tmp/LSO_socket.sk"
+server_config_t         server_config;
+server_mode_t           server_status;
+storage_t               *storage;
 
+list_t                  *request_queue;
+pthread_mutex_t         request_queue_mtx = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t          request_queue_notempty = PTHREAD_COND_INITIALIZER;
 
-server_config_t      server_config;
-server_mode_t        server_status;
-storage_t            *storage;
+FILE                    *storage_file;
+FILE                    *log_file;
+pthread_mutex_t         log_file_mtx = PTHREAD_MUTEX_INITIALIZER;
 
-list_t               *request_queue;
-pthread_mutex_t      request_queue_mtx = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t       request_queue_full = PTHREAD_COND_INITIALIZER;
+pthread_t               *worker_tids;
+pthread_t               *sig_handler_tid;
+pthread_t               *lock_handler_tid;
 
-FILE *storage_file;
-
-pthread_t            *worker_tids;
-pthread_t            *sig_handler_tid;
-pthread_t            *lock_handler_tid;
-
-volatile sig_atomic_t    accept_connection;
-volatile sig_atomic_t    shutdown_now;
+volatile sig_atomic_t   accept_connection;
+volatile sig_atomic_t   shutdown_now;
 
 int
 start_worker_threads(int *mw_pipe);
@@ -113,6 +109,8 @@ main(int argc, char const *argv[])
       printf("error, need at least one argument\n");
    }
 
+
+   /* Read configuration file */
    // check validity of file
    if (parse_configuration_file(argv[1]) != 0) {
       fprintf(stderr, "Could not parse configuration file\n");
@@ -125,33 +123,16 @@ main(int argc, char const *argv[])
    accept_connection = 1;
    shutdown_now = 0;
 
-   /* Initialize log file */
-   // if (server_config.log_file != NULL) {
-   //    log_init(server_config.log_file);
-   // } else {
-   //    log_init(NULL);
-   // }
-
-   log_init(NULL);
-
-   set_log_level(LOG_INFO);
-
-
-
-   /* Read configuration file */
    
+   /* Initialize log file */
+   if (server_config.log_file != NULL) {
+      log_init(server_config.log_file);
+   } else {
+      log_init(NULL);
+   }
 
-   /* Configuration of the server */
-   // server_config.no_of_workers = N_THREADS;
-   // server_config.max_size = MAX_SIZE;
-   // server_config.max_files = MAX_FILES;
-   // server_config.socket_path = calloc(1, strlen(DEFAULT_SOCKET_PATH) + 1);
-   // strcpy(server_config.socket_path, DEFAULT_SOCKET_PATH);
-   // server_status = OPEN;
-   // log_info("workers: %d\n", server_config.no_of_workers);
-   // log_info("max_size: %d\n", server_config.max_size);
-   // log_info("max_files: %d\n", server_config.max_files);
-   // log_info("socket_path: %s\n", server_config.socket_path);
+   set_log_level(LOG_LVL);
+
 
    /* Max fd for select */
    int fd_max = -1;
@@ -187,7 +168,7 @@ main(int argc, char const *argv[])
    }
 
    /* Initialize storage*/
-   storage = storage_create(MAX_SIZE, MAX_FILES);
+   storage = storage_create(server_config.max_size, server_config.max_files);
    if ( storage == NULL ) {
       log_error("Could not initialize storage\n");
       ret = -1;
@@ -349,7 +330,7 @@ main(int argc, char const *argv[])
                   log_error("Could not enqueue new client request\n");
                }
 
-               cond_signal_return(&(request_queue_full), -1);
+               cond_signal_return(&(request_queue_notempty), -1);
 
                unlock_return((&request_queue_mtx), -1);
 
@@ -447,7 +428,6 @@ shutdown_all_threads()
          log_error("Could not join signal handler thread\n");
    } 
 
-   /* This all should be moved to a separate pipe between master and workers */
    for (int i = 0; i < server_config.no_of_workers; i++) {
       
       int *terminate = malloc(sizeof(int));
@@ -458,7 +438,7 @@ shutdown_all_threads()
          log_error("Could not send thread termination signal\n");
       }
 
-      cond_signal_return((&request_queue_full), -1);
+      cond_signal_return((&request_queue_notempty), -1);
 
       unlock_return((&request_queue_mtx), -1);
    }

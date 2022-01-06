@@ -5,10 +5,9 @@
 #include <sys/timeb.h>
 
 #include "logger.h"
+#include "utils/utilities.h"
 
 static loglevel log_level;
-static char log_path[MAX_PATH];
-static FILE* fp;
 
 static char* 
 get_timestamp(char* buf) {
@@ -26,16 +25,15 @@ log_init(const char* path)
     log_level = LOG_INFO;
 
     if (path && *path != '\0') {
-         strncpy(log_path, path, MAX_PATH);
-        fp = fopen(path, "w+");
-        if (fp == NULL) // if fopen fails revert to stderr
-            fp = stderr;
+        log_file = fopen(path, "w+");
+        if (log_file == NULL) // if fopen fails revert to stderr
+            log_file = stderr;
     }
     else {
-        if (fp != NULL && fp != stderr && fp != stdout)
-            fclose(fp);
+        if (log_file != NULL && log_file != stderr && log_file != stdout)
+            fclose(log_file);
 
-        fp = stderr;
+        log_file = stderr;
     }
 }
 
@@ -51,11 +49,15 @@ logfatal(const char *file, const int line, const char* format, ...)
     char tmp[50] = { 0 };
     va_list args;
     va_start (args, format);
-    fprintf(fp, "%s ", get_timestamp(tmp));
-    fprintf(fp, "%s:%d: [ fatal error ] ", file, line);
-    vfprintf (fp, format, args);
+
+    lock_return((&log_file_mtx), NULL);
+    fprintf(log_file, "%s ", get_timestamp(tmp));
+    fprintf(log_file, "%s:%d: [ fatal error ] ", file, line);
+    vfprintf (log_file, format, args);
+    unlock_return((&log_file_mtx), NULL);
+
     va_end (args);
-    fflush(fp);
+    fflush(log_file);
 }
 
 void 
@@ -65,11 +67,15 @@ logerror(const char *file, const int line, const char* format, ...)
         char tmp[50] = { 0 };
         va_list args;
         va_start (args, format);
-        fprintf(fp, "%s ", get_timestamp(tmp));
-        fprintf(fp, "[ error ] ");
-        vfprintf (fp, format, args);
+
+        lock_return((&log_file_mtx), NULL);
+        fprintf(log_file, "%s ", get_timestamp(tmp));
+        fprintf(log_file, "[ error ] ");
+        vfprintf (log_file, format, args);
+        unlock_return((&log_file_mtx), NULL);
+
         va_end (args);
-        fflush(fp);
+        fflush(log_file);
     }
 }
 
@@ -80,10 +86,14 @@ loginfo(const char* format, ...)
         char tmp[50] = { 0 };
         va_list args;
         va_start (args, format);
-        fprintf(fp, "%s ", get_timestamp(tmp));
-        vfprintf (fp, format, args);
+
+        lock_return((&log_file_mtx), NULL);
+        fprintf(log_file, "%s ", get_timestamp(tmp));
+        vfprintf (log_file, format, args);
+        unlock_return((&log_file_mtx), NULL);
+
         va_end (args);
-        fflush(fp);
+        fflush(log_file);
     }
 }
 
@@ -94,11 +104,15 @@ logwarning(const char *file, const int line, const char* format, ...)
         char tmp[50] = { 0 };
         va_list args;
         va_start (args, format);
-        fprintf(fp, "%s ", get_timestamp(tmp));
-        fprintf(fp, "%s:%d: [ warning ] ", file, line);
-        vfprintf (fp, format, args);
+
+        lock_return((&log_file_mtx), NULL);
+        fprintf(log_file, "%s ", get_timestamp(tmp));
+        fprintf(log_file, "%s:%d: [ warning ] ", file, line);
+        vfprintf (log_file, format, args);
+        unlock_return((&log_file_mtx), NULL);
+        
         va_end (args);
-        fflush(fp);
+        fflush(log_file);
     }
 }
 
@@ -109,24 +123,28 @@ logdebug(const char *file, const int line, const char* format, ...)
         char tmp[50] = { 0 };
         va_list args;
         va_start (args, format);
-        fprintf(fp, "%s ", get_timestamp(tmp));
-        fprintf(fp, "%s:%d: ", file, line);
-        vfprintf (fp, format, args);
+
+        lock_return((&log_file_mtx), NULL);
+        fprintf(log_file, "%s ", get_timestamp(tmp));
+        fprintf(log_file, "%s:%d: ", file, line);
+        vfprintf (log_file, format, args);
+        unlock_return((&log_file_mtx), NULL);
+        
         va_end (args);
-        fflush(fp);
+        fflush(log_file);
     }
 }
 
 void 
 flush_log() 
 {
-    fflush(fp);
+    fflush(log_file);
 }
 
 void 
 close_log() 
 {
-    if(fp != stdout)
-        fclose(fp);
-    fp = NULL;
+    if(log_file != stdout)
+        fclose(log_file);
+    log_file = NULL;
 }

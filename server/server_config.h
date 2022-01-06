@@ -43,7 +43,10 @@ EXTERN storage_t                *storage;
 
 EXTERN list_t                   *request_queue;
 EXTERN pthread_mutex_t          request_queue_mtx;
-EXTERN pthread_cond_t           request_queue_full;
+EXTERN pthread_cond_t           request_queue_notempty;
+
+EXTERN FILE                     *log_file;
+EXTERN pthread_mutex_t          log_file_mtx;
 
 EXTERN volatile sig_atomic_t    accept_connection;
 EXTERN volatile sig_atomic_t    shutdown_now;

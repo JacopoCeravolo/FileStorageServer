@@ -2,7 +2,8 @@
 #define LOGGER_H
 
 #include <stdio.h>
-#include "utils/utilities.h"
+
+#include "server_config.h"
 
 
 typedef enum {

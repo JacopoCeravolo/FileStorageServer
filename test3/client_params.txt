@@ -1,20 +1,20 @@
--W file1,file2,file3,file7,file11,file0 -r file1,file2,file3,file7,file11,file0 
--W file4,file5,file6,file2,file3,file5 -r file4,file5,file6,file2,file3,file5 
--W file7,file8,file9,file7,file9,file11 -r file7,file8,file9,file6,file8,file10 
--W file10,file11,file12,file1,file3,file5 -r file10,file11,file12,file0,file2,file4 
--W file0,file2,file4,file6,file8,file10 -r file1,file3,file5,file7,file9,file11 
--W file6,file8,file10,file0,file2,file4 -r file7,file9,file11,file1,file3,file5 
--W file1,file3,file5,file10,file11,file12 -r file0,file2,file4,file10,file11,file12 
--W file7,file9,file11,file7,file8,file9 -r file6,file8,file10,file7,file8,file9,file6 
--W file2,file3,file5,file4,file5,file6 -r file2,file3,file5,file4,file5,file6 
--W file7,file11,file0,file1,file2,file3 -r file7,file11,file0,file1,file2,file3 
--W file1,file2,file3,file7,file11,file0 -r file1,file2,file3,file7,file11,file0 
--W file4,file5,file6,file2,file3,file5 -r file4,file5,file6,file2,file3,file5 
--W file7,file8,file9,file7,file9,file11 -r file7,file8,file9,file6,file8,file10 
--W file10,file11,file12,file1,file3,file5 -r file10,file11,file12,file0,file2,file4 
--W file0,file2,file4,file6,file8,file10 -r file1,file3,file5,file7,file9,file11 
--W file6,file8,file10,file0,file2,file4 -r file7,file9,file11,file1,file3,file5 
--W file1,file3,file5,file10,file11,file12 -r file0,file2,file4,file10,file11,file12 
--W file7,file9,file11,file7,file8,file9 -r file6,file8,file10,file7,file8,file9,file6 
--W file2,file3,file5,file4,file5,file6 -r file2,file3,file5,file4,file5,file6 
--W file7,file11,file0,file1,file2,file3 -r file7,file11,file0,file1,file2,file3 
+-f /tmp/LSO_server.sk -W data/file1,data/file2,data/file3,data/file7,data/file11,data/file0 -r data/file1,data/file2,data/file3,data/file7,data/file11,data/file0 
+-f /tmp/LSO_server.sk -W data/file4,data/file5,data/file6,data/file2,data/file3,data/file5 -r data/file4,data/file5,data/file6,data/file2,data/file3,data/file5 
+-f /tmp/LSO_server.sk -W data/file7,data/file8,data/file9,data/file7,data/file9,data/file11 -r data/file7,data/file8,data/file9,data/file6,data/file8,data/file10 
+-f /tmp/LSO_server.sk -W data/file10,data/file11,data/file12,data/file1,data/file3,data/file5 -r data/file10,data/file11,data/file12,data/file0,data/file2,data/file4 
+-f /tmp/LSO_server.sk -W data/file0,data/file2,data/file4,data/file6,data/file8,data/file10 -r data/file1,data/file3,data/file5,data/file7,data/file9,data/file11 
+-f /tmp/LSO_server.sk -W data/file6,data/file8,data/file10,data/file0,data/file2,data/file4 -r data/file7,data/file9,data/file11,data/file1,data/file3,data/file5 
+-f /tmp/LSO_server.sk -W data/file1,data/file3,data/file5,data/file10,data/file11,data/file12 -r data/file0,data/file2,data/file4,data/file10,data/file11,data/file12 
+-f /tmp/LSO_server.sk -W data/file7,data/file9,data/file11,data/file7,data/file8,data/file9 -r data/file6,data/file8,data/file10,data/file7,data/file8,data/file9,data/file6 
+-f /tmp/LSO_server.sk -W data/file2,data/file3,data/file5,data/file4,data/file5,data/file6 -r data/file2,data/file3,data/file5,data/file4,data/file5,data/file6 
+-f /tmp/LSO_server.sk -W data/file7,data/file11,data/file0,data/file1,data/file2,data/file3 -r data/file7,data/file11,data/file0,data/file1,data/file2,data/file3 
+-f /tmp/LSO_server.sk -W data/file1,data/file2,data/file3,data/file7,data/file11,data/file0 -r data/file1,data/file2,data/file3,data/file7,data/file11,data/file0 
+-f /tmp/LSO_server.sk -W data/file4,data/file5,data/file6,data/file2,data/file3,data/file5 -r data/file4,data/file5,data/file6,data/file2,data/file3,data/file5 
+-f /tmp/LSO_server.sk -W data/file7,data/file8,data/file9,data/file7,data/file9,data/file11 -r data/file7,data/file8,data/file9,data/file6,data/file8,data/file10 
+-f /tmp/LSO_server.sk -W data/file10,data/file11,data/file12,data/file1,data/file3,data/file5 -r data/file10,data/file11,data/file12,data/file0,data/file2,data/file4 
+-f /tmp/LSO_server.sk -W data/file0,data/file2,data/file4,data/file6,data/file8,data/file10 -r data/file1,data/file3,data/file5,data/file7,data/file9,data/file11 
+-f /tmp/LSO_server.sk -W data/file6,data/file8,data/file10,data/file0,data/file2,data/file4 -r data/file7,data/file9,data/file11,data/file1,data/file3,data/file5 
+-f /tmp/LSO_server.sk -W data/file1,data/file3,data/file5,data/file10,data/file11,data/file12 -r data/file0,data/file2,data/file4,data/file10,data/file11,data/file12 
+-f /tmp/LSO_server.sk -W data/file7,data/file9,data/file11,data/file7,data/file8,data/file9 -r data/file6,data/file8,data/file10,data/file7,data/file8,data/file9,data/file6 
+-f /tmp/LSO_server.sk -W data/file2,data/file3,data/file5,data/file4,data/file5,data/file6 -r data/file2,data/file3,data/file5,data/file4,data/file5,data/file6 
+-f /tmp/LSO_server.sk -W data/file7,data/file11,data/file0,data/file1,data/file2,data/file3 -r data/file7,data/file11,data/file0,data/file1,data/file2,data/file3 

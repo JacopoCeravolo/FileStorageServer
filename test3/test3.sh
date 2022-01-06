@@ -9,21 +9,40 @@ RESET="\033[;0m"
 SERVER=./server
 CLIENT=./client
 
+SERVER_CONFIG=$(realpath ./test3_config.txt)
+SERVER_LOG=$(realpath ./server.log)
+
+N_WORKERS=8
+MAX_SIZE=32000000
+MAX_FILES=100
+SOCKET_PATH=/tmp/LSO_server.sk
+
 echo ""
 echo -e "${BOLD}*************************${RESET}"
 echo -e "${BOLD}*    ${GREEN}STARTING TEST 3${BOLD}    *${RESET}"
 echo -e "${BOLD}*************************${RESET}"
 echo ""
 
-echo -e "${YELLOW}[TEST 3]${BOLD} starting server${RESET}"
-${SERVER} & 
+touch ${SERVER_CONFIG}
+echo -e "N_WORKERS=${N_WORKERS}\nMAX_SIZE=${MAX_SIZE}\nMAX_FILES=${MAX_FILES}\nSOCKET_PATH=${SOCKET_PATH}\nLOG_FILE=${SERVER_LOG}" > ${SERVER_CONFIG}
+
+echo -e "${YELLOW}[TEST 3]${BOLD} Server configuration${RESET}"
+echo ""
+echo -e "${YELLOW}[TEST 3]${BOLD} Number of workers:${RESET} ${N_WORKERS}"
+echo -e "${YELLOW}[TEST 3]${BOLD} Maximum storage size:${RESET} ${MAX_SIZE} bytes"
+echo -e "${YELLOW}[TEST 3]${BOLD} Maximum number of files:${RESET} ${MAX_FILES}"
+echo -e "${YELLOW}[TEST 3]${BOLD} Socket file path:${RESET} ${SOCKET_PATH}"
+echo ""
+
+echo -e "${YELLOW}[TEST 3]${BOLD} Starting server${RESET}"
+${SERVER} ${SERVER_CONFIG} & 
 SERVER_PID=$!
 sleep 1
-echo -e "${YELLOW}[TEST 3]${BOLD} server started${RESET}"
+echo -e "${YELLOW}[TEST 3]${BOLD} Server started${RESET}"
 
 
 echo ""
-echo -e "${YELLOW}[TEST 3]${BOLD} starting clients${RESET}"
+echo -e "${YELLOW}[TEST 3]${BOLD} Starting clients${RESET}"
 echo ""
 
 file='client_params.txt'
@@ -34,16 +53,16 @@ end_time=$((SECONDS+10))
 while [ $SECONDS -lt $end_time ]; 
 do
 
-    xargs --arg-file=$file -n 4 -P 20 ${CLIENT}
+    xargs --arg-file=$file -n 6 -P 20 ${CLIENT}
+    echo -e "${YELLOW}[TEST 3]${BOLD} Total time elapsed: ${RESET}$((SECONDS-start_time)) s"
     tput cuu1
-    echo -e "${YELLOW}[TEST 3]${BOLD} total time elapsed: ${RESET}$((SECONDS-start_time))"
 
 done
 
 
 echo ""
-echo -e "${YELLOW}[TEST 3]${BOLD} shutting down server${RESET}"
-kill -SIGQUIT ${SERVER_PID}
+echo -e "${YELLOW}[TEST 3]${BOLD} Shutting down server${RESET}"
+kill -SIGINT ${SERVER_PID}
 
 echo ""
 echo -e "${BOLD}*************************${RESET}"
