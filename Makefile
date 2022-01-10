@@ -114,7 +114,7 @@ cleantest1:
 	@echo "${GREEN}Test 1 cleaned ${RESET}"
 
 cleantest2:
-	@cd $(TEST2) && rm -rf server client test2_config.txt *.log
+	@cd $(TEST2) && rm -rf server client expelled test2_config.txt *.log
 	@echo "${GREEN}Test 2 cleaned ${RESET}"
 
 cleantest3:

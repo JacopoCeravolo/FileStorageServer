@@ -151,7 +151,7 @@ storage_FIFO_replace(storage_t *storage, int how_many, size_t required_size, lis
         removed_file_path = (char*)list_remove_head(storage->basic_fifo);
         to_remove = storage_get_file(storage, removed_file_path);
 
-        // if (CHK_FLAG(to_remove->flags, O_CREATE)) continue;
+        if (CHK_FLAG(to_remove->flags, O_CREATE)) continue;
 
         file_t *copy = calloc(1, sizeof(file_t));
         strcpy(copy->path, to_remove->path);

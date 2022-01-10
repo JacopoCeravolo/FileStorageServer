@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <stdarg.h>
+#include <libgen.h>
 #include "unistd.h"
 
 #include "utils/protocol.h"
@@ -32,14 +33,17 @@ print_result()
 int
 write_file_in_directory(char *dirname, char *filename, size_t size, void* contents)
 {
-    char *real_path = realpath(dirname, NULL);
-    strcat(real_path, "/");
-    strcat(real_path, filename);
-    FILE *fp = fopen(real_path, "wb");
+    //char *dir_path = realpath(dirname, NULL);
+    char *base_name = basename(filename);
+    char *full_path = malloc(strlen(dirname) + strlen(base_name) + 1);
+    sprintf(full_path, "%s/%s", dirname, base_name);
+    
+    FILE *fp = fopen(full_path, "wb");
 
     fwrite(contents, 1, size, fp);
+    return 0;
     // use real_path
-    free(real_path);    
+    // free(dir_path);    
 }
 
 int 
@@ -180,6 +184,33 @@ openFile(const char* pathname, int flags)
             break;
         }
 
+        /* case FILES_EXPELLED: {
+
+            set_result_buffer("openFile", response->file_path, response->body_size, response->status_phrase);
+            print_result();
+
+            // Receiving final response
+            response_t *final_response = recv_response(socket_fd);
+            if (final_response == NULL) {
+                perror("Response is null");
+                return -1;
+            }
+
+            switch (final_response->status) {
+                case SUCCESS: result = 0;
+                case INTERNAL_ERROR: errno = ECONNABORTED; result = -1;
+                case NOT_FOUND: errno = ENOENT; result = -1;
+                case FILE_EXISTS: errno = EEXIST; result = -1;
+                default: errno = EPROTONOSUPPORT; result = -1;
+            }
+
+            set_result_buffer("openFile", final_response->file_path, final_response->body_size, final_response->status_phrase);
+
+            if (response) free_response(response);
+            if (final_response) free_response(final_response);
+            return result;
+        } */
+
         case INTERNAL_ERROR: {
             errno = ECONNABORTED;
             result = -1;
@@ -206,7 +237,6 @@ openFile(const char* pathname, int flags)
     }
 
     set_result_buffer("openFile", response->file_path, response->body_size, response->status_phrase);
-    
     
     if (response) free_response(response);
     return result;
@@ -473,9 +503,14 @@ writeFile(const char* pathname, const char* dirname)
                     break;
                 }
 
-                //printf("EXPELLED: received [%s] of size %lu\n", received_file->file_path, received_file->body_size);
+                // printf("EXPELLED: received [%s] of size %lu\n", received_file->file_path, received_file->body_size);
+                set_result_buffer("writeFile", received_file->file_path, received_file->body_size, received_file->status_phrase);
+                print_result();
 
-                write_file_in_directory(dirname, received_file->file_path, received_file->body_size, received_file->body);
+                if (dirname != NULL) {
+                    write_file_in_directory(dirname, received_file->file_path, received_file->body_size, received_file->body);
+                }
+
                 list_remove_element(opened_files, received_file->file_path);
 
                 free_response(received_file);
@@ -488,9 +523,13 @@ writeFile(const char* pathname, const char* dirname)
                 result = -1;
                 break;
             }
-    
+
+            set_result_buffer("writeFile", final_response->file_path, file_size, final_response->status_phrase);
             result = 0;
-            break;
+            
+            if (final_response) free_response(final_response);
+            if (response) free_response(response);
+            return result;
         }
 
         case INTERNAL_ERROR: {

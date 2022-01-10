@@ -342,10 +342,6 @@ execute_action(action_t *action)
 
             if (get_files_from_directory(dirname, &how_many, files_list) != 0) break;
 
-            if (list_length(files_list) != how_many) {
-                printf("error when reading files from directory\n");
-            }
-
             while (!list_is_empty(files_list)) {
                 char *path = (char*)list_remove_head(files_list);
 

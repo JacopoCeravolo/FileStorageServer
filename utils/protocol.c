@@ -20,7 +20,7 @@ static char status_message[10][128] = {
     "Unauthorized access",
     "Missing message body",
     "File exceeds maximum space",
-    "Some files were expelled",
+    "File expelled",
     "File already exists"
 };
 
