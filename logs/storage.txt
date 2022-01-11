@@ -1,0 +1,82 @@
+
+**********************
+CURRENT SIZE: 18913
+**********************
+
+**********************
+NO OF FILES: 13
+**********************
+
+**********************
+FIFO QUEUE
+/home/ubuntu/storage_server_old/test3/data/file1 /home/ubuntu/storage_server_old/test3/data/file2 /home/ubuntu/storage_server_old/test3/data/file4 /home/ubuntu/storage_server_old/test3/data/file3 /home/ubuntu/storage_server_old/test3/data/file5 /home/ubuntu/storage_server_old/test3/data/file7 /home/ubuntu/storage_server_old/test3/data/file6 /home/ubuntu/storage_server_old/test3/data/file10 /home/ubuntu/storage_server_old/test3/data/file8 /home/ubuntu/storage_server_old/test3/data/file11 /home/ubuntu/storage_server_old/test3/data/file0 /home/ubuntu/storage_server_old/test3/data/file9 /home/ubuntu/storage_server_old/test3/data/file12 
+
+**********************
+
+**** TABLE OF FILES ******
+
+/home/ubuntu/storage_server_old/test3/data/file0  741 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/ubuntu/storage_server_old/test3/data/file1  1750 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/ubuntu/storage_server_old/test3/data/file2  1750 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/ubuntu/storage_server_old/test3/data/file3  1750 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/ubuntu/storage_server_old/test3/data/file4  1750 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/ubuntu/storage_server_old/test3/data/file5  597 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/ubuntu/storage_server_old/test3/data/file6  597 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/ubuntu/storage_server_old/test3/data/file7  597 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/ubuntu/storage_server_old/test3/data/file8  597 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/ubuntu/storage_server_old/test3/data/file9  2196 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/ubuntu/storage_server_old/test3/data/file10  2196 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/ubuntu/storage_server_old/test3/data/file11  2196 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/ubuntu/storage_server_old/test3/data/file12  2196 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+

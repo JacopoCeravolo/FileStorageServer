@@ -15,7 +15,6 @@ worker_thread(void* args)
 
    int pipe_fd = ((worker_arg_t*)args)->pipe_fd;
    int worker_id = ((worker_arg_t*)args)->worker_id;
-   // concurrent_queue_t *requests = ((worker_arg_t*)args)->requests;
 
    free(args);
 
@@ -29,14 +28,14 @@ worker_thread(void* args)
             cond_wait_return((&request_queue_notempty), (&request_queue_mtx), -1);
         }
 
-        int *ptr = (int*)list_remove_head(request_queue);
+        int *tmp_ptr = (int*)list_remove_head(request_queue);
 
         unlock_return(&(request_queue_mtx), -1);
         
-        int client_fd = *ptr;
-        free(ptr);
+        int client_fd = *tmp_ptr;
+        free(tmp_ptr);
         
-        if (client_fd == -1) {break; continue; }
+        if (client_fd == -1) { break; continue; }
         
         request_t *request;
         request = recv_request(client_fd);
@@ -54,7 +53,7 @@ worker_thread(void* args)
 
             case OPEN_CONNECTION: {
                 int status = 0;
-                // status = open_connection_handlet(int worker_no, client_fd);
+                // status = open_connection_handler(int worker_no, client_fd);
                 if (shutdown_now) status = INTERNAL_ERROR;
                 send_response(client_fd, status, get_status_message(status), 0, "", 0, NULL);
                 log_info("(WORKER %d) [OPEN CONNECTION]: %s\n", worker_id, get_status_message(status));
@@ -63,7 +62,7 @@ worker_thread(void* args)
     
             case CLOSE_CONNECTION: {
                 int status = 0;
-                // status = close_connection_handlet(int worker_no, client_fd);
+                // status = close_connection_handler(int worker_no, client_fd);
                 // if (status != 0) log_error("an error occurred when closing client %d connection\n", client_fd);
                 // log_info("client %d connection closed\n", client_fd);
                 close(client_fd);
@@ -73,14 +72,14 @@ worker_thread(void* args)
             }
             
             case OPEN_FILE: {
-                int status = open_file_handlet(worker_id, client_fd, request);
+                int status = open_file_handler(worker_id, client_fd, request);
                 send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, 0, NULL);
                 log_info("(WORKER %d) [OPEN FILE]: %s\n", worker_id, get_status_message(status));
                 break;
             }
             
             case CLOSE_FILE: {
-                int status = close_file_handlet(worker_id, client_fd, request);
+                int status = close_file_handler(worker_id, client_fd, request);
                 send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, 0, NULL);
                 log_info("(WORKER %d) [CLOSE FILE]: %s\n", worker_id, get_status_message(status));
                 break;
@@ -88,7 +87,7 @@ worker_thread(void* args)
             
             case WRITE_FILE: {
                 list_t *expelled_files = list_create(NULL, free_file, NULL);
-                int status = write_file_handlet(worker_id, client_fd, request, expelled_files);
+                int status = write_file_handler(worker_id, client_fd, request, expelled_files);
                 send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, 0, NULL);
                 /* if (status == FILES_EXPELLED) {
                     int how_many = list_length(expelled_files);
@@ -114,7 +113,7 @@ worker_thread(void* args)
             case READ_FILE: {
                 void *read_buffer = NULL;
                 size_t buffer_size = 0;
-                int status = read_file_handlet(worker_id, client_fd, request, &read_buffer, &buffer_size);
+                int status = read_file_handler(worker_id, client_fd, request, &read_buffer, &buffer_size);
                 /* if (status == SUCCESS && ((buffer_size < 0) || (read_buffer == NULL))) {
                     send_response(client_fd, INTERNAL_ERROR, status_message[INTERNAL_ERROR], "", 0, NULL);
                 } */
@@ -126,7 +125,7 @@ worker_thread(void* args)
 
             case READ_N_FILES: {
                 list_t *files_list = list_create(NULL, free_file, NULL);
-                int status = read_n_files_handlet(worker_id, client_fd, request, files_list);
+                int status = read_n_files_handler(worker_id, client_fd, request, files_list);
                 if (status != SUCCESS) {
                     send_response(client_fd, status, get_status_message(status), 0, "", 0, NULL);
                 } else {
@@ -147,21 +146,21 @@ worker_thread(void* args)
             }
 
             case REMOVE_FILE: { 
-                int status = remove_file_handlet(worker_id, client_fd, request);
+                int status = remove_file_handler(worker_id, client_fd, request);
                 send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, 0, NULL);
                 log_info("(WORKER %d) [REMOVE FILE]: %s\n", worker_id, get_status_message(status));
                 break;
             }
 
             case LOCK_FILE: {
-                int status = lock_file_handlet(worker_id, client_fd, request);
+                int status = lock_file_handler(worker_id, client_fd, request);
                 if (status != MISSING_BODY) send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, 0, NULL);
                 log_info("(WORKER %d) [LOCK FILE]: %s\n", worker_id, get_status_message(status));
                 break;
             }
 
             case UNLOCK_FILE: {
-                int status = unlock_file_handlet(worker_id, client_fd, request);
+                int status = unlock_file_handler(worker_id, client_fd, request);
                 send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, 0, NULL);
                 log_info("(WORKER %d) [UNLOCK FILE]: %s\n", worker_id, get_status_message(status));
                 break;
@@ -264,10 +263,10 @@ close_connection_handler(int client_fd)
  */
 
 int
-open_file_handlet(int worker_no, int client_fd, request_t *request)
+open_file_handler(int worker_no, int client_fd, request_t *request)
 {
 
-    log_debug("[OPEN FILE] client (%d) opening file [%s]\n", client_fd, request->file_path);
+    log_debug("(WORKER %d) [OPEN FILE] client (%d) opening file [%s]\n", worker_no, client_fd, request->file_path);
 
     
     int status = 0; // will be the final response status
@@ -277,14 +276,14 @@ open_file_handlet(int worker_no, int client_fd, request_t *request)
     
     if (CHK_FLAG(flags, O_CREATE)) { // flag is O_CREATE, empty file will be created
     
-        log_debug("creating file [%s]\n", request->file_path);
+        log_debug("(WORKER %d) [OPEN FILE] creating file [%s]\n", worker_no, request->file_path);
 
         // Check whether file already exists
 
         lock_return(&(storage->access), INTERNAL_ERROR);
 
         if (storage_get_file(storage, request->file_path) != NULL) {
-            log_error("[OPEN FILE] file [%s] already exists\n", request->file_path);
+            log_error("(WORKER %d) [OPEN FILE] file [%s] already exists\n", worker_no, request->file_path);
             unlock_return(&(storage->access), INTERNAL_ERROR);
             return FILE_EXISTS;
         }
@@ -293,7 +292,7 @@ open_file_handlet(int worker_no, int client_fd, request_t *request)
 
         file_t *new_file = storage_create_file(request->file_path);
         if (new_file == NULL) {
-            log_error("[OPEN FILE] could not create file [%s]\n", new_file->path);
+            log_error("(WORKER %d) [OPEN FILE] could not create file [%s]\n", worker_no, new_file->path);
             unlock_return(&(storage->access), INTERNAL_ERROR);
             return INTERNAL_ERROR;
         }
@@ -317,7 +316,7 @@ open_file_handlet(int worker_no, int client_fd, request_t *request)
             send_response(client_fd, FILES_EXPELLED, get_status_message(FILES_EXPELLED), strlen(to_remove->path) + 1, to_remove->path, to_remove->size, NULL);
  */
             log_info("(WORKER %d) [FIFO REPLACEMENT] file [%s] was expelled\n", worker_no, to_remove_path);
-            
+
             storage_remove_file(storage, to_remove_path);
 
         }
@@ -354,12 +353,12 @@ open_file_handlet(int worker_no, int client_fd, request_t *request)
 
         unlock_return(&(storage->access), INTERNAL_ERROR);
 
-        log_debug("file [%s] added\n", request->file_path);
+        log_debug("(WORKER %d) [OPEN FILE] file [%s] added\n", worker_no, request->file_path);
     }
 
     if (CHK_FLAG(flags, O_LOCK)) { // flag is O_LOCK, if file exists it will be locked
 
-        log_debug("locking file [%s]\n", request->file_path);
+        log_debug("(WORKER %d) [OPEN FILE] locking file [%s]\n", worker_no, request->file_path);
 
         // Check whether file exists
 
@@ -367,14 +366,14 @@ open_file_handlet(int worker_no, int client_fd, request_t *request)
 
         file_t *file = storage_get_file(storage, request->file_path);
         if (file == NULL) {
-            log_error("[OPEN FILE] file [%s] doesn't exists\n");
+            log_error("(WORKER %d) [OPEN FILE] file [%s] doesn't exists\n", worker_no, request->file_path);
             unlock_return(&(storage->access), INTERNAL_ERROR);
             return NOT_FOUND;
         }
 
         // If file is already locked by another client
         if (CHK_FLAG(file->flags, O_LOCK) && (file->locked_by == client_fd)) {
-            log_error("[OPEN FILE] file [%s] is locked by client (%d)\n", file->path,file->locked_by);
+            log_error("(WORKER %d) [OPEN FILE] file [%s] is locked by client (%d)\n", worker_no, file->path,file->locked_by);
             unlock_return(&(storage->access), INTERNAL_ERROR);
             return UNAUTHORIZED; 
         }
@@ -385,7 +384,7 @@ open_file_handlet(int worker_no, int client_fd, request_t *request)
 
         unlock_return(&(storage->access), INTERNAL_ERROR);
         /* LOCK_RETURN(&(file->access), INTERNAL_ERROR); */
-        log_debug("file [%s] locked\n", request->file_path);
+        log_debug("(WORKER %d) [OPEN FILE] file [%s] locked\n", worker_no, request->file_path);
     }
 
     if (CHK_FLAG(flags, O_NOFLAG)) {
@@ -394,7 +393,7 @@ open_file_handlet(int worker_no, int client_fd, request_t *request)
 
         file_t *file = storage_get_file(storage, request->file_path);
         if (file == NULL) {
-            log_error("[OPEN FILE] file [%s] doesn't exists\n");
+            log_error("(WORKER %d) [OPEN FILE] file [%s] doesn't exists\n", worker_no, request->file_path);
             unlock_return(&(storage->access), INTERNAL_ERROR);
             return NOT_FOUND;
         }
@@ -406,15 +405,16 @@ open_file_handlet(int worker_no, int client_fd, request_t *request)
     if (CHK_FLAG(flags, O_CREATE)) strcat(print_flags, "(O_CREATE)");
     if (CHK_FLAG(flags, O_LOCK)) strcat(print_flags, "(O_LOCK)");
     
-    log_debug("[OPEN FILE] file [%s] successfully opened %s by client (%d)\n", request->file_path, print_flags, client_fd);
+    log_debug("(WORKER %d) [OPEN FILE] file [%s] successfully opened %s by client (%d)\n", 
+                worker_no, request->file_path, print_flags, client_fd);
 
     return status;
 }
 
 int
-close_file_handlet(int worker_no, int client_fd, request_t *request)
+close_file_handler(int worker_no, int client_fd, request_t *request)
 {
-    log_debug("client %d closing file [%s]\n", client_fd, request->file_path);
+    log_debug("(WORKER %d) [CLOSE FILE] client %d closing file [%s]\n", worker_no, client_fd, request->file_path);
 
     int status = 0; // will be the final response status
 
@@ -423,7 +423,7 @@ close_file_handlet(int worker_no, int client_fd, request_t *request)
     /* Check whether file exists */
     file_t *file = storage_get_file(storage, request->file_path);
     if (file == NULL) {
-        log_error("[CLOSE FILE] file [%s] doesn't exists\n", request->file_path);
+        log_error("(WORKER %d) [CLOSE FILE] file [%s] doesn't exists\n", worker_no, request->file_path);
         unlock_return(&(storage->access), INTERNAL_ERROR);
         return NOT_FOUND;
     }
@@ -435,30 +435,32 @@ close_file_handlet(int worker_no, int client_fd, request_t *request)
         file->locked_by = -1;
 
         storage_update_file(storage, file);
-        log_debug("client %d unlocked file [%s] before closing it\n", client_fd, request->file_path);
+        log_debug("(WORKER %d) [CLOSE FILE] client %d unlocked file [%s] before closing it\n", 
+                    worker_no, client_fd, request->file_path);
     }
 
     unlock_return(&(storage->access), INTERNAL_ERROR);
 
-    log_debug("[CLOSE FILE] file [%s] successfully closed by client (%d)\n", request->file_path, client_fd);
+    log_debug("(WORKER %d) [CLOSE FILE] file [%s] successfully closed by client (%d)\n", 
+                worker_no, request->file_path, client_fd);
     return status;
 }
 
 int
-write_file_handlet(int worker_no, int client_fd, request_t *request, list_t *expelled_files)
+write_file_handler(int worker_no, int client_fd, request_t *request, list_t *expelled_files)
 {
-    log_debug("client %d writing file [%s]\n", client_fd, request->file_path);
+    log_debug("(WORKER %d) client %d writing file [%s]\n", worker_no, client_fd, request->file_path);
 
     int status = 0; // will be the final response status
 
     /* Checks if the request contains any content */
     if (request->body_size == 0 || request->body == NULL) {
-        log_error("[WRITE FILE] client (%d) bad write request\n", client_fd);
+        log_error("(WORKER %d) [WRITE FILE] client (%d) bad write request\n", worker_no, client_fd);
         return MISSING_BODY;
     }
 
     if (request->body_size > storage->max_size) {
-        log_error("[WRITE FILE] file [%s] is too big\n", request->file_path);
+        log_error("(WORKER %d) [WRITE FILE] file [%s] is too big\n", worker_no, request->file_path);
         return BAD_REQUEST; // TOO_BIG
     }
 
@@ -466,20 +468,21 @@ write_file_handlet(int worker_no, int client_fd, request_t *request, list_t *exp
     
     file_t *file = storage_get_file(storage, request->file_path);
     if (file == NULL) {
-        log_error("[WRITE FILE] file [%s] doesn't exists\n", request->file_path);
+        log_error("(WORKER %d) [WRITE FILE] file [%s] doesn't exists\n", worker_no, request->file_path);
         unlock_return(&(storage->access), INTERNAL_ERROR);
         return NOT_FOUND;
     }
 
     // SHOULD ALSO CHECK THE FLAG
     if ((file->locked_by != client_fd)) {
-        log_error("[WRITE FILE] client (%d) must lock file [%s] before writing\n", client_fd, request->file_path);
+        log_error("(WORKER %d) [WRITE FILE] client (%d) must lock file [%s] before writing\n", 
+                    worker_no, client_fd, request->file_path);
         unlock_return(&(storage->access), INTERNAL_ERROR);
         return UNAUTHORIZED;
     }
 
     if (!CHK_FLAG(file->flags, O_CREATE)) {
-        log_error("[WRITE FILE] file [%s] exists and cannot be rewritten\n", request->file_path);
+        log_error("(WORKER %d) [WRITE FILE] file [%s] exists and cannot be rewritten\n", worker_no, request->file_path);
         unlock_return(&(storage->access), INTERNAL_ERROR);
         return FILE_EXISTS;
     }
@@ -492,7 +495,7 @@ write_file_handlet(int worker_no, int client_fd, request_t *request, list_t *exp
 
     /* Checks if a file should be expelled to make place for the new one */
     if (storage->current_size + file->size > storage->max_size) {
-        log_debug("[WRITE FILE] about to expell some files\n");
+        log_debug("(WORKER %d) [WRITE FILE] about to expell some files\n", worker_no);
 
         int how_many = storage_FIFO_replace(storage, 0, file->size, expelled_files);
         
@@ -507,7 +510,9 @@ write_file_handlet(int worker_no, int client_fd, request_t *request, list_t *exp
 
             file_t *to_send = (file_t*)list_remove_head(expelled_files);
 
-            send_response(client_fd, FILES_EXPELLED, get_status_message(FILES_EXPELLED), strlen(to_send->path) + 1, to_send->path, to_send->size, to_send->contents);
+            send_response(client_fd, FILES_EXPELLED, get_status_message(FILES_EXPELLED), 
+                            strlen(to_send->path) + 1, to_send->path, to_send->size, to_send->contents);
+
             log_info("(WORKER %d) [FIFO REPLACEMENT] file [%s] was expelled\n", worker_no, to_send->path);
             // free_file(to_send);
         }
@@ -518,13 +523,14 @@ write_file_handlet(int worker_no, int client_fd, request_t *request, list_t *exp
 
     unlock_return(&(storage->access), INTERNAL_ERROR);
 
-    log_debug("[WRITE FILE] file [%s] successfully written by client (%d)\n", request->file_path, client_fd);
+    log_debug("(WORKER %d) [WRITE FILE] file [%s] successfully written by client (%d)\n", 
+                worker_no, request->file_path, client_fd);
     return SUCCESS;
             
 }
 
 int
-read_file_handlet(int worker_no, int client_fd, request_t *request, void** read_buffer, size_t *size)
+read_file_handler(int worker_no, int client_fd, request_t *request, void** read_buffer, size_t *size)
 {
     log_debug("client %d reading file [%s]\n", client_fd, request->file_path);
 
@@ -534,7 +540,7 @@ read_file_handlet(int worker_no, int client_fd, request_t *request, void** read_
 
     file_t *file = storage_get_file(storage, request->file_path);
     if (file == NULL) {
-        log_error("[READ FILE] file [%s] doesn't exists\n", request->file_path);
+        log_error("(WORKER %d) [READ FILE] file [%s] doesn't exists\n", worker_no, request->file_path);
         return NOT_FOUND;
     }
 
@@ -544,12 +550,12 @@ read_file_handlet(int worker_no, int client_fd, request_t *request, void** read_
 
     unlock_return(&(storage->access), INTERNAL_ERROR);
 
-    log_debug("[READ FILE] file [%s] successfully red by client (%d)\n", request->file_path, client_fd);
+    log_debug("(WORKER %d) [READ FILE] file [%s] successfully red by client (%d)\n", worker_no, request->file_path, client_fd);
     return status;
 }
 
 int
-read_n_files_handlet(int worker_no, int client_fd, request_t *request, list_t *files_list)
+read_n_files_handler(int worker_no, int client_fd, request_t *request, list_t *files_list)
 {
     int how_many = *(int*)request->body;
     if ((how_many <= 0) || (how_many > storage->max_size)) {
@@ -577,10 +583,10 @@ read_n_files_handlet(int worker_no, int client_fd, request_t *request, list_t *f
 }
 
 int
-remove_file_handlet(int worker_no, int client_fd, request_t *request)
+remove_file_handler(int worker_no, int client_fd, request_t *request)
 {
 
-    log_debug("client %d removing file [%s]\n", client_fd, request->file_path);
+    log_debug("(WORKER %d) [REMOVE FILE] client %d removing file [%s]\n", worker_no, client_fd, request->file_path);
 
     int status = 0; // will be the final response status
 
@@ -588,14 +594,15 @@ remove_file_handlet(int worker_no, int client_fd, request_t *request)
 
     file_t *to_remove = storage_get_file(storage, request->file_path);
     if (to_remove == NULL) {
-        log_error("[REMOVE FILE] file [%s] doesn't exists\n", request->file_path);
+        log_error("(WORKER %d) [REMOVE FILE] file [%s] doesn't exists\n", worker_no, request->file_path);
         unlock_return(&(storage->access), INTERNAL_ERROR);
         return NOT_FOUND;
     }
 
     if ( (!CHK_FLAG(to_remove->flags, O_LOCK)) ||
             (CHK_FLAG(to_remove->flags, O_LOCK) && to_remove->locked_by != client_fd)) {
-        log_error("[REMOVE FILE] client (%d) must lock file [%s] before removing it\n", client_fd, request->file_path);
+        log_error("(WORKER %d) [REMOVE FILE] client (%d) must lock file [%s] before removing it\n", 
+                    worker_no, client_fd, request->file_path);
         unlock_return(&(storage->access), INTERNAL_ERROR);
         return UNAUTHORIZED;
     }
@@ -604,15 +611,16 @@ remove_file_handlet(int worker_no, int client_fd, request_t *request)
 
     unlock_return(&(storage->access), INTERNAL_ERROR);
 
-    log_debug("[REMOVE FILE] file [%s] successfully removed by client (%d)\n", request->file_path, client_fd);
+    log_debug("(WORKER %d) [REMOVE FILE] file [%s] successfully removed by client (%d)\n", 
+                worker_no, request->file_path, client_fd);
 
     return status;
 }
 
 int
-lock_file_handlet(int worker_no, int client_fd, request_t *request)
+lock_file_handler(int worker_no, int client_fd, request_t *request)
 {
-    log_debug("client %d locking file [%s]\n", client_fd, request->file_path);
+    log_debug("(WORKER %d) [LOCK FILE] client %d locking file [%s]\n", worker_no, client_fd, request->file_path);
 
     int status = 0; // will be the final response status
 
@@ -620,7 +628,7 @@ lock_file_handlet(int worker_no, int client_fd, request_t *request)
 
     file_t *file = storage_get_file(storage, request->file_path);
     if (file == NULL) {
-        log_error("[LOCK FILE] file [%s] doesn't exists\n", request->file_path);
+        log_error("(WORKER %d) [LOCK FILE] file [%s] doesn't exists\n", worker_no, request->file_path);
         unlock_return(&(storage->access), INTERNAL_ERROR);
         return NOT_FOUND;
     }
@@ -633,14 +641,16 @@ lock_file_handlet(int worker_no, int client_fd, request_t *request)
 
         unlock_return(&(storage->access), INTERNAL_ERROR);
 
-        log_debug("[LOCK FILE] file [%s] successfully locked by client (%d)\n", request->file_path, client_fd);
+        log_debug("(WORKER %d) [LOCK FILE] file [%s] successfully locked by client (%d)\n", 
+                    worker_no, request->file_path, client_fd);
         return SUCCESS;
 
     } else {
 
         if (file->locked_by == client_fd) {
 
-            log_debug("[LOCK FILE] file [%s] successfully locked by client (%d)\n", request->file_path, client_fd);
+            log_debug("(WORKER %d) [LOCK FILE] file [%s] successfully locked by client (%d)\n", 
+                        worker_no, request->file_path, client_fd);
             unlock_return(&(storage->access), INTERNAL_ERROR);
             return SUCCESS;
         }
@@ -651,7 +661,7 @@ lock_file_handlet(int worker_no, int client_fd, request_t *request)
 
         unlock_return(&(storage->access), INTERNAL_ERROR);
 
-        log_debug("client %d waiting on lock for file [%s]\n", client_fd, request->file_path);
+        log_debug("(WORKER %d) [LOCK FILE] client %d waiting on lock for file [%s]\n", worker_no, client_fd, request->file_path);
 
         return MISSING_BODY; // FOR ME TO REMEMBER THAT IT HAS TO WAIT UNTIL LOCK IS RELEASED
     }
@@ -661,9 +671,9 @@ lock_file_handlet(int worker_no, int client_fd, request_t *request)
 }
 
 int
-unlock_file_handlet(int worker_no, int client_fd, request_t *request)
+unlock_file_handler(int worker_no, int client_fd, request_t *request)
 {
-    log_debug("client %d unlocking file [%s]\n", client_fd, request->file_path);
+    log_debug("(WORKER %d) [UNLOCK FILE] client %d unlocking file [%s]\n", worker_no, client_fd, request->file_path);
 
     int status = 0; // will be the final response status
 
@@ -671,13 +681,13 @@ unlock_file_handlet(int worker_no, int client_fd, request_t *request)
 
     file_t *file = storage_get_file(storage, request->file_path);
     if (file == NULL) {
-        log_error("[UNLOCK FILE] file [%s] doesn't exists\n", request->file_path);
+        log_error("(WORKER %d) [UNLOCK FILE] file [%s] doesn't exists\n", worker_no, request->file_path);
         unlock_return(&(storage->access), INTERNAL_ERROR);
         return NOT_FOUND;
     }
 
     if (!CHK_FLAG(file->flags, O_LOCK)) { // File isn't locked
-        log_error("[UNLOCK FILE] file [%s] is not locked\n", request->file_path);
+        log_error("(WORKER %d) [UNLOCK FILE] file [%s] is not locked\n", worker_no, request->file_path);
         unlock_return(&(storage->access), INTERNAL_ERROR);
         return BAD_REQUEST;
 
@@ -690,12 +700,14 @@ unlock_file_handlet(int worker_no, int client_fd, request_t *request)
             
             storage_update_file(storage, file);
 
-            log_debug("[UNLOCK FILE] file [%s] successfully unlocked by client (%d)\n", request->file_path, client_fd);
+            log_debug("(WORKER %d) [UNLOCK FILE] file [%s] successfully unlocked by client (%d)\n", 
+                        worker_no, request->file_path, client_fd);
             unlock_return(&(storage->access), INTERNAL_ERROR);
             return SUCCESS;
         
         } else {
-            log_error("[UNLOCK FILE] file [%s] is locked by client (%d)\n", request->file_path, file->locked_by);
+            log_error("(WORKER %d) [UNLOCK FILE] file [%s] is locked by client (%d)\n", 
+                        worker_no, request->file_path, file->locked_by);
             unlock_return(&(storage->access), INTERNAL_ERROR);
             return BAD_REQUEST;
         }

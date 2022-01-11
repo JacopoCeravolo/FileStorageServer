@@ -3,7 +3,7 @@
 void*
 lock_manager_thread(void* args)
 {
-    /* while (shutdown_now == 0) {
+    while (shutdown_now == 0) {
 
         // should read in pipe for termination signal
 
@@ -31,20 +31,27 @@ lock_manager_thread(void* args)
             
                 int client_fd = (int)tmp;
 
-                log_debug("[LOCK MANAGER] updating file [%s] lock with client (%d)\n", file->path, client_fd);
+                log_debug("(LOCK HANDLER) updating file [%s] lock with client (%d)\n", file->path, client_fd);
 
                 SET_FLAG(file->flags, O_LOCK);
                 file->locked_by = client_fd;
-                hash_map_insert(storage->files, file->path, file);
+
+                storage_update_file(storage, file);
 
                 unlock_return(&(storage->access), INTERNAL_ERROR);
 
-                log_info("[LOCK MANAGER] replying to client (%d)\n", client_fd);
-                send_response(client_fd, SUCCESS, get_status_message(SUCCESS), file->path, 0, NULL);
+                log_debug("(LOCK HANDLER) replying to client (%d)\n", client_fd);
+
+                send_response(client_fd, SUCCESS, get_status_message(SUCCESS), strlen(file->path) + 1, file->path, 0, NULL);
+
+                log_info("(LOCK HANDLER) file [%s] lock reassigned\n", file->path);
             }
+
+            unlock_return(&(storage->access), INTERNAL_ERROR);
+
             curr = curr->next;
         }
-    } */
+    }
     // return NULL;
 }
 
