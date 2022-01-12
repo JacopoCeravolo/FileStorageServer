@@ -1,4 +1,5 @@
 N_WORKERS=5
 MAX_SIZE=1000000
-MAX_FILES=4
+MAX_FILES=10
 SOCKET_PATH=/tmp/LSO_socket.sk
+LOG_FILE=../logs/server.log
