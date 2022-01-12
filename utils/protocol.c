@@ -214,6 +214,7 @@ free_response(response_t *response)
 {
     if (response != NULL) {
         if (response->body) free(response->body);
+        if (response->file_path) free(response->file_path);
         free(response);
     }
 }

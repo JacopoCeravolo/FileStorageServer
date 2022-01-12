@@ -21,7 +21,7 @@ char result_buffer[2048];
 void
 set_result_buffer(char *opt_type, char *filename, size_t n_bytes, char *result)
 {
-    sprintf(result_buffer, "%-10s %-65s %-10lu %-20s", opt_type, filename, n_bytes, result);
+    sprintf(result_buffer, "%-15s %-65s %-10lu %-20s", opt_type, filename, n_bytes, result);
 }
 
 void
@@ -579,8 +579,133 @@ writeFile(const char* pathname, const char* dirname)
 int 
 appendToFile(const char* pathname, void* buf, size_t size, const char* dirname)
 {
+    if ( pathname == NULL || buf == NULL || size < 0 ) {
+        errno = EINVAL;
+        set_result_buffer("appendToFile", pathname, 0, strerror(errno));
+        return -1;
+    }
+
+    if ( socket_fd == -1 ) {
+        errno = ENOTCONN;
+        set_result_buffer("appendToFile", pathname, 0, strerror(errno));
+        return -1;
+    }
+
+    int result;
+    errno = 0;
+
+    if ( send_request(socket_fd, APPEND_TO_FILE, strlen(pathname) + 1, pathname, size, buf) != 0) return -1;
+
+    response_t *response = recv_response(socket_fd);
+    if ( response == NULL ) return -1;
+
+    switch ( response->status ) {
+
+        case SUCCESS: {
+            result = 0;
+            break;
+        }
+
+        case FILES_EXPELLED: {
+
+            if (dirname != NULL) {
+                if (mkdir_p(dirname) == -1) {
+                    result = -1;
+                    break;
+                }
+            }
+
+            int how_many = *(int*)response->body;
+            
+
+            while ( (how_many--) > 0) {
+
+                response_t *received_file = recv_response(socket_fd);
+                if (received_file == NULL) {
+                    //printf("response is null\n");
+                    break;
+                }
+
+                if (received_file->status != FILES_EXPELLED) {
+                    free_response(received_file);
+                    errno = EPROTONOSUPPORT;
+                    break;
+                }
+
+                // printf("EXPELLED: received [%s] of size %lu\n", received_file->file_path, received_file->body_size);
+                set_result_buffer("appendToFile", received_file->file_path, received_file->body_size, received_file->status_phrase);
+                print_result();
+
+                if (dirname != NULL) {
+                    write_file_in_directory(dirname, received_file->file_path, received_file->body_size, received_file->body);
+                }
+
+                list_remove_element(opened_files, received_file->file_path);
+
+                free_response(received_file);
+            }
+
+            // Receiving final response
+            response_t *final_response = recv_response(socket_fd);
+
+            if (final_response->status != SUCCESS) {
+                result = -1;
+                break;
+            }
+
+            set_result_buffer("appendToFile", final_response->file_path, size, final_response->status_phrase);
+            result = 0;
+            
+            if (final_response) free_response(final_response);
+            if (response) free_response(response);
+            return result;
+        }
+
+        case INTERNAL_ERROR: {
+            errno = ECONNABORTED;
+            result = -1;
+            break;
+        }
+
+        case MISSING_BODY: {
+            errno = EINVAL;
+            result = -1;
+            break;
+        }
+
+        case NOT_FOUND: {
+            errno = ENOENT;
+            result = -1;
+            break;
+        }
+
+        case FILE_EXISTS: {
+            errno = EEXIST;
+            result = -1;
+            break;
+        }
+
+        case UNAUTHORIZED: {
+            errno = EPERM;
+            result = -1;
+            break;
+        }
+
+        default: {
+            errno = EPROTONOSUPPORT;
+            result = -1;
+            break;
+        }
+    }
+
+    set_result_buffer("appendToFile", response->file_path, size, response->status_phrase);
+    
+    if (response) free_response(response);
+    return result;
+
     return 0;
 }
+
 
 int 
 lockFile(const char* pathname)

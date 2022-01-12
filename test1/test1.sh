@@ -16,7 +16,7 @@ VALGRIND_OUTPUT=$(realpath ./valgrind.log)
 N_WORKERS=1
 MAX_SIZE=128000000
 MAX_FILES=10000
-SOCKET_PATH=/tmp/LSO_server.sk
+SOCKET_PATH=/tmp/LSO_socket.sk
 
 echo ""
 echo -e "${BOLD}*************************${RESET}"
@@ -38,7 +38,7 @@ echo ""
 echo -e "${YELLOW}[TEST 1]${BOLD} Starting server${RESET}"
 valgrind --leak-check=full ${SERVER} ${SERVER_CONFIG} &> ${VALGRIND_OUTPUT} & 
 SERVER_PID=$!
-sleep 1.5
+sleep 2
 echo -e "${YELLOW}[TEST 1]${BOLD} Server started${RESET}"
 
 
@@ -54,6 +54,10 @@ echo ""
 
 echo -e "${YELLOW}[TEST 1]${BOLD} Testing:${RESET} -W file0,file1,file2  -->  expecting openFile to fail"
 ${CLIENT} -f ${SOCKET_PATH} -W data/file0,data/file1,data/file2 -t 200 -p
+echo ""
+
+echo -e "${YELLOW}[TEST 1]${BOLD} Testing:${RESET} -r file0 -a file0,file1 -r file0 -->  expecting success"
+${CLIENT} -f ${SOCKET_PATH} -r data/file0 -t 200 -a data/file0,data/file1 -t 200 -r data/file0 -p
 echo ""
 
 echo -e "${YELLOW}[TEST 1]${BOLD} Testing:${RESET} -r file0,file1,file2,file3,file4  --> expecting success"

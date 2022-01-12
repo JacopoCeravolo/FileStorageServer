@@ -1,9 +1,0 @@
--W file1,file16,file17,file32,file33 -r file5,file12,file21,file29,file37
--W file2,file15,file18,file31,file34 -r file8,file9,file24,file25,file40 
--W file3,file14,file19,file30,file35 -r file1,file16,file17,file32,file33
--W file4,file13,file20,file29,file36 -r file6,file11,file22,file27,file38
--W file5,file12,file21,file29,file37 -r file7,file10,file23,file26,file39
--W file6,file11,file22,file27,file38 -r file4,file13,file20,file29,file36
--W file7,file10,file23,file26,file39 -r file2,file15,file18,file31,file34
--W file8,file9,file24,file25,file40 -r file3,file14,file19,file30,file35
-

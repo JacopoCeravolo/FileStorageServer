@@ -23,6 +23,7 @@ typedef enum {
     REMOVE_FILE         = 107,   
     LOCK_FILE           = 108,
     UNLOCK_FILE         = 109,    
+    APPEND_TO_FILE      = 110,
 
 } request_code;
 

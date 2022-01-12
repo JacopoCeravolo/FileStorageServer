@@ -45,15 +45,15 @@ echo -e "${YELLOW}[TEST 2]${BOLD} Starting clients${RESET}"
 echo ""
 
 echo -e "${YELLOW}[TEST 2]${BOLD} Writing 10 files${RESET}"
-${CLIENT} -f ${SOCKET_PATH} -W data/file1,data/file2,data/file3,data/file4,data/file5,data/file6,data/file7,data/file8,data/file9,data/file10 -p
+${CLIENT} -f ${SOCKET_PATH} -w data/small/,10 -p
 echo ""
 
-echo -e "${YELLOW}[TEST 2]${BOLD} Writing 10 more files, expecting files 1-10 to be trashed${RESET}"
-${CLIENT} -f ${SOCKET_PATH} -W data/file11,data/file12,data/file13,data/file14,data/file15,data/file16,data/file17,data/file18,data/file19 -p
-echo ""
+# echo -e "${YELLOW}[TEST 2]${BOLD} Writing 10 more files, expecting files 1-10 to be trashed${RESET}"
+# ${CLIENT} -f ${SOCKET_PATH} -W data/file11,data/file12,data/file13,data/file14,data/file15,data/file16,data/file17,data/file18,data/file19 -p
+# echo ""
 
-echo -e "${YELLOW}[TEST 2]${BOLD} Filling up the whole storage with one big file, expecting files 11-19 to be expelled in expelled_dir/${RESET}"
-${CLIENT} -f ${SOCKET_PATH} -W data/big_file -D expelled_dir -p
+echo -e "${YELLOW}[TEST 2]${BOLD} Filling up the whole storage with one big file, expecting files to be expelled in expelled_dir/${RESET}"
+${CLIENT} -f ${SOCKET_PATH} -W data/large/big_file -D expelled_dir -p
 echo ""
 
 echo -e "${YELLOW}[TEST 2]${BOLD} Expelled directory contents${RESET}"

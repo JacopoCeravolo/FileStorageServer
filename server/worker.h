@@ -29,6 +29,9 @@ int
 write_file_handler(int worker_no, int client_fd, request_t *request, list_t *expelled_files);
 
 int
+append_to_file_handler(int worker_no, int client_fd, request_t *request, list_t *expelled_files);
+
+int
 read_file_handler(int worker_no, int client_fd, request_t *request, void** read_buffer, size_t *size);
 
 int

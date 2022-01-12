@@ -7,11 +7,11 @@ lock_manager_thread(void* args)
 
         // should read in pipe for termination signal
 
+        lock_return(&(storage->access), INTERNAL_ERROR);
+
         node_t *curr = storage->basic_fifo->head;
        
         while (curr != NULL) {
-
-            lock_return(&(storage->access), INTERNAL_ERROR);
 
             file_t *file = storage_get_file(storage, (char*)curr->data);
             if (file == NULL) {
@@ -47,10 +47,10 @@ lock_manager_thread(void* args)
                 log_info("(LOCK HANDLER) file [%s] lock reassigned\n", file->path);
             }
 
-            unlock_return(&(storage->access), INTERNAL_ERROR);
-
             curr = curr->next;
         }
+
+        unlock_return(&(storage->access), INTERNAL_ERROR);
     }
     // return NULL;
 }

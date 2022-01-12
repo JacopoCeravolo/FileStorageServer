@@ -160,6 +160,19 @@ parse_options_in_list(int n_options, char * const option_vector[], list_t *actio
                 break;
             }
 
+            case 'a': {
+                new_action->code = APPEND;
+                if (strlen(optarg) + 1 > MAX_ARG_LENGTH) {
+                    fprintf(stderr, "-w arguments too long\n");
+                    break;
+                }
+
+                new_action->arguments = malloc(strlen(optarg) + 1);
+                strcpy(new_action->arguments, optarg);
+                list_insert_tail(action_list, new_action);
+                break;
+            }
+
             case 'W': {
                 new_action->code = WRITE;
                 if (strlen(optarg) + 1 > MAX_ARG_LENGTH) {
@@ -188,7 +201,8 @@ parse_options_in_list(int n_options, char * const option_vector[], list_t *actio
 
             case 'D': {
                 action_t *write_action = (action_t*)list_remove_tail(action_list);
-                if ((write_action->code == WRITE) || (write_action->code == WRITE_DIR)) {
+                if ((write_action->code == WRITE) || (write_action->code == WRITE_DIR)
+                    || (write_action->code == APPEND)) {
                     if (write_action->directory == NULL) {
                         write_action->directory = malloc(strlen(optarg) + 1);
                         strcpy(write_action->directory, optarg);
@@ -328,6 +342,72 @@ execute_action(action_t *action)
 
                 if (action->wait_time != 0) msleep(action->wait_time);
             }
+
+            break;
+        }
+
+        case APPEND: {
+            
+            char *dirname = NULL;
+            if (action->directory != NULL) { // must be change to full path
+                dirname = malloc(strlen(action->directory) + 1);
+                strcpy(dirname, action->directory);
+            }
+            
+            char *file_path = strtok(action->arguments, ",");
+            char *source_path = strtok(NULL, ",");
+            // get absolute path and verify
+            char *absolute_path = realpath(source_path, NULL);
+            char *path_in_server = realpath(file_path, NULL);
+
+            FILE *file_ptr;
+
+            file_ptr = fopen(absolute_path, "rb");
+            if ( file_ptr == NULL ) {
+                errno = EIO;
+                perror("fopen()");
+                break;
+            }
+
+            struct stat st;
+            size_t file_size;
+            if(stat(absolute_path, &st) == 0){
+                file_size = st.st_size;
+            } else {
+                fclose(file_ptr);
+                errno = EIO;
+                perror("stat()");
+                return -1;
+            }
+
+        
+            void* file_data;
+            file_data = malloc(file_size);
+            if ( file_data == NULL ) {
+                fclose(file_ptr);
+                errno = ENOMEM;
+                return -1;
+            }
+
+            if ( fread(file_data, 1, file_size, file_ptr) < file_size ) {
+                if ( ferror(file_ptr) ) {
+                    fclose(file_ptr);
+                    if ( file_data != NULL ) free(file_data);
+                    errno = EIO;
+                    perror("fread()");
+                    return -1;
+                }
+            }
+
+            fclose(file_ptr);
+
+            appendToFile(path_in_server, file_data, file_size, dirname);
+            print_result();
+            
+            free(absolute_path);
+            free(path_in_server);
+
+            if (action->wait_time != 0) msleep(action->wait_time);
 
             break;
         }

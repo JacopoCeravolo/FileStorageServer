@@ -117,6 +117,7 @@ file_t*
 storage_remove_file(storage_t *storage, char *file_name)
 {
     file_t *to_remove = (file_t*)hash_map_get(storage->files, file_name);
+    if (to_remove == NULL) return to_remove;
     storage->no_of_files--;
     storage->current_size = storage->current_size - to_remove->size;
     list_remove_element(storage->basic_fifo, to_remove->path);

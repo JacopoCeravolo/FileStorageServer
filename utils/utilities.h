@@ -29,11 +29,6 @@
 #define CHK_FLAG(n, f) ((n) & (f))
 
 #define MAX_PATH    1024
-#define MAX_NAME    64
-#define MAX_BUFFER  2048
-
-#define DEFAULT_SOCKET_PATH "/tmp/newfileserver.sock"
-
 
 /********************** Function Macros  **********************/
 

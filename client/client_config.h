@@ -7,10 +7,11 @@
 
 #include "utils/linked_list.h"
 
-#define CLIENT_OPTIONS  "w:W:r:R:l:u:c:f:d:D:ht:p"
+#define CLIENT_OPTIONS  "a:w:W:r:R:l:u:c:f:d:D:t:ph"
 #define MAX_ARG_LENGTH  128
 
 typedef enum {
+    APPEND,
     WRITE,
     READ,
     WRITE_DIR,

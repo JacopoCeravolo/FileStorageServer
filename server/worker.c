@@ -110,6 +110,13 @@ worker_thread(void* args)
                 break;
             }
 
+            case APPEND_TO_FILE: {
+                list_t *expelled_files = list_create(NULL, free_file, NULL);
+                int status = append_to_file_handler(worker_id, client_fd, request, expelled_files);
+                send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, 0, NULL);
+                log_info("(WORKER %d) [APPEND TO FILE]: %s\n", worker_id, get_status_message(status));
+            }
+
             case READ_FILE: {
                 void *read_buffer = NULL;
                 size_t buffer_size = 0;
@@ -314,7 +321,8 @@ open_file_handler(int worker_no, int client_fd, request_t *request)
             }
 
             send_response(client_fd, FILES_EXPELLED, get_status_message(FILES_EXPELLED), strlen(to_remove->path) + 1, to_remove->path, to_remove->size, NULL);
- */
+            */
+
             log_info("(WORKER %d) [FIFO REPLACEMENT] file [%s] was expelled\n", worker_no, to_remove_path);
 
             storage_remove_file(storage, to_remove_path);
@@ -346,7 +354,7 @@ open_file_handler(int worker_no, int client_fd, request_t *request)
 
             log_info("[OPEN FILE] file [%s] expelled\n", tmp_buf);
         }
- */
+        */
         // Adds the file to storage and to list of filenames
 
         storage_add_file(storage, new_file);
@@ -449,19 +457,19 @@ close_file_handler(int worker_no, int client_fd, request_t *request)
 int
 write_file_handler(int worker_no, int client_fd, request_t *request, list_t *expelled_files)
 {
-    log_debug("(WORKER %d) client %d writing file [%s]\n", worker_no, client_fd, request->file_path);
+    log_debug("(WORKER %d) [WRITE FILE] writing file [%s]\n", worker_no, request->file_path);
 
     int status = 0; // will be the final response status
 
     /* Checks if the request contains any content */
     if (request->body_size == 0 || request->body == NULL) {
-        log_error("(WORKER %d) [WRITE FILE] client (%d) bad write request\n", worker_no, client_fd);
-        return MISSING_BODY;
+        log_error("(WORKER %d) [WRITE FILE] bad write request\n", worker_no);
+        return BAD_REQUEST;
     }
 
     if (request->body_size > storage->max_size) {
         log_error("(WORKER %d) [WRITE FILE] file [%s] is too big\n", worker_no, request->file_path);
-        return BAD_REQUEST; // TOO_BIG
+        return FILE_TOO_BIG; // TOO_BIG
     }
 
     lock_return(&(storage->access), INTERNAL_ERROR);
@@ -527,6 +535,61 @@ write_file_handler(int worker_no, int client_fd, request_t *request, list_t *exp
                 worker_no, request->file_path, client_fd);
     return SUCCESS;
             
+}
+
+int
+append_to_file_handler(int worker_no, int client_fd, request_t *request, list_t *expelled_files)
+{
+    log_debug("(WORKER %d) [APPEND TO FILE] writing file [%s]\n", worker_no, request->file_path);
+
+    int status = 0; // will be the final response status
+
+    /* Checks if the request contains any content */
+    if (request->body_size == 0 || request->body == NULL) {
+        log_error("(WORKER %d) [APPEND TO FILE] bad append request\n", worker_no);
+        return BAD_REQUEST;
+    }
+
+    if (request->body_size > storage->max_size) {
+        log_error("(WORKER %d) [APPEND TO FILE] new content is too big\n", worker_no);
+        return FILE_TOO_BIG; // TOO_BIG
+    }
+
+    lock_return(&(storage->access), INTERNAL_ERROR);
+    
+    file_t *file = storage_get_file(storage, request->file_path);
+    if (file == NULL) {
+        log_error("(WORKER %d) [APPEND TO FILE] file [%s] doesn't exists\n", worker_no, request->file_path);
+        unlock_return(&(storage->access), INTERNAL_ERROR);
+        return NOT_FOUND;
+    }
+
+    if (CHK_FLAG(file->flags, O_LOCK) && (file->locked_by != client_fd)) {
+        log_error("(WORKER %d) [APPEND TO FILE] client (%d) must lock file [%s] before writing\n", 
+                    worker_no, client_fd, request->file_path);
+        unlock_return(&(storage->access), INTERNAL_ERROR);
+        return UNAUTHORIZED;
+    }
+
+    // check for fifo replacement
+    size_t new_size = file->size + request->body_size;
+    file->contents = realloc(file->contents, new_size);
+    if (file->contents == NULL) {
+        unlock_return(&(storage->access), INTERNAL_ERROR);
+        return INTERNAL_ERROR;
+    }
+
+    memcpy((file->contents + file->size), request->body, request->body_size);
+    file->size = new_size;
+    storage_update_file(storage, file);
+    storage->current_size += request->body_size;
+
+    unlock_return(&(storage->access), INTERNAL_ERROR);
+
+    log_debug("(WORKER %d) [APPEND TO FILE] file [%s] successfully updated by client (%d)\n", 
+                worker_no, request->file_path, client_fd);
+    return SUCCESS;
+
 }
 
 int
