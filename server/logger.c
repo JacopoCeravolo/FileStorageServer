@@ -52,7 +52,7 @@ logfatal(const char *file, const int line, const char* format, ...)
 
     lock_return((&log_file_mtx), NULL);
     fprintf(log_file, "%s ", get_timestamp(tmp));
-    fprintf(log_file, "%s:%d: [ fatal error ] ", file, line);
+    fprintf(log_file, "%s:%d: [ FATAL ERROR ] ", file, line);
     vfprintf (log_file, format, args);
     unlock_return((&log_file_mtx), NULL);
 
@@ -70,7 +70,7 @@ logerror(const char *file, const int line, const char* format, ...)
 
         lock_return((&log_file_mtx), NULL);
         fprintf(log_file, "%s ", get_timestamp(tmp));
-        fprintf(log_file, "[ error ] ");
+        fprintf(log_file, "[ ERROR ] ");
         vfprintf (log_file, format, args);
         unlock_return((&log_file_mtx), NULL);
 
@@ -89,6 +89,7 @@ loginfo(const char* format, ...)
 
         lock_return((&log_file_mtx), NULL);
         fprintf(log_file, "%s ", get_timestamp(tmp));
+        fprintf(log_file, "[ INFO ] ");
         vfprintf (log_file, format, args);
         unlock_return((&log_file_mtx), NULL);
 
@@ -107,7 +108,7 @@ logwarning(const char *file, const int line, const char* format, ...)
 
         lock_return((&log_file_mtx), NULL);
         fprintf(log_file, "%s ", get_timestamp(tmp));
-        fprintf(log_file, "%s:%d: [ warning ] ", file, line);
+        fprintf(log_file, "%s:%d: [ WARNING ] ", file, line);
         vfprintf (log_file, format, args);
         unlock_return((&log_file_mtx), NULL);
         

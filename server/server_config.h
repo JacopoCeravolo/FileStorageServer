@@ -20,11 +20,12 @@
 #include <time.h>
 #include <signal.h>
 
-typedef enum {
-    OPEN,
-    SHUTDOWN,
-    SHUTDOWN_NOW,
-} server_mode_t;
+typedef struct {
+    int max_connections;
+    int current_connections;
+    int max_size_reached;
+    int max_no_files_reached;
+} server_status_t;
 
 typedef struct {
     unsigned int no_of_workers;
@@ -37,9 +38,10 @@ typedef struct {
 
 EXTERN server_config_t          server_config;
 
-EXTERN server_mode_t            server_status;
-
 EXTERN storage_t                *storage;
+
+EXTERN server_status_t          *server_status;
+EXTERN pthread_mutex_t          server_status_mtx;
 
 EXTERN list_t                   *request_queue;
 EXTERN pthread_mutex_t          request_queue_mtx;

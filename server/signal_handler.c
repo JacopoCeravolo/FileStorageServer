@@ -28,8 +28,7 @@ sig_handler_thread(void *arg) {
 	    switch(sig_num) {
 	        case SIGINT:
 	        case SIGQUIT: 
-                log_info("Received immediate shutdown signal\n");
-                server_status = SHUTDOWN_NOW;
+                log_info("(SIGNAL HANDLER) Received immediate shutdown signal\n");
                 shutdown_now = 1;
 
                 close(signal_pipe[1]); 
@@ -38,8 +37,7 @@ sig_handler_thread(void *arg) {
                 return NULL;
 
 	        case SIGHUP:
-	            log_info("Received gracefull shutdown signal\n");
-                server_status = SHUTDOWN;
+	            log_info("(SIGNAL HANDLER) Received gracefull shutdown signal\n");
                 accept_connection = 0;
 
                 close(signal_pipe[1]); 

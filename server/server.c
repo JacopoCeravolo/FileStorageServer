@@ -24,8 +24,11 @@
 #define MAX_BACKLOG  2000000000
 
 server_config_t         server_config;
-server_mode_t           server_status;
+
 storage_t               *storage;
+
+server_status_t         *server_status;
+pthread_mutex_t         server_status_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 list_t                  *request_queue;
 pthread_mutex_t         request_queue_mtx = PTHREAD_MUTEX_INITIALIZER;
@@ -58,8 +61,6 @@ parse_configuration_file(char *file_name)
    if (config_file == NULL) return -1;
 
    while ((read = getline(&line, &len, config_file)) != -1) {
-      // log_info("Retrieved line of length %zu :\n", read);
-      // log_info("%s", line);
 
       char *parameter = strtok(line, "=");
 
@@ -122,6 +123,11 @@ main(int argc, char const *argv[])
    int ret = 0;
    accept_connection = 1;
    shutdown_now = 0;
+   server_status = malloc(sizeof(server_status_t));
+   server_status->max_connections = 0;
+   server_status->current_connections = 0;
+   server_status->max_no_files_reached = 0;
+   server_status->max_size_reached = 0;
 
    
    /* Initialize log file */
@@ -320,6 +326,13 @@ main(int argc, char const *argv[])
 
                if (client_fd > fd_max) fd_max = client_fd;
 
+               lock_return((&server_status_mtx), -1); // should exit?
+               server_status->current_connections++;
+               if (server_status->current_connections > server_status->max_connections) {
+                  server_status->max_connections = server_status->current_connections;
+               }
+               unlock_return((&server_status_mtx), -1);
+
             } else { // new request from already connected client
 
                int *tmp_fd = malloc(sizeof(int));
@@ -366,7 +379,8 @@ main(int argc, char const *argv[])
    if ( shutdown_all_threads() != 0 ) {
       ret = -1;
    }
-   
+
+   log_info("[GENERAL INFO] Maximum number of connections: %d\n", server_status->max_connections);
 
 _server_exit2:
    storage_dump(storage, storage_file);
@@ -378,6 +392,7 @@ _server_exit2:
    close(mw_pipe[0]);
    close(mw_pipe[1]);
 _server_exit1:
+   free(server_status);
    close(signal_pipe[0]); 
    free(signal_pipe);
    storage_destroy(storage);

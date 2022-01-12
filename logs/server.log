@@ -1,26 +1,2 @@
-13:20:32.720 (WORKER 3) [OPEN CONNECTION]: Operation successfull
-13:20:32.781 (WORKER 4) [OPEN FILE]: Operation successfull
-13:20:32.812 (WORKER 2) [WRITE FILE]: Operation successfull
-13:20:32.822 (WORKER 1) [OPEN FILE]: Operation successfull
-13:20:32.822 (WORKER 0) [WRITE FILE]: Operation successfull
-13:20:32.825 (WORKER 3) [OPEN FILE]: Operation successfull
-13:20:32.826 (WORKER 4) [WRITE FILE]: Operation successfull
-13:20:32.829 (WORKER 2) [OPEN FILE]: Operation successfull
-13:20:32.829 (WORKER 1) [WRITE FILE]: Operation successfull
-13:20:32.832 (WORKER 0) [OPEN FILE]: Operation successfull
-13:20:32.832 (WORKER 3) [WRITE FILE]: Bad request
-13:20:32.836 (WORKER 4) [OPEN FILE]: Operation successfull
-13:20:32.836 (WORKER 2) [WRITE FILE]: Operation successfull
-13:20:32.843 (WORKER 1) [READ FILE]: Operation successfull
-13:20:32.845 (WORKER 0) [READ FILE]: Operation successfull
-13:20:32.846 (WORKER 3) [READ FILE]: Operation successfull
-13:20:32.851 (WORKER 4) [READ FILE]: Operation successfull
-13:20:32.851 (WORKER 2) [READ FILE]: Operation successfull
-13:20:32.852 (WORKER 1) [READ FILE]: Operation successfull
-13:20:32.853 (WORKER 0) [CLOSE FILE]: Operation successfull
-13:20:32.859 (WORKER 3) [CLOSE FILE]: Operation successfull
-13:20:32.859 (WORKER 4) [CLOSE FILE]: Operation successfull
-13:20:32.859 (WORKER 2) [CLOSE FILE]: Operation successfull
-13:20:32.860 (WORKER 1) [CLOSE FILE]: Operation successfull
-13:20:32.860 (WORKER 0) [CLOSE FILE]: Operation successfull
-13:20:32.863 (WORKER 3) [CLOSE CONNECTION]: Operation successfull
+19:36:00.039 [ INFO ] (SIGNAL HANDLER) Received immediate shutdown signal
+19:36:00.040 [ INFO ] [GENERAL INFO] Maximum number of connections: 0

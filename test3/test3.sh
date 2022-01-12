@@ -48,12 +48,13 @@ echo ""
 file='client_params.txt'
 
 start_time=$SECONDS
-end_time=$((SECONDS+10))
+end_time=$((SECONDS+30))
 
 while [ $SECONDS -lt $end_time ]; 
 do
 
-    xargs --arg-file=$file -n 6 -P 20 ${CLIENT}
+    xargs --arg-file=$file -n 6 -P 10 ${CLIENT}
+    sleep 0.1
     echo -e "${YELLOW}[TEST 3]${BOLD} Total time elapsed: ${RESET}$((SECONDS-start_time)) s"
     tput cuu1
 

@@ -56,7 +56,9 @@ worker_thread(void* args)
                 // status = open_connection_handler(int worker_no, client_fd);
                 if (shutdown_now) status = INTERNAL_ERROR;
                 send_response(client_fd, status, get_status_message(status), 0, "", 0, NULL);
-                log_info("(WORKER %d) [OPEN CONNECTION]: %s\n", worker_id, get_status_message(status));
+                log_info("(WORKER %d) [  %s   ]  %-22s\n", 
+                            worker_id, "openConn",  get_status_message(status));
+                // log_info("(WORKER %d) [OPEN CONNECTION]: %s\n", worker_id, get_status_message(status));
                 break;
             }
     
@@ -67,21 +69,30 @@ worker_thread(void* args)
                 // log_info("client %d connection closed\n", client_fd);
                 close(client_fd);
                 client_fd = -1;
-                log_info("(WORKER %d) [CLOSE CONNECTION]: %s\n", worker_id, get_status_message(status));
+                lock_return((&server_status_mtx), -1); // should exit?
+                server_status->current_connections--;
+                unlock_return((&server_status_mtx), -1);
+                log_info("(WORKER %d) [  %s  ]  %-22s\n", 
+                            worker_id, "closeConn", get_status_message(status));
+                // log_info("(WORKER %d) [CLOSE CONNECTION]: %s\n", worker_id, get_status_message(status));
                 break;
             }
             
             case OPEN_FILE: {
                 int status = open_file_handler(worker_id, client_fd, request);
                 send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, 0, NULL);
-                log_info("(WORKER %d) [OPEN FILE]: %s\n", worker_id, get_status_message(status));
+                log_info("(WORKER %d) [  %s   ]  %-22s : %-50s\n", 
+                            worker_id, "openFile", get_status_message(status), request->file_path);
+                // log_info("(WORKER %d) [OPEN FILE]: %s\n", worker_id, get_status_message(status));
                 break;
             }
             
             case CLOSE_FILE: {
                 int status = close_file_handler(worker_id, client_fd, request);
                 send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, 0, NULL);
-                log_info("(WORKER %d) [CLOSE FILE]: %s\n", worker_id, get_status_message(status));
+                log_info("(WORKER %d) [  %s  ]  %-22s : %-50s\n", 
+                            worker_id, "closeFile", get_status_message(status), request->file_path);
+                // log_info("(WORKER %d) [CLOSE FILE]: %s\n", worker_id, get_status_message(status));
                 break;
             }
             
@@ -89,24 +100,11 @@ worker_thread(void* args)
                 list_t *expelled_files = list_create(NULL, free_file, NULL);
                 int status = write_file_handler(worker_id, client_fd, request, expelled_files);
                 send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, 0, NULL);
-                /* if (status == FILES_EXPELLED) {
-                    int how_many = list_length(expelled_files);
-                    send_response(client_fd, status, get_status_message(status), "", sizeof(int), (void*)&how_many);
+                log_info("(WORKER %d) [  %s  ]  %-22s : %-50s : %lu\n", 
+                            worker_id, "writeFile", get_status_message(status), request->file_path, request->body_size);
 
-                    while ((how_many--) > 0) {
-
-                        file_t *to_send = (file_t*)list_remove_head(expelled_files);
-
-                        send_response(client_fd, status, get_status_message(status), to_send->path, to_send->size, to_send->contents);
-                        log_info("[FIFO REPLACEMENT] file [%s] was expelled\n", to_send->path);
-                        // free_file(to_send);
-
-                    }
-                } else {
-                    send_response(client_fd, status, get_status_message(status), "", 0, NULL);
-                } */
+                //log_info("(WORKER %d) [WRITE FILE]: %s\n", worker_id, get_status_message(status));
                 list_destroy(expelled_files);
-                log_info("(WORKER %d) [WRITE FILE]: %s\n", worker_id, get_status_message(status));
                 break;
             }
 
@@ -114,7 +112,9 @@ worker_thread(void* args)
                 list_t *expelled_files = list_create(NULL, free_file, NULL);
                 int status = append_to_file_handler(worker_id, client_fd, request, expelled_files);
                 send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, 0, NULL);
-                log_info("(WORKER %d) [APPEND TO FILE]: %s\n", worker_id, get_status_message(status));
+                // log_info("(WORKER %d) [APPEND TO FILE]: %s\n", worker_id, get_status_message(status));
+                log_info("(WORKER %d) [%s ]  %-22s : %-50s : %lu\n", 
+                            worker_id, "appendToFile", get_status_message(status), request->file_path, request->body_size);
             }
 
             case READ_FILE: {
@@ -125,7 +125,9 @@ worker_thread(void* args)
                     send_response(client_fd, INTERNAL_ERROR, status_message[INTERNAL_ERROR], "", 0, NULL);
                 } */
                 send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, buffer_size, read_buffer);
-                log_info("(WORKER %d) [READ FILE]: %s\n", worker_id, get_status_message(status));
+                // log_info("(WORKER %d) [READ FILE]: %s\n", worker_id, get_status_message(status));
+                log_info("(WORKER %d) [  %s   ]  %-22s : %-50s : %lu\n", 
+                            worker_id, "readFile", get_status_message(status), request->file_path, buffer_size);
                 if (read_buffer) free(read_buffer);
                 break;
             }
@@ -155,21 +157,27 @@ worker_thread(void* args)
             case REMOVE_FILE: { 
                 int status = remove_file_handler(worker_id, client_fd, request);
                 send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, 0, NULL);
-                log_info("(WORKER %d) [REMOVE FILE]: %s\n", worker_id, get_status_message(status));
+                // log_info("(WORKER %d) [REMOVE FILE]: %s\n", worker_id, get_status_message(status));
+                log_info("(WORKER %d) [ %s  ]  %-22s : %-50s\n", 
+                            worker_id, "removeFile", get_status_message(status), request->file_path);
                 break;
             }
 
             case LOCK_FILE: {
                 int status = lock_file_handler(worker_id, client_fd, request);
                 if (status != MISSING_BODY) send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, 0, NULL);
-                log_info("(WORKER %d) [LOCK FILE]: %s\n", worker_id, get_status_message(status));
+                // log_info("(WORKER %d) [LOCK FILE]: %s\n", worker_id, get_status_message(status));
+                log_info("(WORKER %d) [  %s   ]  %-22s : %-50s\n", 
+                            worker_id, "lockFile", get_status_message(status), request->file_path);
                 break;
             }
 
             case UNLOCK_FILE: {
                 int status = unlock_file_handler(worker_id, client_fd, request);
                 send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, 0, NULL);
-                log_info("(WORKER %d) [UNLOCK FILE]: %s\n", worker_id, get_status_message(status));
+                // log_info("(WORKER %d) [UNLOCK FILE]: %s\n", worker_id, get_status_message(status));
+                log_info("(WORKER %d) [ %s  ]  %-22s : %-50s\n", 
+                            worker_id, "unlockFile", get_status_message(status), request->file_path);
                 break;
             }
         
@@ -184,90 +192,7 @@ _write_pipe:
     return NULL;
 }
 
-/* int
-open_connection_handler(int client_fd)
-{
-    log_debug("[OPEN CONNECTION] new client (%d)\n", client_fd);
 
-
-    // New connection, will initialize string list to keep track of files opened by client
-    list_t *files_opened_by_client; 
-    files_opened_by_client = list_create(string_compare, free_string, string_print);
-    if (files_opened_by_client == NULL) {
-        log_fatal("could not create opened file list of client (%d)\n", client_fd);
-        return INTERNAL_ERROR;
-    }
-
-    // Adds the freshly created list to the hashtable of connected clients
-    if (hash_map_insert(connected_clients, client_fd, files_opened_by_client) != 0) {
-        
-        // Insert failed returning INTERNAL_ERROR
-        log_fatal("could not add opened file list of client (%d)\n", client_fd);
-        return INTERNAL_ERROR;
-
-    }
-
-    // Successfully added new client
-    log_info("[OPEN CONNECTION] successfully opened new connection with client (%d)\n", client_fd);
-
-    return SUCCESS;
-}
-
-int
-close_connection_handler(int client_fd)
-{
-    log_debug("[CLOSE CONNECTION] closing client (%d) connection\n", client_fd);
-
-
-    // Closing client connection, retrieving list of opened files to close all of them 
-    list_t *files_opened_by_client; 
-    files_opened_by_client = (list_t*)hash_map_get(connected_clients, client_fd);
-    if (files_opened_by_client == NULL) {
-
-        // Failed to retreive
-        log_fatal("client (%d) list of opened files could not be recovered\n", client_fd);
-        return INTERNAL_ERROR;
-
-    }
-
-    // List retreived, closing all files present
-    while (!list_is_empty(files_opened_by_client)) {
-
-        char *file_name = (char*)list_remove_head(files_opened_by_client);
-        file_t *file = (file_t*)hash_map_get(storage->files, file_name);
-        
-        if (file == NULL) {
-            // File might have been removed by someone else, shouldn't fail
-            log_debug("couldn't find file [%s] when closing client (%d) connection\n", file_name, client_fd);
-        } 
-    
-        else {
-            // If file was locked by client, unlock it
-            if (CHK_FLAG(file->flags, O_LOCK) && (file->locked_by == client_fd)) {
-                
-                CLR_FLAG(file->flags, O_LOCK);
-                file->locked_by = 0;
-                hash_map_insert(storage->files, file->path, file);
-                log_debug("client (%d) unlocked file [%s] before closing it\n", client_fd, file_name);
-            }
-        }
-
-        free(file_name);
-    }
-
-    // Removing client from the hashtable of connected clients
-    if (hash_map_remove(connected_clients, client_fd) == -1) { 
-        log_error("Could not remove client form hashtable\n"); 
-        // not failing, connection will still be closed
-    }
-
-    
-    // Successfully closed all files
-    log_info("[CLOSE CONNECTION] successfully closed connection with client (%d)\n", client_fd);
-
-    return SUCCESS;    
-}
- */
 
 int
 open_file_handler(int worker_no, int client_fd, request_t *request)

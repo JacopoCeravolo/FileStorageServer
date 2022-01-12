@@ -16,7 +16,7 @@ VALGRIND_OUTPUT=$(realpath ./valgrind.log)
 N_WORKERS=1
 MAX_SIZE=128000000
 MAX_FILES=10000
-SOCKET_PATH=/tmp/LSO_socket.sk
+SOCKET_PATH=/tmp/LSO_server.sk
 
 echo ""
 echo -e "${BOLD}*************************${RESET}"
