@@ -114,6 +114,7 @@ int main(int argc, char * const argv[])
     }
 
     closeConnection(socket_path);
+    free(socket_path);
     list_destroy(action_list);
     return 0;
 }
@@ -125,11 +126,9 @@ parse_options_in_list(int n_options, char * const option_vector[], list_t *actio
 
     while ((opt = getopt(n_options, option_vector, CLIENT_OPTIONS)) != -1) {
 
-        action_t    *new_action = malloc(sizeof(action_t));
-
         switch (opt) {
 
-            case 'h': free(new_action); return 1;
+            case 'h': return 1;
 
             case 'f': {
                 if (socket_set == 0) {
@@ -161,6 +160,9 @@ parse_options_in_list(int n_options, char * const option_vector[], list_t *actio
             }
 
             case 'a': {
+                action_t    *new_action = malloc(sizeof(action_t));
+                new_action->directory = NULL;
+                new_action->wait_time = 0;
                 new_action->code = APPEND;
                 if (strlen(optarg) + 1 > MAX_ARG_LENGTH) {
                     fprintf(stderr, "-w arguments too long\n");
@@ -174,6 +176,9 @@ parse_options_in_list(int n_options, char * const option_vector[], list_t *actio
             }
 
             case 'W': {
+                action_t    *new_action = malloc(sizeof(action_t));
+                new_action->directory = NULL;
+                new_action->wait_time = 0;
                 new_action->code = WRITE;
                 if (strlen(optarg) + 1 > MAX_ARG_LENGTH) {
                     fprintf(stderr, "-w arguments too long\n");
@@ -187,6 +192,9 @@ parse_options_in_list(int n_options, char * const option_vector[], list_t *actio
             }
 
             case 'w': {
+                action_t    *new_action = malloc(sizeof(action_t));
+                new_action->directory = NULL;
+                new_action->wait_time = 0;
                 new_action->code = WRITE_DIR;
                 if (strlen(optarg) + 1 > MAX_ARG_LENGTH) {
                     fprintf(stderr, "-w arguments too long\n");
@@ -216,6 +224,9 @@ parse_options_in_list(int n_options, char * const option_vector[], list_t *actio
             }
 
             case 'r': {
+                action_t    *new_action = malloc(sizeof(action_t));
+                new_action->directory = NULL;
+                new_action->wait_time = 0;
                 new_action->code = READ;
                 if (strlen(optarg) + 1 > MAX_ARG_LENGTH) {
                     fprintf(stderr, "-w arguments too long\n");
@@ -229,6 +240,9 @@ parse_options_in_list(int n_options, char * const option_vector[], list_t *actio
             }
 
             case 'R': {
+                action_t    *new_action = malloc(sizeof(action_t));
+                new_action->directory = NULL;
+                new_action->wait_time = 0;
                 new_action->code = READ_N;
                 if (strlen(optarg) + 1 > MAX_ARG_LENGTH) {
                     fprintf(stderr, "-w arguments too long\n");
@@ -257,6 +271,9 @@ parse_options_in_list(int n_options, char * const option_vector[], list_t *actio
             }
 
             case 'l': {
+                action_t    *new_action = malloc(sizeof(action_t));
+                new_action->directory = NULL;
+                new_action->wait_time = 0;
                 new_action->code = LOCK;
                 if (strlen(optarg) + 1 > MAX_ARG_LENGTH) {
                     fprintf(stderr, "-w arguments too long\n");
@@ -270,6 +287,9 @@ parse_options_in_list(int n_options, char * const option_vector[], list_t *actio
             }
 
             case 'u': {
+                action_t    *new_action = malloc(sizeof(action_t));
+                new_action->directory = NULL;
+                new_action->wait_time = 0;
                 new_action->code = UNLOCK;
                 if (strlen(optarg) + 1 > MAX_ARG_LENGTH) {
                     fprintf(stderr, "-w arguments too long\n");
@@ -283,6 +303,9 @@ parse_options_in_list(int n_options, char * const option_vector[], list_t *actio
             }
 
             case 'c': {
+                action_t    *new_action = malloc(sizeof(action_t));
+                new_action->directory = NULL;
+                new_action->wait_time = 0;
                 new_action->code = REMOVE;
                 if (strlen(optarg) + 1 > MAX_ARG_LENGTH) {
                     fprintf(stderr, "-w arguments too long\n");

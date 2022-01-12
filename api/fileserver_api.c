@@ -139,6 +139,8 @@ closeConnection(const char* sockname)
 
         if (closeFile(pathname) != 0) { // perror("closeFile()"); 
         }
+
+        free(pathname);
     }
     
     send_request(socket_fd, CLOSE_CONNECTION, 0, NULL, 0, NULL);
@@ -178,7 +180,8 @@ openFile(const char* pathname, int flags)
         case SUCCESS: {
 
             // If successfull add file name to list of opened files
-            char *file_name = strdup(pathname);
+            char *file_name = malloc(strlen(pathname) + 1);
+            strcpy(file_name, pathname);
             if (list_insert_tail(opened_files, file_name) != 0) return -1;
             result = 0;
             break;
