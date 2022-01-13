@@ -19,8 +19,8 @@ static char status_message[10][128] = {
     "Entity not found",
     "Unauthorized access",
     "Missing message body",
-    "File exceeds maximum space",
-    "File expelled",
+    "File is too big",
+    "File was expelled",
     "File already exists"
 };
 

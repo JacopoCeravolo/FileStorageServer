@@ -45,24 +45,52 @@ echo -e "${YELLOW}[TEST 2]${BOLD} Starting clients${RESET}"
 echo ""
 
 echo -e "${YELLOW}[TEST 2]${BOLD} Writing 10 files${RESET}"
-${CLIENT} -f ${SOCKET_PATH} -W data/file1,data/file2,data/file3,data/file4,data/file5,data/file6,data/file7,data/file8,data/file9,data/file10 -p
+${CLIENT} -f ${SOCKET_PATH} -w first_dir/,10 -p
 echo ""
 
-echo -e "${YELLOW}[TEST 2]${BOLD} Writing 10 more files${RESET}"
-${CLIENT} -f ${SOCKET_PATH} -W data/file11,data/file12,data/file13,data/file14,data/file15,data/file16,data/file17,data/file18,data/file19,data/file20 -p
+echo -e "${YELLOW}[TEST 2]${BOLD} Writing 9 more files${RESET}"
+${CLIENT} -f ${SOCKET_PATH} -w second_dir/,9 -p
 echo ""
 
-# echo -e "${YELLOW}[TEST 2]${BOLD} Writing 20 more files${RESET}"
-# ${CLIENT} -f ${SOCKET_PATH} -w data/small/,20 -p
-# echo ""
-
-echo -e "${YELLOW}[TEST 2]${BOLD} Filling up the whole storage with one big file, expecting files to be expelled in expelled_dir/${RESET}"
-${CLIENT} -f ${SOCKET_PATH} -W data/large/big_file -D expelled_dir -p
+echo -e "${YELLOW}[TEST 2]${BOLD} Filling up storage with one big file${RESET}"
+${CLIENT} -f ${SOCKET_PATH} -W large_files/very_big1 -D expelled_dir -p
 echo ""
 
 echo -e "${YELLOW}[TEST 2]${BOLD} Expelled directory contents${RESET}"
 ls expelled_dir
 echo ""
+
+# echo -e "${YELLOW}[TEST 2]${BOLD} Writing 9 more files${RESET}"
+# ${CLIENT} -f ${SOCKET_PATH} -w third_dir/,9 -p
+# echo ""
+
+# echo -e "${YELLOW}[TEST 2]${BOLD} Trying to write a file too big for storage${RESET}"
+# ${CLIENT} -f ${SOCKET_PATH} -W large_files/too_big -D expelled_dir -p
+# echo ""
+
+# echo -e "${YELLOW}[TEST 2]${BOLD} Using half of storage for one file${RESET}"
+# ${CLIENT} -f ${SOCKET_PATH} -W large_files/medium1 -D expelled_dir -p
+# echo ""
+# 
+# echo -e "${YELLOW}[TEST 2]${BOLD} Filling up rest of storage with another file${RESET}"
+# ${CLIENT} -f ${SOCKET_PATH} -W large_files/medium2 -D expelled_dir -p
+# echo ""
+
+# echo -e "${YELLOW}[TEST 2]${BOLD} Filling up storage with one big file${RESET}"
+# ${CLIENT} -f ${SOCKET_PATH} -W large_files/very_big2 -D expelled_dir -p
+# echo ""
+# 
+# echo -e "${YELLOW}[TEST 2]${BOLD} Expelled directory contents${RESET}"
+# ls expelled_dir
+# echo ""
+
+# echo -e "${YELLOW}[TEST 2]${BOLD} Filling up storage with one big file${RESET}"
+# ${CLIENT} -f ${SOCKET_PATH} -W large_files/very_big -D expelled_dir -p
+# echo ""
+# 
+# echo -e "${YELLOW}[TEST 2]${BOLD} Expelled directory contents${RESET}"
+# ls expelled_dir
+# echo ""
 
 echo ""
 echo -e "${YELLOW}[TEST 2]${BOLD} Shutting down server${RESET}"

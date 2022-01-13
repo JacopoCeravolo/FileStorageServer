@@ -1,26 +1,21 @@
 
 **********************
-CURRENT SIZE: 143447
+CURRENT SIZE: 999999
 **********************
 
 **********************
-NO OF FILES: 2
+NO OF FILES: 1
 **********************
 
 **********************
 FIFO QUEUE
-/home/ubuntu/home/storage-server/test1/data/file8 /home/ubuntu/home/storage-server/test1/data/file9 
+/home/ubuntu/home/storage-server/test2/large_files/very_big1 
 
 **********************
 
 **** TABLE OF FILES ******
 
-/home/ubuntu/home/storage-server/test1/data/file8  125179 (bytes) locked by (-1)
-Clients waiting for lock: 
-
-------------------------------------------------------
-
-/home/ubuntu/home/storage-server/test1/data/file9  18268 (bytes) locked by (-1)
+/home/ubuntu/home/storage-server/test2/large_files/very_big1  999999 (bytes) locked by (12)
 Clients waiting for lock: 
 
 ------------------------------------------------------
