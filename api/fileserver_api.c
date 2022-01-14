@@ -16,6 +16,7 @@
 
 
 long        socket_fd  = -1;        // socket file descriptor
+char        *socket_path;           // saved socket path
 list_t      *opened_files;          // list of currently opened files
 char        result_buffer[2048];    // last request verbose result
 
@@ -97,6 +98,8 @@ openConnection(const char *sockname, int msec, const struct timespec abstime)
             opened_files = list_create(string_compare, free_string, NULL);
             if ( opened_files == NULL ) { result = -1; break; }
 
+            socket_path = calloc(1, strlen(sockname) + 1);
+            strcpy(socket_path, sockname);
             result = 0;
             break;
         }
@@ -121,25 +124,37 @@ openConnection(const char *sockname, int msec, const struct timespec abstime)
 int 
 closeConnection(const char* sockname)
 {
-    int result = 0;
+    // Validation of parameters
+    if ( strcmp(sockname, socket_path) != 0 ) {
+        set_errno_save_result(EINVAL, "closeConnection", sockname, 0);
+        return -1;
+    }
+    // Verify if connection is opened
+    if ( socket_fd == -1 ) {
+        set_errno_save_result(ENOTCONN, "closeConnection", sockname, 0);
+        return -1;
+    }
 
-    char *pathname;
-
+    // Iterate over list of openend files
     while (!list_is_empty(opened_files)) {
-        pathname = (char*)list_remove_head(opened_files);
-        if (pathname == NULL) perror("list_remove_head()");
+        
+        char *pathname = (char*)list_remove_head(opened_files);
 
-        if (closeFile(pathname) != 0) { // perror("closeFile()"); 
-        }
+        closeFile(pathname); // continue even if it fails
 
         free(pathname);
     }
     
-    send_request(socket_fd, CLOSE_CONNECTION, 0, NULL, 0, NULL);
+    if ( send_request(socket_fd, CLOSE_CONNECTION, 0, NULL, 0, NULL) != 0 ) {
+        close(socket_fd);
+        list_destroy(opened_files);
+        return -1;
+    }
     
     close(socket_fd);
     list_destroy(opened_files);
-    return result;
+    
+    return 0;
 }
 
 int

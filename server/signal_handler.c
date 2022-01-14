@@ -16,7 +16,7 @@ sig_handler_thread(void *arg) {
 
     free(arg);
 
-    while(1) {
+    while(shutdown_now == 0) {
 
 	    int sig_num;
 	    int res = sigwait(set, &sig_num);

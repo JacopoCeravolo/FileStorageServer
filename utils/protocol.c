@@ -21,7 +21,7 @@ static char status_message[12][128] = {
     "Missing message body",
     "File is too big",
     "File was expelled",
-    "File already exists"
+    "File already exists",
     "Awaiting for lock",
     "No more connections"
 };

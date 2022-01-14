@@ -285,7 +285,7 @@ main(int argc, char const *argv[])
    // fprintf(stdout, "****** SERVER STARTED ******\n");
 
    while (shutdown_now == 0) {
-      
+
       rdset = set;
 
       if ( select(fd_max + 1, &rdset, NULL, NULL, NULL) == -1 && errno != EINTR) {
@@ -326,7 +326,7 @@ main(int argc, char const *argv[])
 
                if (client_fd > fd_max) fd_max = client_fd;
 
-               lock_return((&server_status_mtx), -1); // should exit?
+               lock_return((&server_status_mtx), -1); 
                server_status->current_connections++;
                if (server_status->current_connections > server_status->max_connections) {
                   server_status->max_connections = server_status->current_connections;
@@ -371,6 +371,15 @@ main(int argc, char const *argv[])
 			   }
 		   } 
       }
+
+      lock_return((&server_status_mtx), -1); 
+      if ( (accept_connection == 0) && (server_status->current_connections == 0) ) {
+         shutdown_now = 1;
+         unlock_return((&server_status_mtx), -1);
+         continue;
+      }
+      unlock_return((&server_status_mtx), -1);
+
    }
 
    // fprintf(stdout, "****** SERVER CLOSING ******\n");

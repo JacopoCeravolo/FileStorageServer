@@ -16,7 +16,7 @@ VALGRIND_OUTPUT=$(realpath ./valgrind.log)
 N_WORKERS=1
 MAX_SIZE=128000000
 MAX_FILES=10000
-SOCKET_PATH=/tmp/LSO_server.sk
+SOCKET_PATH=/tmp/LSO_socket.sk
 
 echo ""
 echo -e "${BOLD}*************************${RESET}"
@@ -38,7 +38,7 @@ echo ""
 echo -e "${YELLOW}[TEST 1]${BOLD} Starting server${RESET}"
 valgrind --leak-check=full ${SERVER} ${SERVER_CONFIG} &> ${VALGRIND_OUTPUT} & 
 SERVER_PID=$!
-sleep 2
+sleep 3
 echo -e "${YELLOW}[TEST 1]${BOLD} Server started${RESET}"
 
 
@@ -108,7 +108,7 @@ sleep 1
 
 echo ""
 echo -e "${YELLOW}[TEST 1]${BOLD} Shutting down server${RESET}"
-kill -SIGQUIT ${SERVER_PID}
+kill -SIGHUP ${SERVER_PID}
 
 echo ""
 echo -e "${BOLD}*************************${RESET}"

@@ -1,31 +1,21 @@
 
 **********************
-CURRENT SIZE: 27946
+CURRENT SIZE: 741
 **********************
 
 **********************
-NO OF FILES: 3
+NO OF FILES: 1
 **********************
 
 **********************
 FIFO QUEUE
-/home/final/client/client.c /home/final/client/client.h /home/final/client/Makefile 
+/home/final/test3/data/file0 
 
 **********************
 
 **** TABLE OF FILES ******
 
-/home/final/client/Makefile  999 (bytes) locked by (-1)
-Clients waiting for lock: 
-
-------------------------------------------------------
-
-/home/final/client/client.c  26227 (bytes) locked by (-1)
-Clients waiting for lock: 
-
-------------------------------------------------------
-
-/home/final/client/client.h  720 (bytes) locked by (-1)
+/home/final/test3/data/file0  741 (bytes) locked by (-1)
 Clients waiting for lock: 
 
 ------------------------------------------------------
