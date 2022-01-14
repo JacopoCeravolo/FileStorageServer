@@ -26,7 +26,8 @@ L_FILESERVER	:= -lfileserver_api
 L_PROTOCOL 		:= -lprotocol
 L_HASHMAP		:= -lhash_map
 L_LINKED_LIST	:= -llinked_list
-LINK_ALL		:= $(L_FILESERVER) $(L_PROTOCOL) $(L_LINKED_LIST) 
+L_UTILITIES		:= -lutils
+LINK_ALL		:= $(L_FILESERVER) $(L_PROTOCOL) $(L_LINKED_LIST) $(L_UTILITIES)
 
 # General rule for objects
 %.o: %.c 

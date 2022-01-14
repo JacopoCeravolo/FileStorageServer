@@ -1,23 +1,93 @@
-#include "client_config.h"
+#include "client.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <getopt.h>
 #include <dirent.h>
+#include <sys/stat.h>
 
 #include "api/fileserver_api.h"
 #include "utils/linked_list.h"
 #include "utils/utilities.h"
 
-#define SOCKET_PATH "/tmp/LSO_socket.sk"
-
-bool VERBOSE;
+bool VERBOSE = false;
 char *socket_path = NULL;
 
 int 
-get_files_from_directory(char *source_dir, int *how_many, list_t *files_list){
+main(int argc, char * const argv[])
+{
+    if ( argc < 2 ) {
+        fprintf(stderr, "client program requires at least one argument, rerun with -h for usage\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Initialization of list containing client requests
+    list_t *action_list;
+    action_list = list_create(NULL, free_action, NULL);
+    if ( action_list == NULL ) {
+        fprintf(stderr, "request list could not be initialized, exiting\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Parsing of arguments from command line
+    int res;
+    if ( (res = parse_options_in_list(argc, argv, action_list)) != 0 ) {
+        
+        if ( res == -1 ) { // fatal error occurred
+            fprintf(stderr, "could not parse client options");
+            list_destroy(action_list);
+            exit(EXIT_FAILURE);
+        }
+
+        if ( res == 1 ) { // option -h found
+            print_help_msg();
+            list_destroy(action_list);
+            exit(EXIT_SUCCESS);
+        }
+    }
+
+    // If socket path is not yet specified it gets set to default
+    if ( socket_path == NULL ) {
+        socket_path = malloc(strlen(DEFAULT_SOCKET_PATH) + 1);
+        strcpy(socket_path, DEFAULT_SOCKET_PATH);
+    }
+
+    // Attempts to open a connection
+    if ( openConnection(socket_path, 0, (struct timespec){0,0}) != 0 ) {
+        perror("openConnection()");
+        list_destroy(action_list);
+        exit(EXIT_FAILURE);
+    }
+
+    // Starts executing requests
+    while (!list_is_empty(action_list)) {
+
+        action_t *current_action = (action_t*) list_remove_head(action_list);
+
+        if ( execute_action(current_action) != 0 ) {
+            fprintf(stderr, "Could not execute request\n");
+        }
+
+        free_action(current_action);
+    }
+
+    // Closing connection
+    if ( closeConnection(socket_path) != 0 ) {
+        fprintf(stderr, "Connection could not be closed\n");
+    }
+
+    // Clean up
+    free(socket_path);
+    list_destroy(action_list);
+    return 0;
+}
+
+int 
+get_files_from_directory(char *source_dir, int *how_many, list_t *files_list)
+{
 	
     DIR *dir;
 	struct dirent *file;
@@ -62,63 +132,6 @@ get_files_from_directory(char *source_dir, int *how_many, list_t *files_list){
 	return 0;
 }
 
-
-int main(int argc, char * const argv[])
-{
-    if (argc < 2) {
-        fprintf(stderr, "client program requires at least one argument, rerun with -h for usage\n");
-        exit(EXIT_FAILURE);
-    }
-
-    list_t *action_list;
-    action_list = list_create(NULL, free_action, print_action);
-    if (action_list == NULL) {
-        fprintf(stderr, "request list could not be initialized, exiting\n");
-        exit(EXIT_FAILURE);
-    }
-
-    int res;
-    if ((res = parse_options_in_list(argc, argv, action_list)) != 0) {
-        if (res == 1) { // option -h found
-            print_help_msg();
-            list_destroy(action_list);
-            exit(EXIT_SUCCESS);
-        }
-        fprintf(stderr, "some options have not been parsed correctly\n");
-    }
-
-    if (socket_path == NULL) {
-        socket_path = malloc(strlen(SOCKET_PATH) + 1);
-        strcpy(socket_path, SOCKET_PATH);
-    }
-
-    if (openConnection(socket_path, 0, (struct timespec){0,0}) != 0) {
-        api_perror("openConnection(%s) failed", socket_path);
-        list_destroy(action_list);
-        exit(EXIT_FAILURE);
-    }
-
-    // if (VERBOSE) {
-    //     printf("%-10s %-65s %-10s %-20s\n", "OPT_TYPE", "FILE", "N_BYTES", "RESULT");
-    // }
-
-    while (!list_is_empty(action_list)) {
-
-        action_t *current_action = (action_t*) list_remove_head(action_list);
-    
-        // print_action(current_action, stdout);
-
-        execute_action(current_action);
-
-        free_action(current_action);
-    }
-
-    closeConnection(socket_path);
-    free(socket_path);
-    list_destroy(action_list);
-    return 0;
-}
-
 int
 parse_options_in_list(int n_options, char * const option_vector[], list_t *action_list)
 {
@@ -131,13 +144,16 @@ parse_options_in_list(int n_options, char * const option_vector[], list_t *actio
             case 'h': return 1;
 
             case 'f': {
-                if (socket_set == 0) {
-                  if (strlen(optarg) + 1 > MAX_PATH) {
+                if ( socket_set == 0 ) { // socket path is not yet defined
+                    
+                    if ( strlen(optarg) + 1 > MAX_PATH ) {
                         fprintf(stderr, "socket path too long");
-                        // set err
                         break;
                     }
+
                     socket_path = malloc(strlen(optarg) + 1);
+                    if ( socket_path == NULL ) return -1;
+
                     strcpy(socket_path, optarg);
                     socket_set = 1;
                 } else {
@@ -153,89 +169,151 @@ parse_options_in_list(int n_options, char * const option_vector[], list_t *actio
             }
 
             case 't': {
+                // Modifies last action with specified wait time
                 action_t *prev_action = (action_t*)list_remove_tail(action_list);
+                if ( prev_action == NULL ) {
+                    fprintf(stderr, "Could not set wait time for previous request\n");
+                    break;
+                }
+                 
                 prev_action->wait_time = strtol(optarg, NULL, 10);
-                list_insert_tail(action_list, prev_action);
+                if ( list_insert_tail(action_list, prev_action) != 0 ) {
+                    fprintf(stderr, "Could not set wait time for previous request\n");
+                    break;
+                }
+
                 break;
             }
 
             case 'a': {
+                // Creating new append request action
                 action_t    *new_action = malloc(sizeof(action_t));
+                if ( new_action == NULL ) {
+                    errno = ENOMEM;
+                    return -1;
+                }
+
                 new_action->directory = NULL;
                 new_action->wait_time = 0;
                 new_action->code = APPEND;
-                if (strlen(optarg) + 1 > MAX_ARG_LENGTH) {
-                    fprintf(stderr, "-w arguments too long\n");
-                    break;
-                }
 
                 new_action->arguments = malloc(strlen(optarg) + 1);
+                if ( new_action->arguments == NULL ) {
+                    errno = ENOMEM;
+                    return -1;
+                }
+
                 strcpy(new_action->arguments, optarg);
-                list_insert_tail(action_list, new_action);
+                if ( list_insert_tail(action_list, new_action) != 0 ) {
+                    fprintf(stderr, "Could not add append request to list of actions\n");
+                }
                 break;
             }
 
             case 'W': {
+                // Creating new write request action
                 action_t    *new_action = malloc(sizeof(action_t));
+                if ( new_action == NULL ) {
+                    errno = ENOMEM;
+                    return -1;
+                }
+
                 new_action->directory = NULL;
                 new_action->wait_time = 0;
                 new_action->code = WRITE;
-                if (strlen(optarg) + 1 > MAX_ARG_LENGTH) {
-                    fprintf(stderr, "-w arguments too long\n");
-                    break;
-                }
 
                 new_action->arguments = malloc(strlen(optarg) + 1);
+                if ( new_action->arguments == NULL ) {
+                    errno = ENOMEM;
+                    return -1;
+                }
+
                 strcpy(new_action->arguments, optarg);
-                list_insert_tail(action_list, new_action);
+                if ( list_insert_tail(action_list, new_action) != 0 ) {
+                    fprintf(stderr, "Could not add write request to list of actions\n");
+                }
                 break;
             }
 
             case 'w': {
+                // Creating new write directory request action
                 action_t    *new_action = malloc(sizeof(action_t));
+                if ( new_action == NULL ) {
+                    errno = ENOMEM;
+                    return -1;
+                }
+
                 new_action->directory = NULL;
                 new_action->wait_time = 0;
                 new_action->code = WRITE_DIR;
-                if (strlen(optarg) + 1 > MAX_ARG_LENGTH) {
-                    fprintf(stderr, "-w arguments too long\n");
-                    break;
-                }
 
                 new_action->arguments = malloc(strlen(optarg) + 1);
+                if ( new_action->arguments == NULL ) {
+                    errno = ENOMEM;
+                    return -1;
+                }
+
                 strcpy(new_action->arguments, optarg);
-                list_insert_tail(action_list, new_action);
+                if ( list_insert_tail(action_list, new_action) != 0 ) {
+                    fprintf(stderr, "Could not add write directory to list of actions\n");
+                }
                 break;
             }
 
             case 'D': {
+                // Modifies last write action with specified directory
                 action_t *write_action = (action_t*)list_remove_tail(action_list);
-                if ((write_action->code == WRITE) || (write_action->code == WRITE_DIR)
-                    || (write_action->code == APPEND)) {
-                    if (write_action->directory == NULL) {
-                        write_action->directory = malloc(strlen(optarg) + 1);
-                        strcpy(write_action->directory, optarg);
-                    }
-                } else {
-                    fprintf(stderr, "option -D needs to be paired with write operation\n");
+                if ( write_action == NULL ) {
+                    fprintf(stderr, "Could not set directory for previous request\n");
+                    break;
                 }
 
-                list_insert_tail(action_list, write_action);
+                // Checking whether last action was a write
+                if ( (write_action->code == WRITE) || (write_action->code == WRITE_DIR) 
+                    || (write_action->code == APPEND) ) {
+
+                    if ( write_action->directory == NULL ) {
+                        write_action->directory = malloc(strlen(optarg) + 1);
+                        if ( write_action->directory == NULL ) {
+                            errno = ENOMEM;
+                            return -1;
+                        } 
+                        strcpy(write_action->directory, optarg);
+                    } else {
+                        fprintf(stderr, "Expelled directory already defined for request\n");
+                    }
+                } else {
+                    fprintf(stderr, "option -D needs to be paired with write request\n");
+                }
+
+                if ( list_insert_tail(action_list, write_action) != 0 ) {
+                    fprintf(stderr, "Could not add write request to list of actions\n");
+                }
                 break;
             }
 
             case 'r': {
+                // Creating new read request action
                 action_t    *new_action = malloc(sizeof(action_t));
+                if ( new_action == NULL ) {
+                    errno = ENOMEM;
+                    return -1;
+                }
+
                 new_action->directory = NULL;
                 new_action->wait_time = 0;
                 new_action->code = READ;
-                if (strlen(optarg) + 1 > MAX_ARG_LENGTH) {
-                    fprintf(stderr, "-w arguments too long\n");
-                    break;
-                }
 
                 new_action->arguments = malloc(strlen(optarg) + 1);
+                if ( new_action->arguments == NULL ) {
+                    errno = ENOMEM;
+                    return -1;
+                }
+
                 strcpy(new_action->arguments, optarg);
-                list_insert_tail(action_list, new_action);
+                if ( list_insert_tail(action_list, new_action) != 0 ) {
+                    fprintf(stderr, "Could not add read request to list of actions\n");
+                }
                 break;
             }
 
@@ -244,10 +322,6 @@ parse_options_in_list(int n_options, char * const option_vector[], list_t *actio
                 new_action->directory = NULL;
                 new_action->wait_time = 0;
                 new_action->code = READ_N;
-                if (strlen(optarg) + 1 > MAX_ARG_LENGTH) {
-                    fprintf(stderr, "-w arguments too long\n");
-                    break;
-                }
 
                 new_action->arguments = malloc(strlen(optarg) + 1);
                 strcpy(new_action->arguments, optarg);
@@ -256,65 +330,107 @@ parse_options_in_list(int n_options, char * const option_vector[], list_t *actio
             }
 
             case 'd': {
+                // Modifies last read action with specified directory
                 action_t *read_action = (action_t*)list_remove_tail(action_list);
-                if ((read_action->code == READ) || (read_action->code == READ_N)) {
-                    if (read_action->directory == NULL) {
-                        read_action->directory = malloc(strlen(optarg) + 1);
-                        strcpy(read_action->directory, optarg);
-                    }
-                } else {
-                    fprintf(stderr, "option -d needs to be paired with read operation\n");
+                if ( read_action == NULL ) {
+                    fprintf(stderr, "Could not set directory for previous request\n");
+                    break;
                 }
 
-                list_insert_tail(action_list, read_action);
+                // Checking whether last action was a read
+                if ( (read_action->code == READ) || (read_action->code == READ_N) ) {
+                    if ( read_action->directory == NULL ) {
+                        read_action->directory = malloc(strlen(optarg) + 1);
+                        if ( read_action->directory == NULL ) {
+                            errno = ENOMEM;
+                            return -1;
+                        } 
+                        strcpy(read_action->directory, optarg);
+                    } else {
+                        fprintf(stderr, "Reading directory already defined for request\n");
+                    }
+                } else {
+                    fprintf(stderr, "option -d needs to be paired with read request\n");
+                }
+
+                if ( list_insert_tail(action_list, read_action) != 0 ) {
+                    fprintf(stderr, "Could not add read request to list of actions\n");
+                }
                 break;
             }
 
             case 'l': {
+                // Creating new lock request action
                 action_t    *new_action = malloc(sizeof(action_t));
+                if ( new_action == NULL ) {
+                    errno = ENOMEM;
+                    return -1;
+                }
+
                 new_action->directory = NULL;
                 new_action->wait_time = 0;
                 new_action->code = LOCK;
-                if (strlen(optarg) + 1 > MAX_ARG_LENGTH) {
-                    fprintf(stderr, "-w arguments too long\n");
-                    break;
-                }
 
                 new_action->arguments = malloc(strlen(optarg) + 1);
+                if ( new_action->arguments == NULL ) {
+                    errno = ENOMEM;
+                    return -1;
+                }
+
                 strcpy(new_action->arguments, optarg);
-                list_insert_tail(action_list, new_action);
+                if ( list_insert_tail(action_list, new_action) != 0 ) {
+                    fprintf(stderr, "Could not add lock request to list of actions\n");
+                }
                 break;
             }
 
             case 'u': {
+                // Creating new unlock request action
                 action_t    *new_action = malloc(sizeof(action_t));
+                if ( new_action == NULL ) {
+                    errno = ENOMEM;
+                    return -1;
+                }
+
                 new_action->directory = NULL;
                 new_action->wait_time = 0;
                 new_action->code = UNLOCK;
-                if (strlen(optarg) + 1 > MAX_ARG_LENGTH) {
-                    fprintf(stderr, "-w arguments too long\n");
-                    break;
-                }
 
                 new_action->arguments = malloc(strlen(optarg) + 1);
+                if ( new_action->arguments == NULL ) {
+                    errno = ENOMEM;
+                    return -1;
+                }
+
                 strcpy(new_action->arguments, optarg);
-                list_insert_tail(action_list, new_action);
+                if ( list_insert_tail(action_list, new_action) != 0 ) {
+                    fprintf(stderr, "Could not add unlock request to list of actions\n");
+                }
                 break;
             }
 
             case 'c': {
+                // Creating new remove request action
                 action_t    *new_action = malloc(sizeof(action_t));
+                if ( new_action == NULL ) {
+                    errno = ENOMEM;
+                    return -1;
+                }
+
                 new_action->directory = NULL;
                 new_action->wait_time = 0;
                 new_action->code = REMOVE;
-                if (strlen(optarg) + 1 > MAX_ARG_LENGTH) {
-                    fprintf(stderr, "-w arguments too long\n");
-                    break;
-                }
 
                 new_action->arguments = malloc(strlen(optarg) + 1);
+                if ( new_action->arguments == NULL ) {
+                    errno = ENOMEM;
+                    return -1;
+                }
+
                 strcpy(new_action->arguments, optarg);
-                list_insert_tail(action_list, new_action);
+                if ( list_insert_tail(action_list, new_action) != 0 ) {
+                    fprintf(stderr, "Could not add remove request to list of actions\n");
+                }
                 break;
             }
         }
@@ -322,47 +438,36 @@ parse_options_in_list(int n_options, char * const option_vector[], list_t *actio
     return 0;
 }
 
-void
+int
 execute_action(action_t *action)
 {
-    if (action == NULL) return;
+    if (action == NULL) return -1;
 
     switch (action->code) {
         
         case WRITE: {
-
+            
+            // Getting directory name from action
             char *dirname = NULL;
-            if (action->directory != NULL) { // must be change to full path
+            if ( action->directory != NULL ) {
                 dirname = malloc(strlen(action->directory) + 1);
+                if ( dirname == NULL ) {
+                    errno = ENOMEM;
+                    return -1;
+                }
+
                 strcpy(dirname, action->directory);
             }
-            
-            char *file_path = strtok(action->arguments, ",");
-            // get absolute path and verify
-            char *absolute_path = realpath(file_path, NULL);
 
-            
+            // Starts parsing arguments and executing requests
+            const char *file_path = strtok(action->arguments, ",");
             while (file_path != NULL) {
 
-                writeFile(absolute_path, action->directory);
-                if (VERBOSE) print_result();
-
-                
-                /* if (writeFile(absolute_path, action->directory) != 0) {
-                    if (VERBOSE) api_perror("writeFile(%s, %s) failed", absolute_path, dirname);
-                } else {
-                    if (VERBOSE) {
-                        if (VERBOSE) print_result();
-                    }
-                } */
-
-                free(absolute_path);
-                absolute_path = NULL;
+                writeFile(file_path, action->directory);
+                if (VERBOSE) display_request_result();
 
                 file_path = strtok(NULL, ",");
-                if (file_path != NULL) absolute_path = realpath(file_path, NULL);
-                // get absolute path and verify
-
+    
                 if (action->wait_time != 0) msleep(action->wait_time);
             }
 
@@ -371,21 +476,26 @@ execute_action(action_t *action)
 
         case APPEND: {
             
+            // Getting directory name from action
             char *dirname = NULL;
-            if (action->directory != NULL) { // must be change to full path
+            if ( action->directory != NULL ) {
                 dirname = malloc(strlen(action->directory) + 1);
+                if ( dirname == NULL ) {
+                    errno = ENOMEM;
+                    return -1;
+                }
+                
                 strcpy(dirname, action->directory);
             }
             
-            char *file_path = strtok(action->arguments, ",");
-            char *source_path = strtok(NULL, ",");
-            // get absolute path and verify
+            // Starts parsing arguments and executing requests
+            const char *file_path = strtok(action->arguments, ","); // File path in server
+            const char *source_path = strtok(NULL, ","); // File containing contents to append
+        
             char *absolute_path = realpath(source_path, NULL);
-            char *path_in_server = realpath(file_path, NULL);
 
-            FILE *file_ptr;
-
-            file_ptr = fopen(absolute_path, "rb");
+            // Opening source path from disk
+            FILE *file_ptr = fopen(absolute_path, "rb");
             if ( file_ptr == NULL ) {
                 errno = EIO;
                 perror("fopen()");
@@ -422,13 +532,12 @@ execute_action(action_t *action)
                 }
             }
 
-            fclose(file_ptr);
 
-            appendToFile(path_in_server, file_data, file_size, dirname);
-            print_result();
+            appendToFile(file_path, file_data, file_size, dirname);
+            if (VERBOSE) display_request_result();
             
             free(absolute_path);
-            free(path_in_server);
+            fclose(file_ptr);
 
             if (action->wait_time != 0) msleep(action->wait_time);
 
@@ -436,77 +545,91 @@ execute_action(action_t *action)
         }
 
         case WRITE_DIR: {
+
+            // Getting directory name from action
+            char *dirname = NULL;
+            if ( action->directory != NULL ) {
+                dirname = malloc(strlen(action->directory) + 1);
+                if ( dirname == NULL ) {
+                    errno = ENOMEM;
+                    return -1;
+                }
+
+                strcpy(dirname, action->directory);
+            }
             
-            char *dirname = strtok(action->arguments, ",");
-            char *tmp = strtok(NULL, " ");
-            int how_many = atoi(tmp);
+            // Parsing of directory path
+            const char *source_dirname = strtok(action->arguments, ","); 
+            char *absolute_dirname = realpath(source_dirname, NULL);
 
-            list_t *files_list = list_create(string_compare, free, NULL);
+            // Parsing of number of files
+            const char *tmp = strtok(NULL, " "); 
+            long n;
+            if ( is_number(tmp, &n) != 0) {
+                fprintf(stderr, "Write directory expects a number\n");
+                free(absolute_dirname);
+                return -1;
+            }
 
-            if (get_files_from_directory(dirname, &how_many, files_list) != 0) break;
+            int how_many = n;
 
+            // Reading directory contents
+            list_t *files_list = list_create(string_compare, free_string, NULL);
+            if ( get_files_from_directory(absolute_dirname, &how_many, files_list) != 0 ) {
+                fprintf(stderr, "Could not read files from directory\n");
+                list_destroy(files_list);
+                free(absolute_dirname);
+                return -1;
+            }
+
+            // Executing write requests
             while (!list_is_empty(files_list)) {
+                
                 char *path = (char*)list_remove_head(files_list);
 
                 writeFile(path, action->directory);
-                if (VERBOSE) print_result();
-
-                /* if (writeFile(path, action->directory) != 0) {
-                    if (VERBOSE) api_perror("writeFile(%s, %s) failed", path, action->directory);
-                } else {
-                    if (VERBOSE) {
-                        if (VERBOSE) print_result();
-                    }
-                } */
+                if (VERBOSE) display_request_result();
 
                 if (action->wait_time != 0) msleep(action->wait_time);
             }
 
             list_destroy(files_list);
+
             break;
         }
 
         case READ: {
 
+            // Getting directory name from action
             char *dirname = NULL;
-            if (action->directory != NULL) { // must be change to full path
+            if ( action->directory != NULL ) {
                 dirname = malloc(strlen(action->directory) + 1);
+                if ( dirname == NULL ) {
+                    errno = ENOMEM;
+                    return -1;
+                }
+
                 strcpy(dirname, action->directory);
-                if (mkdir_p(dirname) == -1) {free(dirname); dirname = NULL;}
             }
             
-            char *file_path = strtok(action->arguments, ",");
-            // get absolute path and verify
-            char *absolute_path = realpath(file_path, NULL);
+            // Starts parsing arguments and executing requests
+            const char *file_path = strtok(action->arguments, ",");
             
             while (file_path != NULL) {
 
-                void *read_buffer;
+                void *read_buffer = NULL;
                 size_t buffer_size;
 
-                readFile(absolute_path, &read_buffer, &buffer_size);
-                if (VERBOSE) print_result();
-                
-                /* if (readFile(file_path, &read_buffer, &buffer_size) != 0) {
-                    if (VERBOSE) api_perror("readFile(%s, %s) failed", file_path, dirname);
-                } else {
-                    if (VERBOSE) {
-                        if (VERBOSE) print_result();
-                    }
-                } */
+                readFile(file_path, &read_buffer, &buffer_size);
+                if (VERBOSE) display_request_result();
 
                 if (dirname != NULL) {
-                    write_file_in_directory(dirname, file_path, buffer_size, read_buffer);
+                    write_file_in_directory(dirname, (char*)file_path, buffer_size, read_buffer);
                 }
 
-                free(read_buffer);
-
-                free(absolute_path);
-                absolute_path = NULL;
+                if (read_buffer != NULL) free(read_buffer);
 
                 file_path = strtok(NULL, ",");
-                if (file_path != NULL) absolute_path = realpath(file_path, NULL);
-                // get absolute path and verify
 
                 if (action->wait_time != 0) msleep(action->wait_time);
             }
@@ -519,7 +642,7 @@ execute_action(action_t *action)
             int N = atoi(action->arguments);
 
             readNFiles(N, action->directory);
-            if (VERBOSE) print_result();
+            if (VERBOSE) display_request_result();
 
             /* if (readNFiles(N, action->directory) != 0) {
                 if (VERBOSE) api_perror("readNFiles(%d, %s) failed", N, action->directory);
@@ -531,30 +654,15 @@ execute_action(action_t *action)
 
         case LOCK: {
 
-            char *file_path = strtok(action->arguments, ",");
-            // get absolute path and verify
-            char *absolute_path = realpath(file_path, NULL);
-            
+            // Starts parsing arguments and executing requests
+            const char *file_path = strtok(action->arguments, ",");
             while (file_path != NULL) {
-                
-                lockFile(absolute_path);
-                if (VERBOSE) print_result();
 
-                /* if (lockFile(file_path) != 0) {
-                    if (VERBOSE) api_perror("lockFile(%s) failed", file_path);
-                } else {
-                    if (VERBOSE) {
-                        if (VERBOSE) print_result();
-                    }
-                } */
-
-                free(absolute_path);
-                absolute_path = NULL;
+                lockFile(file_path);
+                if (VERBOSE) display_request_result();
 
                 file_path = strtok(NULL, ",");
-                if (file_path != NULL) absolute_path = realpath(file_path, NULL);
-                // get absolute path and verify
-
+    
                 if (action->wait_time != 0) msleep(action->wait_time);
             }
 
@@ -563,30 +671,15 @@ execute_action(action_t *action)
 
         case UNLOCK: {
 
-            char *file_path = strtok(action->arguments, ",");
-            // get absolute path and verify
-            char *absolute_path = realpath(file_path, NULL);
-            
+            // Starts parsing arguments and executing requests
+            const char *file_path = strtok(action->arguments, ",");
             while (file_path != NULL) {
 
-                unlockFile(absolute_path);
-                if (VERBOSE) print_result();
-                
-                /* if (unlockFile(file_path) != 0) {
-                    if (VERBOSE) api_perror("unlockFile(%s) failed", file_path);
-                } else {
-                    if (VERBOSE) {
-                        if (VERBOSE) print_result();
-                    }
-                } */
-
-                free(absolute_path);
-                absolute_path = NULL;
+                unlockFile(file_path);
+                if (VERBOSE) display_request_result();
 
                 file_path = strtok(NULL, ",");
-                if (file_path != NULL) absolute_path = realpath(file_path, NULL);
-                // get absolute path and verify
-
+    
                 if (action->wait_time != 0) msleep(action->wait_time);
             }
 
@@ -595,42 +688,32 @@ execute_action(action_t *action)
 
         case REMOVE: {
             
-            char *file_path = strtok(action->arguments, ",");
-            // get absolute path and verify
-            char *absolute_path = realpath(file_path, NULL);
-            
+            // Starts parsing arguments and executing requests
+            const char *file_path = strtok(action->arguments, ",");
             while (file_path != NULL) {
 
-                removeFile(absolute_path);
-                if (VERBOSE) print_result();
-                
-                /* if (removeFile(file_path) != 0) {
-                    if (VERBOSE) api_perror("removeFile(%s) failed", file_path);
-                } else {
-                    if (VERBOSE) {
-                        if (VERBOSE) print_result();
-                    }
-                } */
-
-                free(absolute_path);
-                absolute_path = NULL;
+                removeFile(file_path);
+                if (VERBOSE) display_request_result();
 
                 file_path = strtok(NULL, ",");
-                if (file_path != NULL) absolute_path = realpath(file_path, NULL);
-                // get absolute path and verify
-
+    
                 if (action->wait_time != 0) msleep(action->wait_time);
             }
 
             break;
         }
     }
+
+    return 0;
 }
 
-int
-read_file_in_directory(const char *file_path, const char *dirname, void* read_buffer, size_t buffer_size)
+void
+free_action(void *e)
 {
-    return 0;
+    action_t *a = (action_t*)e;
+    if (a->directory) free(a->directory);
+    if (a->arguments) free(a->arguments);
+    free(a);
 }
 
 void
@@ -659,4 +742,5 @@ print_help_msg()
                                         "    -u file1[,file2...]       List of files to release mutual exclusion on\n" \
                                         "    -c file1[,file2...]       List of files to delete from File Storage Server\n");
 }
+
 

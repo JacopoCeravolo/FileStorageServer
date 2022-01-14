@@ -3,6 +3,7 @@
 #include "server/storage.h"
 #include "utils/utilities.h"
 #include "server/logger.h"
+#include <stdlib.h>
 
 storage_t*
 storage_create(size_t max_size, size_t max_files)
@@ -33,8 +34,8 @@ storage_create(size_t max_size, size_t max_files)
         return NULL;
     } */
 
-    storage->basic_fifo = list_create(string_compare, NULL, string_print);
-    if (storage->basic_fifo == NULL) {
+    storage->fifo_queue = list_create(string_compare, NULL, string_print);
+    if (storage->fifo_queue == NULL) {
         hash_map_destroy(storage->files);
         // hash_map_destroy(storage->opened_files);
         free(storage);
@@ -56,7 +57,7 @@ storage_destroy(storage_t *storage)
     log_debug("deallocating file table\n");
     if (storage->files) hash_map_destroy(storage->files);
     log_debug("deallocating FIFO queue\n");
-    list_destroy(storage->basic_fifo);
+    list_destroy(storage->fifo_queue);
     log_debug("deallocating storage unit\n");
     if (storage) free(storage);
     return 0;
@@ -71,7 +72,7 @@ storage_remove_file(storage_t *storage, char *file_name)
         return NULL;
     }
 
-    list_remove_element(storage->basic_fifo, file_name);
+    list_remove_element(storage->fifo_queue, file_name);
     if (hash_map_remove(storage->files, file_name) != 0) return NULL;
     storage->no_of_files--;
     storage->current_size = storage->current_size - to_remove->size;
@@ -90,7 +91,7 @@ storage_create_file(char *file_name)
     new_file->size = 0;
     new_file->locked_by = -1;
     SET_FLAG(new_file->flags, O_CREATE);
-    new_file->waiting_on_lock = list_create(int_compare, NULL, NULL);
+    new_file->waiting_on_lock = list_create(int_compare, free, print_int);
     if ((pthread_mutex_init(&(new_file->access), NULL)) != 0 ||
         (pthread_cond_init(&(new_file->available), NULL) != 0)) {
         return NULL;
@@ -103,14 +104,16 @@ int
 storage_add_file(storage_t *storage, file_t *file)
 {
     hash_map_insert(storage->files, file->path, file);
-    list_insert_tail(storage->basic_fifo, file->path);
+    list_insert_tail(storage->fifo_queue, file->path);
     storage->no_of_files++;
+    return 0;
 }
 
 int
 storage_update_file(storage_t *storage, file_t *file)
 {
     hash_map_insert(storage->files, file->path, file);
+    return 0;
 }
 
 file_t*
@@ -120,7 +123,7 @@ storage_remove_file(storage_t *storage, char *file_name)
     if (to_remove == NULL) return to_remove;
     storage->no_of_files--;
     storage->current_size = storage->current_size - to_remove->size;
-    list_remove_element(storage->basic_fifo, to_remove->path);
+    list_remove_element(storage->fifo_queue, to_remove->path);
     hash_map_remove(storage->files, to_remove->path);
     return to_remove;
 }
@@ -149,7 +152,7 @@ storage_FIFO_replace(storage_t *storage, int how_many, size_t required_size, lis
 
     while ( storage->current_size + required_size > storage->max_size ) {
         
-        removed_file_path = (char*)list_remove_head(storage->basic_fifo);
+        removed_file_path = (char*)list_remove_head(storage->fifo_queue);
         to_remove = storage_get_file(storage, removed_file_path);
 
         if (CHK_FLAG(to_remove->flags, O_CREATE)) continue;
@@ -186,7 +189,7 @@ storage_dump(storage_t *storage, FILE *stream)
 
     fprintf(stream, "\n**********************\n");
     fprintf(stream, "FIFO QUEUE\n");
-    list_dump(storage->basic_fifo, stream);
+    list_dump(storage->fifo_queue, stream);
     fprintf(stream, "\n**********************\n");
 
     fprintf(stream, "\n**** TABLE OF FILES ******\n\n");

@@ -4,11 +4,6 @@
 #include <time.h>
 #include <stdbool.h>
 
-#define api_perror(fmt, args...) { \
-            int err = errno; fprintf(stderr, fmt , ## args); \
-            fprintf(stderr, ": %s\n", strerror(err)); } // also print error_buffer
-
-void print_result();
 /**
  * \brief Tries to open a connection to the socket file specified in the path variable socketname, 
  *        if the connection is not accepted immediatly tries again for msec millisecond until abstime
@@ -139,6 +134,9 @@ int
 removeFile(const char* pathname);
 
 int
-write_file_in_directory(char *dirname, char *filename, size_t size, void* contents);
+write_file_in_directory(const char *dirname, char *filename, size_t size, void* contents);
+
+void 
+display_request_result();
 
 #endif

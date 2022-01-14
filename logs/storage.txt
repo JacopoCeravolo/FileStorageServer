@@ -1,21 +1,31 @@
 
 **********************
-CURRENT SIZE: 999999
+CURRENT SIZE: 27946
 **********************
 
 **********************
-NO OF FILES: 1
+NO OF FILES: 3
 **********************
 
 **********************
 FIFO QUEUE
-/home/ubuntu/home/storage-server/test2/large_files/very_big1 
+/home/final/client/client.c /home/final/client/client.h /home/final/client/Makefile 
 
 **********************
 
 **** TABLE OF FILES ******
 
-/home/ubuntu/home/storage-server/test2/large_files/very_big1  999999 (bytes) locked by (12)
+/home/final/client/Makefile  999 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/final/client/client.c  26227 (bytes) locked by (-1)
+Clients waiting for lock: 
+
+------------------------------------------------------
+
+/home/final/client/client.h  720 (bytes) locked by (-1)
 Clients waiting for lock: 
 
 ------------------------------------------------------

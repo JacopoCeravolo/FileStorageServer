@@ -43,6 +43,8 @@ typedef enum {
     FILE_TOO_BIG        = 7,
     FILES_EXPELLED      = 8,
     FILE_EXISTS         = 9,
+    AWAITING            = 10,
+    NO_MORE_CON         = 11,
     
 } response_code;
 

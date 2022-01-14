@@ -18,16 +18,16 @@ OBJECTS			:= $(patsubst %.c,%.o,$(SOURCES))
 TARGET			:= server
 
 # Compiler Flags
-CFLAGS			:= -std=c99 -Wall -g -D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE
+CFLAGS			:= -std=c99 -Wall -g -D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE -Wno-deprecated-declarations
 INCLUDES		:= -I $(ORIGIN)
 
 LINK_LIBS		:= -L $(LIBS)
 L_PROTOCOL 		:= -lprotocol
 L_HASHMAP		:= -lhash_map
 L_LINKED_LIST	:= -llinked_list
-L_CONC_QUEUE	:= -lconcurrent_queue
+L_UTILITIES		:= -lutils
 L_PTHREAD		:= -lpthread
-LINK_ALL		:= $(L_PROTOCOL) $(L_HASHMAP) $(L_LINKED_LIST) $(L_CONC_QUEUE)
+LINK_ALL		:= $(L_PROTOCOL) $(L_HASHMAP) $(L_LINKED_LIST) $(L_UTILITIES)
 
 # General rule for objects
 %.o: %.c 

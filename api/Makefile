@@ -20,7 +20,7 @@ API 			:= libfileserver_api.a
 TARGET			:= $(LIBS)/$(API)
 
 # Compiler Flags
-CFLAGS			:= -std=c99 -Wall -g -D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE
+CFLAGS			:= -std=c99 -Wall -g -D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE -Wno-format
 INCLUDES		:= -I $(ORIGIN)
 
 LINK_LIBS		:= -Wl,-rpath,$(LIBS) -L $(LIBS)

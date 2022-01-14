@@ -52,7 +52,7 @@ int
 shutdown_all_threads();
 
 int
-parse_configuration_file(char *file_name)
+parse_configuration_file(const char *file_name)
 {
    char *line = NULL;
    size_t len = 0;

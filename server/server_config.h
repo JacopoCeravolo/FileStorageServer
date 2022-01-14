@@ -9,7 +9,6 @@
 
 #include "utils/linked_list.h"
 #include "utils/hash_map.h"
-#include "utils/concurrent_queue.h"
 #include "utils/protocol.h"
 #include "utils/utilities.h"
 #include "server/logger.h"
@@ -31,8 +30,8 @@ typedef struct {
     unsigned int no_of_workers;
     unsigned int max_size;
     unsigned int max_files;
-    const char *socket_path;
-    const char *log_file;
+    char *socket_path;
+    char *log_file;
 } server_config_t;
 
 

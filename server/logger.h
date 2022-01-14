@@ -19,11 +19,11 @@ void log_init(const char* path);
 void set_log_level(loglevel level);
 
 /* Logging Functions */
-void logfatal(const char *file, const int line, const char *fmt, ...);
-void logerror(const char *file, const int line, const char *fmt, ...);
-void loginfo(const char *fmt, ...);
-void logwarning(const char *file, const int line, const char *fmt, ...);
-void logdebug(const char *file, const int line, const char *fmt, ...); 
+int logfatal(const char *file, const int line, const char *fmt, ...);
+int logerror(const char *file, const int line, const char *fmt, ...);
+int loginfo(const char *fmt, ...);
+int logwarning(const char *file, const int line, const char *fmt, ...);
+int logdebug(const char *file, const int line, const char *fmt, ...); 
 
 /* Cleanup */
 void flush_log();

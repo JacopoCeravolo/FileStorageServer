@@ -48,7 +48,7 @@ typedef struct _storage_t {
     /* Table of files currently opened */
     hash_map_t *opened_files;
     /* Very basic FIFO policy */
-    list_t *basic_fifo;
+    list_t *fifo_queue;
     /* Read/write mutex */
     pthread_mutex_t     access;
     /* Condition variable */

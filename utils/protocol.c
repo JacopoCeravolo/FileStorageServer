@@ -11,7 +11,7 @@
  * Messages corresponding to a
  * certain response status
  */
-static char status_message[10][128] = {
+static char status_message[12][128] = {
     "Operation successfull",
     "Connection accepted",
     "Internal server error",
@@ -22,12 +22,14 @@ static char status_message[10][128] = {
     "File is too big",
     "File was expelled",
     "File already exists"
+    "Awaiting for lock",
+    "No more connections"
 };
 
 const char*
 get_status_message(response_code code)
 {
-    if (code < 0 || code > 9) return NULL;
+    if (code < 0 || code > 11) return NULL;
     return status_message[code];
 }
 

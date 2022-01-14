@@ -17,10 +17,10 @@ endif
 LINKED_LIST 	:= liblinked_list.a
 PROTOCOL 		:= libprotocol.a
 HASH_MAP 		:= libhash_map.a
-CONCURRENT_QUEUE = libconcurrent_queue.a
+UTILITIES 		:= libutils.a
 
 TARGETS 		:= $(LIBS)/$(LINKED_LIST) $(LIBS)/$(PROTOCOL) \
-					$(LIBS)/$(HASH_MAP) $(LIBS)/$(CONCURRENT_QUEUE)
+					$(LIBS)/$(HASH_MAP) $(LIBS)/$(UTILITIES)
 
 # Compiler Flags
 CFLAGS			:= -std=c99 -Wall -g -D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE
@@ -46,7 +46,7 @@ $(LIBS)/$(LINKED_LIST): linked_list.o
 $(LIBS)/$(HASH_MAP): hash_map.o 
 	$(AR) -o $@ $^
 
-$(LIBS)/$(CONCURRENT_QUEUE): concurrent_queue.o linked_list.o 
+$(LIBS)/$(UTILITIES): utilities.o
 	$(AR) -o $@ $^
 
 clean:

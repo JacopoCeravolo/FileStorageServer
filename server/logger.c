@@ -43,24 +43,25 @@ set_log_level(loglevel level)
     log_level = level;
 }
 
-void 
+int 
 logfatal(const char *file, const int line, const char* format, ...) 
 {
     char tmp[50] = { 0 };
     va_list args;
     va_start (args, format);
 
-    lock_return((&log_file_mtx), NULL);
+    lock_return((&log_file_mtx), -1);
     fprintf(log_file, "%s ", get_timestamp(tmp));
     fprintf(log_file, "%s:%d: [ FATAL ERROR ] ", file, line);
     vfprintf (log_file, format, args);
-    unlock_return((&log_file_mtx), NULL);
+    unlock_return((&log_file_mtx), -1);
 
     va_end (args);
     fflush(log_file);
+    return 0;
 }
 
-void 
+int 
 logerror(const char *file, const int line, const char* format, ...) 
 {
     if (log_level >= LOG_ERROR) {
@@ -68,18 +69,19 @@ logerror(const char *file, const int line, const char* format, ...)
         va_list args;
         va_start (args, format);
 
-        lock_return((&log_file_mtx), NULL);
+        lock_return((&log_file_mtx), -1);
         fprintf(log_file, "%s ", get_timestamp(tmp));
         fprintf(log_file, "[ ERROR ] ");
         vfprintf (log_file, format, args);
-        unlock_return((&log_file_mtx), NULL);
+        unlock_return((&log_file_mtx), -1);
 
         va_end (args);
         fflush(log_file);
     }
+    return 0;
 }
 
-void 
+int 
 loginfo(const char* format, ...) 
 {
     if (log_level >= LOG_INFO) {
@@ -87,18 +89,20 @@ loginfo(const char* format, ...)
         va_list args;
         va_start (args, format);
 
-        lock_return((&log_file_mtx), NULL);
+        lock_return((&log_file_mtx), -1);
         fprintf(log_file, "%s ", get_timestamp(tmp));
         fprintf(log_file, "[ INFO ] ");
         vfprintf (log_file, format, args);
-        unlock_return((&log_file_mtx), NULL);
+        unlock_return((&log_file_mtx), -1);
 
         va_end (args);
         fflush(log_file);
     }
+
+    return 0;
 }
 
-void 
+int 
 logwarning(const char *file, const int line, const char* format, ...) 
 {
     if (log_level >= LOG_WARNING) {
@@ -106,18 +110,20 @@ logwarning(const char *file, const int line, const char* format, ...)
         va_list args;
         va_start (args, format);
 
-        lock_return((&log_file_mtx), NULL);
+        lock_return((&log_file_mtx), -1);
         fprintf(log_file, "%s ", get_timestamp(tmp));
         fprintf(log_file, "%s:%d: [ WARNING ] ", file, line);
         vfprintf (log_file, format, args);
-        unlock_return((&log_file_mtx), NULL);
+        unlock_return((&log_file_mtx), -1);
         
         va_end (args);
         fflush(log_file);
     }
+
+    return 0;
 }
 
-void 
+int 
 logdebug(const char *file, const int line, const char* format, ...) 
 {
     if (log_level >= LOG_DEBUG) {
@@ -125,15 +131,17 @@ logdebug(const char *file, const int line, const char* format, ...)
         va_list args;
         va_start (args, format);
 
-        lock_return((&log_file_mtx), NULL);
+        lock_return((&log_file_mtx), -1);
         fprintf(log_file, "%s ", get_timestamp(tmp));
         fprintf(log_file, "%s:%d: ", file, line);
         vfprintf (log_file, format, args);
-        unlock_return((&log_file_mtx), NULL);
+        unlock_return((&log_file_mtx), -1);
         
         va_end (args);
         fflush(log_file);
     }
+
+    return 0;
 }
 
 void 
