@@ -108,7 +108,7 @@ sleep 1
 
 echo ""
 echo -e "${YELLOW}[TEST 1]${BOLD} Shutting down server${RESET}"
-kill -SIGHUP ${SERVER_PID}
+kill -SIGINT ${SERVER_PID}
 
 echo ""
 echo -e "${BOLD}*************************${RESET}"
