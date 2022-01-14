@@ -1,22 +1,17 @@
 
 **********************
-CURRENT SIZE: 741
+CURRENT SIZE: 0
 **********************
 
 **********************
-NO OF FILES: 1
+NO OF FILES: 0
 **********************
 
 **********************
 FIFO QUEUE
-/home/final/test3/data/file0 
+
 
 **********************
 
 **** TABLE OF FILES ******
-
-/home/final/test3/data/file0  741 (bytes) locked by (-1)
-Clients waiting for lock: 
-
-------------------------------------------------------
 

@@ -216,9 +216,9 @@ open_file_handler(int worker_no, int client_fd, request_t *request)
 
             
             // Removing file
-            storage_remove_file(storage, to_remove_path);
             log_info("(WORKER %d) [%s]  %-21s : %s\n", 
                 worker_no, "FIFO replace", get_status_message(FILES_EXPELLED), to_remove_path);
+            storage_remove_file(storage, to_remove_path);
 
         }
         
@@ -449,6 +449,7 @@ write_file_handler(int worker_no, int client_fd, request_t *request, list_t *exp
     file->contents = calloc(1, file->size);
     memcpy(file->contents, request->body, file->size);
     storage_update_file(storage, file);
+    list_insert_tail(storage->fifo_queue, file->path);
     storage->current_size += file->size;
 
     unlock_return(&(storage->access), INTERNAL_ERROR);

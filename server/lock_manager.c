@@ -7,40 +7,34 @@ lock_manager_thread(void* args)
 
         lock_return(&(storage->access), NULL);
 
+        // Start iterating over files list
         node_t *curr = storage->fifo_queue->head;
        
         while (curr != NULL) {
 
             file_t *file = storage_get_file(storage, (char*)curr->data);
-            if (file == NULL) {
-                // writes to pipe
-                curr = curr->next;
-                unlock_return(&(storage->access), NULL);
-                break;
-            }
+            if ( file == NULL ) break;
 
+            // File is not locked and there are clients waiting
             if (!CHK_FLAG(file->flags, O_LOCK) && !list_is_empty(file->waiting_on_lock)) {
+                
                 void *tmp = list_remove_head(file->waiting_on_lock);
-                if ( tmp == NULL ) {
-                    log_error("Dequeued invalid file descriptor\n");
-                    unlock_return(&(storage->access), NULL);
-                    break;
-                }
+                if ( tmp == NULL ) break;
             
                 int client_fd = *(int*)tmp;
 
-                log_debug("(LOCK HANDLER) updating file [%s] lock with client (%d)\n", file->path, client_fd);
+                log_debug("updating file [%s] lock\n", file->path);
 
                 SET_FLAG(file->flags, O_LOCK);
                 file->locked_by = client_fd;
 
                 storage_update_file(storage, file);
 
-                log_debug("(LOCK HANDLER) replying to client (%d)\n", client_fd);
+                log_debug("replying to client\n");
 
                 send_response(client_fd, SUCCESS, get_status_message(SUCCESS), strlen(file->path) + 1, file->path, 0, NULL);
 
-                log_info("(LOCK HANDLER) file [%s] lock reassigned\n", file->path);
+                log_info("(LOCK HANDLER) [  %s  ]  %-21s : %s\n", "lockFile", get_status_message(SUCCESS), file->path);
             }
 
             curr = curr->next;

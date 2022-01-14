@@ -104,7 +104,7 @@ int
 storage_add_file(storage_t *storage, file_t *file)
 {
     hash_map_insert(storage->files, file->path, file);
-    list_insert_tail(storage->fifo_queue, file->path);
+    // list_insert_tail(storage->fifo_queue, file->path);
     storage->no_of_files++;
     return 0;
 }
@@ -154,8 +154,8 @@ storage_FIFO_replace(storage_t *storage, int how_many, size_t required_size, lis
         
         removed_file_path = (char*)list_remove_head(storage->fifo_queue);
         to_remove = storage_get_file(storage, removed_file_path);
-
-        if (CHK_FLAG(to_remove->flags, O_CREATE)) continue;
+        if (to_remove == NULL) continue;
+        // if (CHK_FLAG(to_remove->flags, O_CREATE)) continue;
 
         file_t *copy = calloc(1, sizeof(file_t));
         strcpy(copy->path, to_remove->path);

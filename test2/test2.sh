@@ -48,9 +48,10 @@ echo -e "${YELLOW}[TEST 2]${BOLD} Writing 10 files${RESET}"
 ${CLIENT} -f ${SOCKET_PATH} -w first_dir/,10 -p
 echo ""
 
-echo -e "${YELLOW}[TEST 2]${BOLD} Writing 9 more files${RESET}"
-${CLIENT} -f ${SOCKET_PATH} -w second_dir/,9 -p
+echo -e "${YELLOW}[TEST 2]${BOLD} Writing 5 more files${RESET}"
+${CLIENT} -f ${SOCKET_PATH} -W second_dir/file1,second_dir/file2,second_dir/file3,second_dir/file4,second_dir/file5 -p
 echo ""
+
 
 echo -e "${YELLOW}[TEST 2]${BOLD} Filling up storage with one big file${RESET}"
 ${CLIENT} -f ${SOCKET_PATH} -W large_files/very_big1 -D expelled_dir -p

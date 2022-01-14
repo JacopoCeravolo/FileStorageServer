@@ -20,7 +20,7 @@
 #include "server/signal_handler.h"
 #include "server/worker.h"
 
-#define LOG_LVL      LOG_INFO
+#define LOG_LVL      LOG_DEBUG
 #define MAX_BACKLOG  2000000000
 
 server_config_t         server_config;

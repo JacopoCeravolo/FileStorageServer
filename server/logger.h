@@ -8,8 +8,8 @@
 
 typedef enum {
     LOG_FATAL   = 0,
-    LOG_INFO    = 1,
-    LOG_ERROR   = 2,
+    LOG_ERROR   = 1,
+    LOG_INFO    = 2,
     LOG_WARNING = 3,
     LOG_DEBUG   = 4,
 } loglevel;
