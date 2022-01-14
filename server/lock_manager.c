@@ -34,7 +34,7 @@ lock_manager_thread(void* args)
 
                 send_response(client_fd, SUCCESS, get_status_message(SUCCESS), strlen(file->path) + 1, file->path, 0, NULL);
 
-                log_info("(LOCK HANDLER) [  %s  ]  %-21s : %s\n", "lockFile", get_status_message(SUCCESS), file->path);
+                log_info("(LOCK MAN) [  %s  ]  %-21s : %s\n", "lockFile", get_status_message(SUCCESS), file->path);
             }
 
             curr = curr->next;

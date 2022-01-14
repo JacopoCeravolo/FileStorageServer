@@ -1,0 +1,5 @@
+N_WORKERS=8
+MAX_SIZE=32000000
+MAX_FILES=100
+SOCKET_PATH=/tmp/LSO_server.sk
+LOG_FILE=/home/final/test3/server.log

@@ -50,15 +50,17 @@ file='client_params.txt'
 start_time=$SECONDS
 end_time=$((SECONDS+30))
 
-while [ $SECONDS -lt $end_time ]; 
-do
+timeout 30s bash -c 'for((;;)); do xargs --arg-file=client_params.txt -n 6 -P 10 ./client ; done'
 
-    xargs --arg-file=$file -n 6 -P 10 ${CLIENT}
-    sleep 0.1
-    echo -e "${YELLOW}[TEST 3]${BOLD} Total time elapsed: ${RESET}$((SECONDS-start_time)) s"
-    tput cuu1
-
-done
+# while [ $SECONDS -lt $end_time ]; 
+# do
+# 
+#     xargs --arg-file=$file -n 6 -P 10 ${CLIENT}
+#     sleep 0.1
+#     echo -e "${YELLOW}[TEST 3]${BOLD} Total time elapsed: ${RESET}$((SECONDS-start_time)) s"
+#     tput cuu1
+# 
+# done
 
 
 echo ""
