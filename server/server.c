@@ -144,11 +144,6 @@ main(int argc, char const *argv[])
    set_log_level(LOG_LVL);
 
 
-   
-   /* Opens storage_file */
-   storage_file = fopen(server_config.storage_file, "w+");
-
-
    /* Max fd for select */
    int fd_max = -1;
 
@@ -373,7 +368,7 @@ main(int argc, char const *argv[])
       }
 
       lock_return((&server_status_mtx), -1); 
-      if ( (accept_connection == 0) || (server_status->current_connections == 0) ) {
+      if ( (accept_connection == 0) && (server_status->current_connections == 0) ) {
          shutdown_now = 1;
          unlock_return((&server_status_mtx), -1);
          continue;
@@ -391,7 +386,6 @@ main(int argc, char const *argv[])
    }
 
 _server_exit2:
-   storage_dump(storage, storage_file);
    close(socket_fd);
    unlink(server_config.socket_path);
    free(sig_handler_tid);
@@ -404,7 +398,6 @@ _server_exit1:
    close(signal_pipe[0]); 
    free(signal_pipe);
    storage_destroy(storage);
-   fclose(storage_file);
    free(server_config.log_file);
    free(server_config.socket_path);
    close_log();

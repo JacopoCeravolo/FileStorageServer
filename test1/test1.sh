@@ -38,7 +38,7 @@ echo ""
 echo -e "${YELLOW}[TEST 1]${BOLD} Starting server${RESET}"
 valgrind --leak-check=full ${SERVER} ${SERVER_CONFIG} &> ${VALGRIND_OUTPUT} & 
 SERVER_PID=$!
-sleep 3
+sleep 2
 echo -e "${YELLOW}[TEST 1]${BOLD} Server started${RESET}"
 
 

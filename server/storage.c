@@ -76,7 +76,7 @@ storage_add_file(storage_t *storage, file_t *file)
 {
     // Adds the file to storage data structures
     if ( hash_map_insert(storage->files, file->path, file) != 0 ) return -1;
-    if ( list_insert_tail(storage->fifo_queue, file->path) != 0 ) return -1;
+    // if ( list_insert_tail(storage->fifo_queue, file->path) != 0 ) return -1;
     storage->no_of_files++;
     return 0;
 }
