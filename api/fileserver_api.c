@@ -21,11 +21,11 @@ list_t      *opened_files;          // list of currently opened files
 char        result_buffer[2048];    // last request verbose result
 
 #define set_errno_save_result(err, opt_type, path, n_bytes) { \
-        sprintf(result_buffer, "%-15s %-60s %-10ld %-20s", opt_type, path, n_bytes, strerror(err)); \
+        sprintf(result_buffer, "%-15s %-50s %-10ld %-20s", opt_type, path, n_bytes, strerror(err)); \
         errno = err; }
 
 #define save_request_result(opt_type, path, n_bytes, msg) { \
-        sprintf(result_buffer, "%-15s %-60s %-10ld %-20s", opt_type, path, n_bytes, msg); }
+        sprintf(result_buffer, "%-15s %-50s %-10ld %-20s", opt_type, path, n_bytes, msg); }
 
 void display_request_result() { printf("%s\n", result_buffer); }     
         
