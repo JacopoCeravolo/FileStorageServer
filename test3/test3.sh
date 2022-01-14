@@ -16,7 +16,6 @@ N_WORKERS=8
 MAX_SIZE=32000000
 MAX_FILES=100
 SOCKET_PATH=/tmp/LSO_server.sk
-STORAGE_FILE=$(realpath ./storage.txt)
 
 echo ""
 echo -e "${BOLD}*************************${RESET}"
@@ -25,7 +24,7 @@ echo -e "${BOLD}*************************${RESET}"
 echo ""
 
 touch ${SERVER_CONFIG}
-echo -e "N_WORKERS=${N_WORKERS}\nMAX_SIZE=${MAX_SIZE}\nMAX_FILES=${MAX_FILES}\nSOCKET_PATH=${SOCKET_PATH}\nLOG_FILE=${SERVER_LOG}STORAGE_FILE=${STORAGE_FILE}" > ${SERVER_CONFIG}
+echo -e "N_WORKERS=${N_WORKERS}\nMAX_SIZE=${MAX_SIZE}\nMAX_FILES=${MAX_FILES}\nSOCKET_PATH=${SOCKET_PATH}\nLOG_FILE=${SERVER_LOG}" > ${SERVER_CONFIG}
 
 echo -e "${YELLOW}[TEST 3]${BOLD} Server configuration${RESET}"
 echo ""

@@ -16,7 +16,6 @@ N_WORKERS=4
 MAX_SIZE=1000000
 MAX_FILES=10
 SOCKET_PATH=/tmp/LSO_server.sk
-STORAGE_FILE=$(realpath ./storage.txt)
 
 echo ""
 echo -e "${BOLD}*************************${RESET}"
