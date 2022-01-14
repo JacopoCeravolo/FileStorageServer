@@ -7,10 +7,6 @@
 #include "utilities.h"
 
 
-
-/************** Linked List Functions **************/
-
-
 list_t*
 list_create(bool cmp(void*, void*), void free_fun(void*), void print(void*, FILE*))
 {

@@ -47,30 +47,27 @@
 
 void default_print(void* e, FILE* stream);
 
-bool default_cmp(void* e1, void* e2);
-
-void default_free(void* ptr);
-
 void string_print(void* e, FILE* stream);
 
-void print_int(void* x, FILE* f);
+void print_int(void* e, FILE* stream);
 
-
-void free_string(void *s);
+bool default_cmp(void* e1, void* e2);
 
 bool string_compare(void* a, void* b);
 
 bool int_compare(void* x, void* y);
 
+void default_free(void* ptr);
+
+void free_string(void *s);
+
+size_t string_hash(void* key);
 
 size_t int_hash(void* key);
 
 ssize_t readn(int fd, void *ptr, size_t n);
 
 ssize_t writen(int fd, void *ptr, size_t n);
-
-size_t string_hash(void* key);
-
 
 int msleep(long msec);
 

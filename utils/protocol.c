@@ -33,8 +33,6 @@ get_status_message(response_code code)
     return status_message[code];
 }
 
-/************** Request Handling Functions **************/
-
 int
 send_request(long conn_fd, request_code type, size_t path_len, const char *resource_path, size_t body_size, void* body)
 {
@@ -130,9 +128,6 @@ free_request(request_t *request)
     }
     
 }
-
-
-/************** Response Handling Functions **************/
 
 int
 send_response(long conn_fd, response_code status, const char *status_phrase, size_t path_len, char *file_path, size_t body_size, void* body)

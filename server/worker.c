@@ -141,11 +141,6 @@ worker_thread(void* args)
                 send_response(client_fd, status, get_status_message(status), request->path_len, request->file_path, 0, NULL);
                 break;
             }
-            
-            default: {
-                log_error("(WORKER %d) unknown request type\n");
-                break;
-            }       
         } 
 
         if ( write(pipe_fd, &client_fd, sizeof(int)) == -1 ) {

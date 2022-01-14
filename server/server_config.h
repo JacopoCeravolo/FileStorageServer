@@ -5,20 +5,18 @@
 #define  EXTERN  extern
 #endif
 
-
-
 #include "utils/linked_list.h"
 #include "utils/hash_map.h"
 #include "utils/protocol.h"
 #include "utils/utilities.h"
 #include "server/logger.h"
-
 #include "server/storage.h"
-#include <sys/types.h>
-#include <unistd.h>
-#include <time.h>
+
 #include <signal.h>
 
+/**
+ * Current server status
+ */
 typedef struct {
     int max_connections;
     int current_connections;
@@ -26,12 +24,16 @@ typedef struct {
     int max_no_files_reached;
 } server_status_t;
 
+/**
+ * Server configuration
+ */
 typedef struct {
     unsigned int no_of_workers;
     unsigned int max_size;
     unsigned int max_files;
     char *socket_path;
     char *log_file;
+    char *storage_file;
 } server_config_t;
 
 

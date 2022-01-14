@@ -1,10 +1,7 @@
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
-
 #include "utilities.h"
-
-/************** Data Structures **************/
 
 
 /**
@@ -74,7 +71,7 @@ typedef struct _response_t {
     /* Response status */
     response_code   status;
     /* Response status phrase */
-    char            status_phrase[MAX_PATH]; // change size to MAX_STRING (?)
+    char            status_phrase[MAX_PATH]; 
     /* Path length */
     size_t          path_len;
     /* File on which the request is performed */
@@ -90,7 +87,6 @@ typedef struct _response_t {
 const char*
 get_status_message(response_code code);
 
-/************** Request Handling Functions **************/
 
 /**
  * Sends a request on socket associated with conn_fd, returns 0 on success,
@@ -111,10 +107,6 @@ recv_request(long conn_fd);
  */
 void
 free_request(request_t *request);
-
-
-/************** Response Handling Functions **************/
-
 
 /**
  * Creates a new response, returns the response on success, NULL on failure,

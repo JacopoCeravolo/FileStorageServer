@@ -5,17 +5,6 @@
 #include "hash_map.h"
 #include "utilities.h"
 
-/**
- * \brief Creates a new hashmap. 
- * 
- * \param n_bucket: hashmap size
- * \param hash_function: function used to hash keys
- * \param key_cmp: function used to compare keys
- * \param free_key: function used to free keys
- * \param free_value: function used to free values
- * 
- * \return the hashmap on success, NULL on failure. Errno is set.
- */
 hash_map_t*
 hash_map_create(int n_buckets, size_t (*hash_function)(void*), bool (*key_cmp)(void*, void*), 
                 void (*free_key)(void*), void (*free_value)(void*))

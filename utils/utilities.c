@@ -5,52 +5,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-void
-default_print(void* e, FILE* stream)
-{
-    fprintf(stream, "%p\n", e);
-}
-
-bool
-default_cmp(void* e1, void* e2)
-{
-    return (e1 == e2) ? true : false;
-}
-
-void
-default_free(void* ptr)
-{
-    return;
-}
-
-void 
-string_print(void* e, FILE* stream)
-{
-    fprintf(stream, "%s ", (char*)e);
-}
-
-void
-print_int(void* x, FILE* f) {
-    fprintf(f, "%d ", *(int*)x);
-}
-
-
-void
-free_string(void *s) {
-    free(s);
-}
-
-bool 
-string_compare(void* a, void* b) {
-    return (strcmp( (char*)a, (char*)b ) == 0);
-}
-
-bool
-int_compare(void* x, void* y) {
-    return ( *(int*)x == *(int*)y );
-}
-
-
 size_t
 int_hash(void* key) {
     int x = *(int*)key;
@@ -76,8 +30,8 @@ string_hash(void* key)
     return (hash_value);
 }
 
-/* msleep(): Sleep for the requested number of milliseconds. */
-int msleep(long msec)
+int 
+msleep(long msec)
 {
     struct timespec ts;
     int res;
@@ -98,7 +52,8 @@ int msleep(long msec)
     return res;
 }
 
-int mkdir_p(const char *path)
+int 
+mkdir_p(const char *path)
 {
     /* Adapted from http://stackoverflow.com/a/2336245/119527 */
     const size_t len = strlen(path);
@@ -171,4 +126,49 @@ is_number(const char* s, long* n)
 		return 0;   // successo
 		}
 	return 1;   // non e' un numero
+}
+
+void
+default_print(void* e, FILE* stream)
+{
+    fprintf(stream, "%p\n", e);
+}
+
+bool
+default_cmp(void* e1, void* e2)
+{
+    return (e1 == e2) ? true : false;
+}
+
+void
+default_free(void* ptr)
+{
+    return;
+}
+
+void 
+string_print(void* e, FILE* stream)
+{
+    fprintf(stream, "%s ", (char*)e);
+}
+
+void
+print_int(void* x, FILE* f) {
+    fprintf(f, "%d ", *(int*)x);
+}
+
+
+void
+free_string(void *s) {
+    free(s);
+}
+
+bool 
+string_compare(void* a, void* b) {
+    return (strcmp( (char*)a, (char*)b ) == 0);
+}
+
+bool
+int_compare(void* x, void* y) {
+    return ( *(int*)x == *(int*)y );
 }

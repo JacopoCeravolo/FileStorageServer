@@ -1,19 +1,20 @@
 #include <errno.h>
-
+#include <stdlib.h>
 #include "server/storage.h"
 #include "utils/utilities.h"
 #include "server/logger.h"
-#include <stdlib.h>
 
 storage_t*
 storage_create(size_t max_size, size_t max_files)
 {
+    // Allocating space for storage
     storage_t *storage = calloc(1, sizeof(storage_t));
     if (storage == NULL) {
         errno = ENOMEM;
         return NULL;
     }
 
+    // Setting initial configuration
     storage->max_size = max_size;
     storage->max_files = max_files;
     storage->current_size = 0;
@@ -26,25 +27,15 @@ storage_create(size_t max_size, size_t max_files)
         return NULL;
     }
 
-    /* storage->opened_files = hash_map_create(500, int_hash, int_compare, NULL, list_destroy);
-    if (storage->opened_files == NULL) {
-        hash_map_destroy(storage->files);
-        free(storage);
-        errno = ENOMEM;
-        return NULL;
-    } */
-
-    storage->fifo_queue = list_create(string_compare, NULL, string_print);
+    storage->fifo_queue = list_create(string_compare, free_string, string_print);
     if (storage->fifo_queue == NULL) {
         hash_map_destroy(storage->files);
-        // hash_map_destroy(storage->opened_files);
         free(storage);
         errno = ENOMEM;
         return NULL;
     }
 
-    if ((pthread_mutex_init(&(storage->access), NULL)) != 0 ||
-        (pthread_cond_init(&(storage->available), NULL) != 0)) {
+    if ((pthread_mutex_init(&(storage->access), NULL)) != 0) {
         return NULL;
     }
 
@@ -54,57 +45,38 @@ storage_create(size_t max_size, size_t max_files)
 int
 storage_destroy(storage_t *storage)
 {
-    log_debug("deallocating file table\n");
-    if (storage->files) hash_map_destroy(storage->files);
-    log_debug("deallocating FIFO queue\n");
+    hash_map_destroy(storage->files);
     list_destroy(storage->fifo_queue);
-    log_debug("deallocating storage unit\n");
-    if (storage) free(storage);
+    free(storage);
     return 0;
 }
 
-/* file_t*
-storage_remove_file(storage_t *storage, char *file_name)
-{
-    file_t *to_remove = (file_t*)hash_map_get(storage->files, file_name);
-    if (to_remove == NULL) {
-        errno = ENOENT;
-        return NULL;
-    }
-
-    list_remove_element(storage->fifo_queue, file_name);
-    if (hash_map_remove(storage->files, file_name) != 0) return NULL;
-    storage->no_of_files--;
-    storage->current_size = storage->current_size - to_remove->size;
-    return to_remove;
-}
- */
 file_t*
 storage_create_file(char *file_name)
 {  
+    // Allocating file
     file_t *new_file = calloc(1, sizeof(file_t));
     if (new_file == NULL) {
         errno = ENOMEM;
         return NULL;
     }
+
+    // Setting initial file fileds
     strcpy(new_file->path, file_name);
     new_file->size = 0;
     new_file->locked_by = -1;
     SET_FLAG(new_file->flags, O_CREATE);
-    new_file->waiting_on_lock = list_create(int_compare, free, print_int);
-    if ((pthread_mutex_init(&(new_file->access), NULL)) != 0 ||
-        (pthread_cond_init(&(new_file->available), NULL) != 0)) {
-        return NULL;
-    }
-
+    new_file->waiting_on_lock = list_create(NULL, NULL, NULL);
+    
     return new_file;
 }
 
 int
 storage_add_file(storage_t *storage, file_t *file)
 {
-    hash_map_insert(storage->files, file->path, file);
-    // list_insert_tail(storage->fifo_queue, file->path);
+    // Adds the file to storage data structures
+    if ( hash_map_insert(storage->files, file->path, file) != 0 ) return -1;
+    if ( list_insert_tail(storage->fifo_queue, file->path) != 0 ) return -1;
     storage->no_of_files++;
     return 0;
 }
@@ -112,30 +84,32 @@ storage_add_file(storage_t *storage, file_t *file)
 int
 storage_update_file(storage_t *storage, file_t *file)
 {
-    hash_map_insert(storage->files, file->path, file);
-    return 0;
+    return hash_map_insert(storage->files, file->path, file);
 }
 
-file_t*
+int
 storage_remove_file(storage_t *storage, char *file_name)
 {
+    // Finds the file
     file_t *to_remove = (file_t*)hash_map_get(storage->files, file_name);
-    if (to_remove == NULL) return to_remove;
+    if (to_remove == NULL) return -1;
+    
+    // Update storage fields and data structures
     storage->no_of_files--;
     storage->current_size = storage->current_size - to_remove->size;
-    list_remove_element(storage->fifo_queue, to_remove->path);
-    hash_map_remove(storage->files, to_remove->path);
-    return to_remove;
+    /* char *filename1 = malloc(strlen(file_name) + 1);
+    strcpy(filename1, file_name);
+    char *filename2 = malloc(strlen(file_name) + 1);
+    strcpy(filename2, file_name); */
+    if ( list_remove_element(storage->fifo_queue, file_name) != 0 ) return -1;
+    if ( hash_map_remove(storage->files, file_name) != 0 ) return -1;
+    return 0;
 }
 
 file_t*
 storage_get_file(storage_t *storage, char *file_name)
 {
-    if (storage == NULL || file_name == NULL) {
-        errno = EINVAL;
-        return NULL;
-    }
-
+    // Finds the file in hashtable
     file_t *file = (file_t*)hash_map_get(storage->files, (void*)file_name);
     if (file == NULL) return NULL;
     return file;
@@ -144,7 +118,6 @@ storage_get_file(storage_t *storage, char *file_name)
 int
 storage_FIFO_replace(storage_t *storage, int how_many, size_t required_size, list_t *replaced_files)
 {
-    /* This all should be in a separate function */
 
     char   *removed_file_path;
     file_t *to_remove;
@@ -152,29 +125,31 @@ storage_FIFO_replace(storage_t *storage, int how_many, size_t required_size, lis
 
     while ( storage->current_size + required_size > storage->max_size ) {
         
+        // Dequeue filename from FIFO queue
         removed_file_path = (char*)list_remove_head(storage->fifo_queue);
         to_remove = storage_get_file(storage, removed_file_path);
-        if (to_remove == NULL) continue;
-        // if (CHK_FLAG(to_remove->flags, O_CREATE)) continue;
 
+
+        // Copies file contents
         file_t *copy = calloc(1, sizeof(file_t));
         strcpy(copy->path, to_remove->path);
         copy->size = to_remove->size;
         copy->contents = malloc(copy->size);
         memcpy(copy->contents, to_remove->contents, copy->size);
 
+        // Removes file from storage
         storage->current_size = storage->current_size - to_remove->size;
         storage->no_of_files--;
         hash_map_remove(storage->files, to_remove->path);
 
+        // Adds file to list of expelled files
         list_insert_tail(replaced_files, copy);
         files_removed++;
     }
 
     return files_removed;
-    /* ************************** */
+    
 }
-
 
 void
 storage_dump(storage_t *storage, FILE *stream)
@@ -184,7 +159,7 @@ storage_dump(storage_t *storage, FILE *stream)
     fprintf(stream, "\n**********************\n");
 
     fprintf(stream, "\n**********************\n");
-    fprintf(stream, "NO OF FILES: %lu", storage->no_of_files);
+    fprintf(stream, "NO OF FILES: %d", storage->no_of_files);
     fprintf(stream, "\n**********************\n");
 
     fprintf(stream, "\n**********************\n");
@@ -196,15 +171,10 @@ storage_dump(storage_t *storage, FILE *stream)
     hash_map_dump(storage->files, stream, string_print, print_file);
 }
 
-
-
-/********************** Utilities for printing and deallocating a file  **********************/
-
 void
 free_file(void *e) 
 {
     file_t *f = (file_t*)e;
-    log_debug("deallocating file (%s)\n", f->path);
     if (f->contents) free(f->contents);
     list_destroy(f->waiting_on_lock);
     free(f);
@@ -217,7 +187,7 @@ print_file(void *e, FILE *stream)
     fprintf(stream, " %lu (bytes)", f->size);
     fprintf(stream, " locked by (%d)\n", f->locked_by);
     fprintf(stream, "Clients waiting for lock: ");
-    // list_dump(f->waiting_on_lock, stream);
+    list_dump(f->waiting_on_lock, stream);
     fprintf(stream, "\n");
     fprintf(stream, "\n------------------------------------------------------\n\n");
 }

@@ -84,16 +84,20 @@ parse_configuration_file(const char *file_name)
 
       if (strcmp(parameter, "SOCKET_PATH") == 0) {
          char *socket_path = strtok(NULL, "\n");
-         // remove if present " " from socket path
          server_config.socket_path = calloc(1, strlen(socket_path) + 1);
          strcpy(server_config.socket_path, socket_path);
       }
 
       if (strcmp(parameter, "LOG_FILE") == 0) {
          char *log_path = strtok(NULL, "\n");
-         // remove if present " " from socket path
          server_config.log_file = calloc(1, strlen(log_path) + 1);
          strcpy(server_config.log_file, log_path);
+      }
+
+      if (strcmp(parameter, "STORAGE_FILE") == 0) {
+         char *storage_file = strtok(NULL, "\n");
+         server_config.storage_file = calloc(1, strlen(storage_file) + 1);
+         strcpy(server_config.storage_file, storage_file);
       }
    }
 
@@ -138,6 +142,11 @@ main(int argc, char const *argv[])
    }
 
    set_log_level(LOG_LVL);
+
+
+   
+   /* Opens storage_file */
+   storage_file = fopen(server_config.storage_file, "w+");
 
 
    /* Max fd for select */
@@ -272,18 +281,9 @@ main(int argc, char const *argv[])
    FD_SET(signal_pipe[0], &set);
    FD_SET(mw_pipe[0], &set);
    FD_SET(socket_fd, &set);
-        
-
-   
-   /* Opens storage_file */
-   storage_file = fopen("../logs/storage.txt", "w+");
 
 
    /* Start accepting requests */
-
-
-   // fprintf(stdout, "****** SERVER STARTED ******\n");
-
    while (shutdown_now == 0) {
 
       rdset = set;
@@ -373,7 +373,7 @@ main(int argc, char const *argv[])
       }
 
       lock_return((&server_status_mtx), -1); 
-      if ( (accept_connection == 0) && (server_status->current_connections == 0) ) {
+      if ( (accept_connection == 0) || (server_status->current_connections == 0) ) {
          shutdown_now = 1;
          unlock_return((&server_status_mtx), -1);
          continue;
@@ -382,14 +382,13 @@ main(int argc, char const *argv[])
 
    }
 
-   // fprintf(stdout, "****** SERVER CLOSING ******\n");
+   log_info("(SERVER) Maximum number of connections: %d\n", server_status->max_connections);
+
 
    /* Joining threads */
    if ( shutdown_all_threads() != 0 ) {
       ret = -1;
    }
-
-   log_info("[GENERAL INFO] Maximum number of connections: %d\n", server_status->max_connections);
 
 _server_exit2:
    storage_dump(storage, storage_file);

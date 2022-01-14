@@ -3,11 +3,17 @@
 
 #include "server_config.h"
 
+/**
+ * Worker arguments
+ */
 typedef struct _worker_arg_t {
    int pipe_fd;
    int worker_id;
 } worker_arg_t;
 
+/**
+ * Worker thread
+ */
 void*
 worker_thread(void* args);
 

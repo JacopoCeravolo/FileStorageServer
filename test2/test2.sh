@@ -16,6 +16,7 @@ N_WORKERS=4
 MAX_SIZE=1000000
 MAX_FILES=10
 SOCKET_PATH=/tmp/LSO_server.sk
+STORAGE_FILE=$(realpath ./storage.txt)
 
 echo ""
 echo -e "${BOLD}*************************${RESET}"
@@ -44,54 +45,19 @@ echo ""
 echo -e "${YELLOW}[TEST 2]${BOLD} Starting clients${RESET}"
 echo ""
 
-echo -e "${YELLOW}[TEST 2]${BOLD} Writing 10 files${RESET}"
-${CLIENT} -f ${SOCKET_PATH} -w first_dir/,10 -p
+echo -e "${YELLOW}[TEST 2]${BOLD} Writing 9 files${RESET}"
+${CLIENT} -f ${SOCKET_PATH} -w first_dir/,9 -p
 echo ""
-
-echo -e "${YELLOW}[TEST 2]${BOLD} Writing 5 more files${RESET}"
-${CLIENT} -f ${SOCKET_PATH} -W second_dir/file1,second_dir/file2,second_dir/file3,second_dir/file4,second_dir/file5 -p
-echo ""
-
 
 echo -e "${YELLOW}[TEST 2]${BOLD} Filling up storage with one big file${RESET}"
-${CLIENT} -f ${SOCKET_PATH} -W large_files/very_big1 -D expelled_dir -p
+${CLIENT} -f ${SOCKET_PATH} -W large/very_big1 -D expelled_dir -p
 echo ""
 
 echo -e "${YELLOW}[TEST 2]${BOLD} Expelled directory contents${RESET}"
 ls expelled_dir
 echo ""
 
-# echo -e "${YELLOW}[TEST 2]${BOLD} Writing 9 more files${RESET}"
-# ${CLIENT} -f ${SOCKET_PATH} -w third_dir/,9 -p
-# echo ""
 
-# echo -e "${YELLOW}[TEST 2]${BOLD} Trying to write a file too big for storage${RESET}"
-# ${CLIENT} -f ${SOCKET_PATH} -W large_files/too_big -D expelled_dir -p
-# echo ""
-
-# echo -e "${YELLOW}[TEST 2]${BOLD} Using half of storage for one file${RESET}"
-# ${CLIENT} -f ${SOCKET_PATH} -W large_files/medium1 -D expelled_dir -p
-# echo ""
-# 
-# echo -e "${YELLOW}[TEST 2]${BOLD} Filling up rest of storage with another file${RESET}"
-# ${CLIENT} -f ${SOCKET_PATH} -W large_files/medium2 -D expelled_dir -p
-# echo ""
-
-# echo -e "${YELLOW}[TEST 2]${BOLD} Filling up storage with one big file${RESET}"
-# ${CLIENT} -f ${SOCKET_PATH} -W large_files/very_big2 -D expelled_dir -p
-# echo ""
-# 
-# echo -e "${YELLOW}[TEST 2]${BOLD} Expelled directory contents${RESET}"
-# ls expelled_dir
-# echo ""
-
-# echo -e "${YELLOW}[TEST 2]${BOLD} Filling up storage with one big file${RESET}"
-# ${CLIENT} -f ${SOCKET_PATH} -W large_files/very_big -D expelled_dir -p
-# echo ""
-# 
-# echo -e "${YELLOW}[TEST 2]${BOLD} Expelled directory contents${RESET}"
-# ls expelled_dir
-# echo ""
 
 echo ""
 echo -e "${YELLOW}[TEST 2]${BOLD} Shutting down server${RESET}"
